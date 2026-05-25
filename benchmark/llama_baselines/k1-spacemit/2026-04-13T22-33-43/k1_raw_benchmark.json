@@ -1,0 +1,110 @@
+{
+  "device": "k1-spacemit",
+  "timestamp": "2026-04-13T22:33:43",
+  "system_info": {
+    "device": "k1-spacemit",
+    "arch": "riscv64",
+    "isa": {
+      "has_rvv": true,
+      "rvv_spec_version": "v1.0",
+      "kernel_version": "6.6.63"
+    },
+    "toolchain": {
+      "libc_type": "glibc",
+      "libc_version": "2.39",
+      "ggml_rvv_enabled": true,
+      "ggml_backend": "cpu",
+      "blas_backend": "none"
+    }
+  },
+  "llm": [
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "short",
+      "prefill_tps": 149.82,
+      "decode_tps": 10.84,
+      "ttft_ms": 389.5,
+      "output_tokens": 64
+    },
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "medium",
+      "prefill_tps": 126.42,
+      "decode_tps": 10.25,
+      "ttft_ms": 552.5,
+      "output_tokens": 256
+    },
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "long",
+      "prefill_tps": 117.67,
+      "decode_tps": 9.88,
+      "ttft_ms": 687.0,
+      "output_tokens": 512
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "short",
+      "prefill_tps": 23.69,
+      "decode_tps": 4.06,
+      "ttft_ms": 602.2,
+      "output_tokens": 64
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "medium",
+      "prefill_tps": 27.6,
+      "decode_tps": 3.83,
+      "ttft_ms": 1084.3,
+      "output_tokens": 256
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "long",
+      "prefill_tps": 26.3,
+      "decode_tps": 3.52,
+      "ttft_ms": 1584.6,
+      "output_tokens": 512
+    }
+  ],
+  "embedding": [
+    {
+      "model": "nomic-embed-text",
+      "dims": 768,
+      "throughput_samples_per_s": 2.0,
+      "cross_lingual_sim": 0.3841,
+      "unrelated_sim": 0.4922,
+      "latency_ms": 5001.5
+    },
+    {
+      "model": "bge-m3",
+      "dims": 1024,
+      "throughput_samples_per_s": 0.45,
+      "cross_lingual_sim": 0.7516,
+      "unrelated_sim": 0.3867,
+      "latency_ms": 22139.8
+    }
+  ],
+  "rerank": [
+    {
+      "model": "bge-m3",
+      "ndcg_at_5": 0.8319,
+      "precision_at_3": 1.0,
+      "throughput_pairs_per_s": 0.73,
+      "latency_ms": 11013.5
+    }
+  ],
+  "ocr": {
+    "scenario": "ocr_llm_postprocess",
+    "model": "qwen2.5:0.5b",
+    "decode_tps": 7.59,
+    "latency_ms": 40927.7,
+    "output_preview": "### 结构化摘要：  本报告详细介绍了对Sp@cemiT K1开发板进行AI推理性能评估。该评估涵盖了LLM、Embedding和Rerank场景的测试。  主要发现： - **qwen2.5**模型在RVV加速下，成功实现每秒30个字节",
+    "note": "LLM-assisted OCR post-processing (PyMuPDF available as pure rule-based baseline)",
+    "pymupdf_status": "pending_install"
+  },
+  "asr": {
+    "status": "N/A",
+    "reason": "whisper not available on SpacemiT Ollama RISC-V"
+  }
+}

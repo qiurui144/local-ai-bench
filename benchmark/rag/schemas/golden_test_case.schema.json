@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/golden_test_case.json",
+  "title": "Golden Test Case",
+  "description": "A single golden case used in regression CI and judge calibration.",
+  "type": "object",
+  "required": ["item_id", "query", "expected_answer"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "item_id": {"type": "string", "description": "Stable identifier; never reused after a delete."},
+    "query": {"type": "string"},
+    "domain": {"type": "string", "description": "Bucket label for per-domain reporting (e.g. 'legal', 'medical')."},
+    "difficulty": {"type": "string", "enum": ["easy", "medium", "hard", "edge"]},
+    "language": {"type": "string", "description": "BCP-47 language tag."},
+    "expected_answer": {"type": "string"},
+    "expected_claims": {
+      "type": "array",
+      "description": "Atomic claims that a passing answer must contain.",
+      "items": {
+        "type": "object",
+        "required": ["claim_id", "text"],
+        "properties": {
+          "claim_id": {"type": "string"},
+          "text": {"type": "string"},
+          "must_be_grounded_in": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "expected_citations": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Doc IDs that a correct answer must cite."
+    },
+    "must_not_say": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Forbidden substrings; presence is a critical failure."
+    },
+    "expected_refusal": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, the answerer should refuse for lack of evidence."
+    },
+    "evidence_corpus_ids": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Doc IDs available in the corpus for this case."
+    },
+    "relevance_grades": {
+      "type": "object",
+      "description": "Doc-id -> graded relevance (0-4) for NDCG computation.",
+      "additionalProperties": {"type": "number"}
+    },
+    "acceptance_thresholds": {
+      "type": "object",
+      "description": "Per-metric pass/warn/fail thresholds for this case.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "min": {"type": "number"},
+          "max": {"type": "number"}
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "curator": {"type": "string"}
+  }
+}

@@ -1,0 +1,53 @@
+# Relevance rubric on a 1-5 Likert scale.
+#
+# Use this rubric when human raters or an LLM judge scores answer relevance
+# to a query, with no required strict-grounding step. Always pair this
+# with a groundedness rubric for the full safety story.
+#
+# Reference: adapted from TREC Conversational Track relevance criteria.
+
+scale:
+  - level: 5
+    label: "perfectly_relevant"
+    description: >
+      Answer fully addresses the user's intent, covers every sub-ask,
+      stays on-topic, and is at the requested level of detail. No
+      irrelevant information.
+  - level: 4
+    label: "highly_relevant"
+    description: >
+      Answer addresses the main intent and most sub-asks. May include
+      one small irrelevant tangent or miss one minor sub-ask, but the
+      reader gets what they wanted.
+  - level: 3
+    label: "partially_relevant"
+    description: >
+      Answer addresses the main intent but misses substantial sub-asks
+      or wanders into off-topic content. The user would need a follow-up.
+  - level: 2
+    label: "marginally_relevant"
+    description: >
+      Answer is only loosely related to the question. Most sub-asks are
+      missing or addressed incorrectly. User would likely retry.
+  - level: 1
+    label: "irrelevant"
+    description: >
+      Answer does not address the question. May be off-topic, refuse
+      inappropriately, or hallucinate an unrelated topic.
+
+aggregation:
+  primary: median
+  variance_check: |
+    If three judges disagree by 2+ levels, escalate to a fourth judge
+    or human adjudication. Report the gap in the calibration log.
+
+reportable_metrics:
+  - name: "mean_relevance"
+    formula: "mean of per-judge medians"
+    pass_threshold: 4.0
+  - name: "pct_passing"
+    formula: "fraction of items with median >= 4"
+    pass_threshold: 0.85
+  - name: "pct_critical_fail"
+    formula: "fraction of items with median <= 2"
+    fail_threshold: 0.05

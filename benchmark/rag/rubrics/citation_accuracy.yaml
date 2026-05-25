@@ -1,0 +1,45 @@
+# Citation accuracy rubric.
+#
+# We rate not only whether a claim is grounded, but whether the cited
+# evidence id actually points to the source of grounding. A claim can be
+# supported with a wrong citation (the model cited the wrong doc); that
+# is a different failure than an unsupported claim.
+
+dimensions:
+  citation_precision:
+    description: >
+      Of the doc IDs the answer cites, what fraction actually contain
+      supporting content for the claim they are attached to?
+    formula: "correct_cites / total_cites_given"
+    pass_threshold: 0.90
+
+  citation_recall:
+    description: >
+      Of the doc IDs that DO contain supporting content (as judged by a
+      human / strong-LLM), what fraction did the answer cite?
+    formula: "cited_supporting / total_supporting_in_corpus"
+    pass_threshold: 0.75
+
+  cite_no_evidence_failures:
+    description: >
+      Claims that need citation but were uncited. Count as critical
+      failures because the user has no way to verify.
+    pass_threshold: 0  # tolerate zero in production
+
+failure_classes:
+  - kind: "citation_missing"
+    severity: "high"
+    description: "claim with no citation when one was required"
+  - kind: "citation_wrong"
+    severity: "high"
+    description: "cited doc does not contain supporting content"
+  - kind: "citation_fabricated"
+    severity: "critical"
+    description: "cited doc id does not exist in the corpus"
+  - kind: "citation_redundant"
+    severity: "low"
+    description: "many citations all pointing at the same doc when one would do"
+
+aggregation:
+  per_answer: "all dimensions reported separately"
+  per_corpus: "macro-average per dimension"

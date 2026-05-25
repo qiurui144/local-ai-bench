@@ -3,9 +3,67 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml)
 
-A small, reproducible benchmark harness for evaluating **VLM** (vision-language) and **LLM** (text) models served via **vLLM** — across 6 dimensions on a single high-end GPU node.
+A small, reproducible benchmark harness for evaluating **VLM** (vision-language) and **LLM** (text) models served via **vLLM** — across 6 dimensions on a single high-end GPU node — plus a **complete RAG / LLM validation framework** for production deployments.
 
-Built for the question: *"Can model X replace model Y in production without quality regression?"*
+Built for the question: *"Can model X replace model Y in production without quality regression?"* — and now: *"Is my RAG pipeline ready to ship?"*
+
+---
+
+## Validation framework (new in v0.2)
+
+In addition to the vLLM harness, this repository now ships a full
+academic-grade validation framework under `benchmark/rigor/` and
+`benchmark/rag/`. It implements:
+
+- **Rigor foundation** (`benchmark/rigor/`): statistical tests, effect
+  sizes, multi-seed runner, reproducibility snapshots, probability
+  calibration (ECE/Brier/Platt/Isotonic), inter-rater reliability
+  (Cohen/Fleiss/Krippendorff), ablation orchestrator, cross-validation,
+  power analysis, and OOD/subgroup assessment.
+- **RAG methodology** (`benchmark/rag/`): all 12 chapters of the RAG
+  evaluation playbook — component pipeline traces, offline/online
+  alignment, retrieval metrics (NDCG/MRR/MAP/bpref/ERR/RBP),
+  reranker assessment + rank fusion (RRF/Borda/CombSUM/CombMNZ),
+  answer relevance, claim-level groundedness with RAGAS strict
+  faithfulness, LLM-judge prompts with G-Eval CoT, judge
+  calibration with position/verbosity/self-preference bias
+  detection, judge attack hardening (injection, leakage,
+  perturbation), regression CI with flake controller, canary
+  rollout with rollback policy, and drift detection with PSI / JS
+  divergence / temporal cohorts / auto-curation.
+- **Appendices**: 3 JSON schemas, 5 YAML rubrics, 8 runnable labs,
+  6 production case studies, 120-question interview bank, and a
+  capstone system-design document — all in `docs/` and
+  `benchmark/rag/{labs,rubrics,schemas,case_studies}/`.
+
+Companion docs:
+
+- `docs/ACADEMIC-RIGOR.md` — the 12 principles the framework enforces.
+- `docs/BASELINES.md` — reference baselines and threshold defaults.
+- `docs/REPRODUCIBILITY.md` — pinning policy and snapshot format.
+- `docs/CITATION.md` — bibtex for citing this work and underlying methods.
+- `docs/CONTRIBUTING.md` — methodological guidelines for contributors.
+- `docs/CROSS-BENCH-MAPPING.md` — how to combine with attune-bench Rust criterion suite.
+- `docs/capstone-system-design.md` — reference end-to-end architecture.
+
+Run the validation tests:
+
+```bash
+python -m pytest tests/rigor tests/rag -q
+```
+
+Run a lab as a worked example:
+
+```bash
+python -m benchmark.rag.labs.lab2_retrieval_metrics
+python -m benchmark.rag.labs.lab4_groundedness_audit
+python -m benchmark.rag.labs.lab8_drift_detection
+```
+
+This validation framework is the **single source of truth** for
+RAG / LLM evaluation methodology across attune, attune-pro, cloud,
+and the RV toolchain projects. The legacy `algo-base/llama-benchmark`
+has been absorbed under `benchmark/llama_benchmark/`.
 
 ---
 

@@ -1,0 +1,239 @@
+{
+  "run_id": "k1-pilot-002",
+  "start_time": "2026-04-14T00:00:00",
+  "model_results": [
+    {
+      "model_name": "qwen2.5:0.5b",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "llm_performance",
+          "metadata": {
+            "timing_breakdown": {
+              "decode_tokens_per_second": 10.84,
+              "prefill_tokens_per_second": 149.82,
+              "ttft_ms": 389.5
+            }
+          },
+          "metrics": []
+        }
+      ]
+    },
+    {
+      "model_name": "deepseek-r1:1.5b",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "llm_performance",
+          "metadata": {
+            "timing_breakdown": {
+              "decode_tokens_per_second": 4.06,
+              "prefill_tokens_per_second": 23.69,
+              "ttft_ms": 602.2
+            }
+          },
+          "metrics": []
+        }
+      ]
+    },
+    {
+      "model_name": "nomic-embed-text",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "embedding",
+          "metadata": {},
+          "metrics": [
+            {
+              "name": "embed_throughput",
+              "value": 2.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model_name": "bge-m3",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "embedding",
+          "metadata": {},
+          "metrics": [
+            {
+              "name": "embed_throughput",
+              "value": 0.45
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model_name": "bge-m3-rerank",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "rerank",
+          "metadata": {},
+          "metrics": [
+            {
+              "name": "ndcg_at_10",
+              "value": 0.8319
+            },
+            {
+              "name": "accuracy",
+              "value": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model_name": "whisper-tiny-onnx",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "asr",
+          "metadata": {
+            "timing_breakdown": {
+              "encoder_rtf_10s": 0.1728,
+              "full_inference_rtf": 0.2101,
+              "encoder_latency_ms": 1728.5
+            }
+          },
+          "metrics": [
+            {
+              "name": "accuracy",
+              "value": 0.8271999999999999
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model_name": "ppocr-v3",
+      "system_info": {
+        "device": "k1-spacemit",
+        "arch": "riscv64",
+        "isa": {
+          "has_rvv": true,
+          "rvv_spec_version": "v1.0",
+          "kernel_version": "6.6.63"
+        },
+        "toolchain": {
+          "libc_type": "glibc",
+          "libc_version": "2.39",
+          "ggml_rvv_enabled": true,
+          "ggml_backend": "cpu",
+          "blas_backend": "none"
+        }
+      },
+      "task_results": [
+        {
+          "task_name": "ocr",
+          "metadata": {
+            "timing_breakdown": {
+              "decode_tokens_per_second": 12.6
+            }
+          },
+          "metrics": [
+            {
+              "name": "accuracy",
+              "value": 0.948
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
