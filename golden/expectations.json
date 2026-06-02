@@ -185,5 +185,26 @@
     "empty_rate_max":       0.05,
     "ttft_p95_ms_max":      2000,
     "tps_min":              30
+  },
+  "embedding_acceptance_criteria": {
+    "_description": "Aggregate thresholds for the embedding retrieval dimension. recall@10 / nDCG@10 are the primary quality gates; a numerical-validation failure (zero/NaN/Inf vectors) is an automatic FAIL regardless of recall.",
+    "recall_at_1_min":      0.60,
+    "recall_at_10_min":     0.90,
+    "mrr_min":              0.70,
+    "ndcg_at_10_min":       0.75,
+    "numerical_validation_required": true,
+    "single_query_latency_p50_ms_max": 200
+  },
+  "rerank_acceptance_criteria": {
+    "_description": "Aggregate thresholds for the standalone reranker dimension. nDCG@10 / MRR over the same retrieval gold as embedding; per-pair latency is reported but not gated (a high-quality offline reranker can be slow).",
+    "ndcg_at_10_min":       0.75,
+    "mrr_min":              0.70,
+    "score_separation_required": true
+  },
+  "asr_acceptance_criteria": {
+    "_description": "Aggregate thresholds for the ASR dimension (Chinese). CER is the primary metric; RTF < 1.0 means real-time capable. SKIP/blocked when no dataset or ONNX backend is present.",
+    "cer_max":              0.15,
+    "rtf_max":              1.0,
+    "empty_output_rate_max": 0.0
   }
 }

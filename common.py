@@ -438,6 +438,72 @@ def wait_model_ready(model_cfg: ModelConfig, timeout_s: float = 300.0) -> bool:
 
 
 # ────────────────────────────────────────────────────────────
+# Embedding 客户端（OpenAI 兼容 /v1/embeddings）
+# ────────────────────────────────────────────────────────────
+
+
+@dataclass
+class EmbedResult:
+    """单次 embedding 调用结果（一个或多个输入文本）。"""
+
+    model: str
+    ok: bool = False
+    error: str = ""
+    embeddings: Optional[list] = None  # list[list[float]]
+    input_tokens: int = 0
+    latency_ms: float = 0.0
+
+    def __post_init__(self) -> None:
+        if self.embeddings is None:
+            self.embeddings = []
+
+
+def infer_embedding(
+    model_cfg: ModelConfig,
+    inputs,
+    *,
+    timeout_s: float = 600.0,
+) -> EmbedResult:
+    """调用 OpenAI 兼容 /v1/embeddings，返回向量 + 延迟 + token 统计。
+
+    ``inputs`` 可以是单个字符串或字符串列表。vLLM / sglang / llama.cpp server /
+    Ollama 等都暴露这个端点；服务端不支持时返回 ok=False（调用方据此 graceful）。
+    """
+    if isinstance(inputs, str):
+        inputs = [inputs]
+    payload = {"model": model_cfg.hf_repo, "input": list(inputs)}
+    url = f"{model_cfg.base_url}/embeddings"
+
+    t0 = time.monotonic()
+    try:
+        r = httpx.post(url, json=payload, timeout=timeout_s,
+                       headers={"Authorization": "Bearer EMPTY"})
+        elapsed = (time.monotonic() - t0) * 1000
+    except Exception as e:
+        return EmbedResult(model=model_cfg.name, ok=False,
+                           error=f"{type(e).__name__}: {e}",
+                           latency_ms=(time.monotonic() - t0) * 1000)
+
+    if r.status_code != 200:
+        return EmbedResult(model=model_cfg.name, ok=False,
+                           error=f"HTTP {r.status_code}: {r.text[:200]}",
+                           latency_ms=elapsed)
+
+    data = r.json()
+    # OpenAI 契约：data 按 index 排序；做一次稳妥排序避免后端乱序。
+    rows = sorted(data.get("data", []), key=lambda d: d.get("index", 0))
+    vectors = [row.get("embedding", []) for row in rows]
+    usage = data.get("usage", {}) or {}
+    return EmbedResult(
+        model=model_cfg.name,
+        ok=True,
+        embeddings=vectors,
+        input_tokens=int(usage.get("prompt_tokens", 0) or usage.get("total_tokens", 0)),
+        latency_ms=elapsed,
+    )
+
+
+# ────────────────────────────────────────────────────────────
 # VRAM 监控（可选）
 # ────────────────────────────────────────────────────────────
 
@@ -483,3 +549,20 @@ def summarize_latencies(latencies_ms: list[float]) -> dict:
         "max": s[-1],
         "count": len(s),
     }
+
+
+def proc_rss_mb(pid: int) -> float:
+    """读 /proc/<pid>/status VmHWM（峰值 RSS，MB）。
+
+    用于 embedding/asr 模块区分「批量 RSS」（含大 logical-batch KV）与「常驻查询
+    RSS」（产品对话查询路径的真实内存）。仅在能读到目标进程的本机有效；读不到
+    （远端服务 / 无权限 / 非 Linux）返回 0.0，由调用方标注 unavailable。
+    """
+    try:
+        with open(f"/proc/{pid}/status", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("VmHWM:"):
+                    return int(line.split()[1]) / 1024.0  # kB -> MB
+    except Exception:
+        pass
+    return 0.0

@@ -1,0 +1,163 @@
+"""ASR benchmark runner — CER (Chinese) / WER / RTF over an audio manifest.
+
+The transcription backend is **ONNX-based** (e.g. sherpa-onnx SenseVoice, the
+model the K23 eval used to hit CER 1.17 % / RTF 0.086). Because ONNX runtimes
+and the model checkpoint are large optional dependencies, the backend is
+loaded lazily and the dimension **degrades gracefully**:
+
+- no manifest (no dataset)            → ``status: "blocked", reason: "no dataset"``
+- sherpa-onnx / model missing         → ``status: "blocked", reason: "no asr backend"``
+- both present                        → real transcription + CER/WER/RTF verdict
+
+A custom transcriber can be injected (``transcribe_fn``) for testing or for a
+different ONNX pipeline, so the scoring/aggregation logic is exercised on CPU
+without shipping a model.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from pathlib import Path
+from typing import Callable, Optional
+
+from common import ModelConfig, summarize_latencies
+
+from .datasets import AudioSample, load_asr_manifest, wav_duration_s
+from .metrics import corpus_cer, corpus_wer, rtf, validate_transcript
+
+logger = logging.getLogger(__name__)
+
+# A transcriber takes an audio Path and returns the decoded text.
+Transcriber = Callable[[Path], str]
+
+_DEFAULT_THRESHOLDS = {
+    "cer_max": 0.15,     # 15 % CER ceiling for clean Chinese speech
+    "rtf_max": 1.0,      # must be real-time capable
+}
+
+
+def _try_sherpa_transcriber(model_dir: Path | str | None) -> Optional[Transcriber]:
+    """Build a sherpa-onnx SenseVoice transcriber if the dep + model exist."""
+    if not model_dir:
+        return None
+    model_dir = Path(model_dir)
+    try:
+        import sherpa_onnx  # type: ignore
+    except Exception:
+        return None
+    model = model_dir / "model.onnx"
+    tokens = model_dir / "tokens.txt"
+    if not (model.exists() and tokens.exists()):
+        return None
+    try:
+        recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(  # type: ignore
+            model=str(model), tokens=str(tokens),
+        )
+    except Exception as e:  # pragma: no cover - backend-specific
+        logger.info("sherpa-onnx init failed: %s", e)
+        return None
+
+    def _transcribe(path: Path) -> str:  # pragma: no cover - needs model
+        import soundfile as sf  # type: ignore
+
+        audio, sr = sf.read(str(path), dtype="float32")
+        stream = recognizer.create_stream()
+        stream.accept_waveform(sr, audio)
+        recognizer.decode_stream(stream)
+        return stream.result.text
+
+    return _transcribe
+
+
+def run_asr(
+    model_cfg: ModelConfig,
+    *,
+    manifest_path: Path | str | None = None,
+    audio_root: Path | str | None = None,
+    asr_model_dir: Path | str | None = None,
+    num_samples: Optional[int] = None,
+    thresholds: Optional[dict] = None,
+    transcribe_fn: Optional[Transcriber] = None,
+) -> dict:
+    """Transcribe a manifest + score CER/WER/RTF. Degrades gracefully (BLOCKED)."""
+    thresholds = thresholds or _DEFAULT_THRESHOLDS
+    samples: list[AudioSample] = (
+        load_asr_manifest(manifest_path, audio_root=audio_root, num_samples=num_samples)
+        if manifest_path else []
+    )
+    if not samples:
+        return {"benchmark": "asr", "model": model_cfg.name, "status": "blocked",
+                "reason": "no dataset (manifest missing or empty)",
+                "verdict": "SKIP"}
+
+    transcriber = transcribe_fn or _try_sherpa_transcriber(asr_model_dir)
+    if transcriber is None:
+        return {"benchmark": "asr", "model": model_cfg.name, "status": "blocked",
+                "reason": "no asr backend (sherpa-onnx + model.onnx/tokens.txt required)",
+                "num_samples": len(samples), "verdict": "SKIP"}
+
+    refs: list[str] = []
+    hyps: list[str] = []
+    latencies: list[float] = []
+    rtfs: list[float] = []
+    total_audio_s = 0.0
+    empty_outputs = errors = 0
+
+    for s in samples:
+        dur = s.duration_s or wav_duration_s(s.audio)
+        total_audio_s += dur
+        t0 = time.monotonic()
+        try:
+            hyp = transcriber(s.audio)
+        except Exception as e:
+            errors += 1
+            logger.info("  [asr] %s transcribe failed: %s", s.uid, e)
+            hyp = ""
+        proc_s = time.monotonic() - t0
+        latencies.append(proc_s * 1000)
+        if dur > 0:
+            rtfs.append(rtf(proc_s, dur))
+        if not validate_transcript(hyp)["ok"]:
+            empty_outputs += 1
+        refs.append(s.text)
+        hyps.append(hyp)
+
+    overall_cer = corpus_cer(refs, hyps)
+    overall_wer = corpus_wer(refs, hyps)
+    mean_rtf = sum(rtfs) / len(rtfs) if rtfs else 0.0
+
+    aggregate = {
+        "num_samples": len(samples),
+        "total_audio_s": total_audio_s,
+        "cer": overall_cer,
+        "wer": overall_wer,
+        "rtf_mean": mean_rtf,
+        "latency_ms_stats": summarize_latencies(latencies),
+        "empty_output_count": empty_outputs,
+        "error_count": errors,
+        "data_source": samples[0].source,
+    }
+
+    reasons: list[str] = []
+    if empty_outputs == len(samples):
+        reasons.append("FAIL: all transcripts empty (broken backend)")
+    if overall_cer > thresholds.get("cer_max", 1.0):
+        reasons.append(f"FAIL: CER {overall_cer*100:.2f}% > {thresholds['cer_max']*100:.0f}%")
+    if mean_rtf > thresholds.get("rtf_max", 1.0):
+        reasons.append(f"FAIL: RTF {mean_rtf:.3f} > {thresholds['rtf_max']} (not real-time)")
+    if empty_outputs and empty_outputs < len(samples):
+        reasons.append(f"WARN: {empty_outputs} empty transcript(s)")
+
+    verdict = "FAIL" if any(r.startswith("FAIL") for r in reasons) else (
+        "WARN" if reasons else "PASS"
+    )
+
+    return {
+        "benchmark": "asr",
+        "model": model_cfg.name,
+        "status": "ok",
+        "verdict": verdict,
+        "verdict_reasons": reasons,
+        "aggregate": aggregate,
+    }

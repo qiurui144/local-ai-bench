@@ -56,9 +56,58 @@ models:
     translation_capable: true          # 参与 translation 维度（zh<->en）
     notes: "🌟🌟🌟 LLM 旗舰：235B MoE（激活 22B）官方 FP8，需 8×H100"
 
+  # ═════════════ AI-box 检索/语音能力（embedding / rerank / asr）═════════════
+  #
+  # 这些走 OpenAI 兼容 /v1/embeddings（embedding）或 chat（rerank yes/no）端点。
+  # 用 *_capable hint 字段选择性参与对应维度（同 translation_capable 模式）。
+
+  - name: qwen3-embedding-0.6b
+    hf_repo: Qwen/Qwen3-Embedding-0.6B
+    quantization: null
+    port: 9101
+    vram_estimate_gb: 4
+    hardware_min: A100-40G
+    role: embedding_primary
+    task_type: text_only
+    embedding_capable: true            # 参与 embedding 维度（检索 recall/MRR/nDCG）
+    notes: "🌟 Embedding 首选：0.6B，精度-延迟-内存均衡（K23 边缘选型甜点）"
+
+  - name: qwen3-embedding-4b
+    hf_repo: Qwen/Qwen3-Embedding-4B
+    quantization: null
+    port: 9102
+    vram_estimate_gb: 12
+    hardware_min: A100-40G
+    role: embedding_high_accuracy
+    task_type: text_only
+    embedding_capable: true
+    notes: "Embedding 高精度上限：4B，nDCG@10 最高，延迟/内存更重"
+
+  - name: qwen3-reranker-4b
+    hf_repo: Qwen/Qwen3-Reranker-4B
+    quantization: null
+    port: 9201
+    vram_estimate_gb: 12
+    hardware_min: A100-40G
+    role: reranker_primary
+    task_type: text_only
+    rerank_capable: true               # 参与 rerank 维度（生成式 yes/no 重排）
+    notes: "Reranker：生成式 yes/no，重排质量强；单 pair 延迟高，宜离线/小 top-k"
+
+  - name: sensevoice-small
+    hf_repo: FunAudioLLM/SenseVoiceSmall
+    quantization: int8
+    port: 0                            # ONNX 本地推理（非 HTTP 端点）
+    vram_estimate_gb: 1
+    hardware_min: CPU
+    role: asr_primary
+    task_type: text_only
+    asr_capable: true                  # 参与 asr 维度（中文 CER/WER/RTF）
+    notes: "ASR：SenseVoice CTC（ONNX）；需 sherpa-onnx + model.onnx/tokens.txt + manifest"
+
 
 # ══════════════════════════════════════════════════════
-# Benchmark 矩阵（每个模型跑 6 维度）
+# Benchmark 矩阵（性能 + 质量多维度）
 # ══════════════════════════════════════════════════════
 
 benchmarks:
@@ -77,10 +126,17 @@ benchmarks:
       p95_ttft_ms_max: 2000
 
   throughput:
-    description: "Token/秒吞吐（单并发）"
+    description: "Token/秒吞吐（单并发，聚合）"
     duration_s: 60
     thresholds:
       tps_min: 30
+
+  prefill_decode:
+    description: "PP(prefill) vs TG(decode) 分阶段 tok/s（llama-bench 法，流式 usage 拆分）"
+    samples: 5
+    decode_tokens: 128
+    thresholds:
+      tg_tps_min: 30                  # decode 阶段吞吐下限（产品对话体感）
 
   concurrency:
     description: "并发稳定性（1/5/10/30/50）"
@@ -116,3 +172,35 @@ benchmarks:
       term_match_rate_min: 0.80      # L3 术语保留率
       ttft_p95_ms_max: 2000
       tps_min: 30
+
+  embedding:
+    description: "Embedding 检索质量（recall@k/MRR/nDCG@10）+ 单条延迟 p50（常驻）+ RSS 双区分 + 数值校验"
+    # 仅 embedding_capable 模型参与；走 /v1/embeddings。
+    corpus: datasets/retrieval/cmteb_zh_subset.jsonl   # 中文检索集（缺失则回退内置合成集，明示）
+    num_samples: null                # null = 全量
+    latency_samples: 12              # 常驻单条 embed 延迟 reps（取 p50）
+    thresholds:
+      recall_at_1_min: 0.60
+      recall_at_10_min: 0.90
+      mrr_min: 0.70
+      ndcg_at_10_min: 0.75
+
+  rerank:
+    description: "独立 Reranker 重排质量（nDCG@10/MRR）+ 单 pair 延迟（区别于 RAG 内嵌 reranker）"
+    # 仅 rerank_capable 模型参与；复用 embedding 同一检索集，按 query-doc 对打分重排。
+    corpus: datasets/retrieval/cmteb_zh_subset.jsonl
+    num_samples: null
+    thresholds:
+      ndcg_at_10_min: 0.75
+      mrr_min: 0.70
+
+  asr:
+    description: "ASR 中文 CER/WER/RTF（SenseVoice ONNX）；缺数据集/后端时优雅 BLOCKED"
+    # 仅 asr_capable 模型参与。manifest = audio + 参考文本；model_dir = sherpa-onnx 模型目录。
+    manifest: datasets/asr/manifest.jsonl    # 音频不入库（PII/体积），仅 manifest 模板
+    audio_root: datasets/asr
+    model_dir: null                  # 指向 sherpa-onnx SenseVoice 模型目录（含 model.onnx/tokens.txt）
+    num_samples: null
+    thresholds:
+      cer_max: 0.15                  # 中文 CER 上限（干净语音）
+      rtf_max: 1.0                   # 必须实时可用

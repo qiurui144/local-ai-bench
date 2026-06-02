@@ -39,6 +39,7 @@ sys.path.insert(0, str(Path(__file__).parent / "benchmark"))
 from benchmark.accuracy import run_accuracy
 from benchmark.performance import (
     run_concurrency,
+    run_prefill_decode,
     run_stability,
     run_throughput,
     run_ttft,
@@ -46,6 +47,11 @@ from benchmark.performance import (
 from benchmark.translation.accuracy import run_translation
 from benchmark.translation.datasets import load_custom_jsonl, load_flores
 from benchmark.translation.performance import run_translation_performance
+from benchmark.embedding.accuracy import run_embedding
+from benchmark.embedding.datasets import load_retrieval
+from benchmark.embedding.performance import run_embedding_performance
+from benchmark.rerank.accuracy import run_rerank
+from benchmark.asr.runner import run_asr
 
 logging.basicConfig(
     level=logging.INFO,
@@ -112,6 +118,13 @@ def run_all_for_model(
             model_cfg, FIXTURES, duration_s=60.0
         )
 
+    # PP / TG 分阶段吞吐（prefill vs decode tok/s，llama-bench 法）
+    if "prefill_decode" not in skip:
+        logger.info("▶ prefill_decode (PP/TG)")
+        results["benchmarks"]["prefill_decode"] = run_prefill_decode(
+            model_cfg, FIXTURES, samples=5, decode_tokens=128
+        )
+
     # 并发
     if "concurrency" not in skip:
         logger.info("▶ concurrency")
@@ -134,22 +147,85 @@ def run_all_for_model(
         logger.info("▶ translation (zh<->en)")
         results["benchmarks"]["translation"] = _run_translation_dimension(model_cfg, tr_cfg)
 
+    # Embedding 检索质量 + 延迟/内存。仅 embedding_capable 模型（用 hint 判定）。
+    emb_cfg = bench_cfg.get("embedding", {})
+    if "embedding" not in skip and _model_hint(model_cfg, "embedding_capable"):
+        logger.info("▶ embedding (retrieval recall/MRR/nDCG)")
+        results["benchmarks"]["embedding"] = _run_embedding_dimension(model_cfg, emb_cfg)
+
+    # Reranker 检索重排质量 + 单 pair 延迟。仅 rerank_capable 模型。
+    rr_cfg = bench_cfg.get("rerank", {})
+    if "rerank" not in skip and _model_hint(model_cfg, "rerank_capable"):
+        logger.info("▶ rerank (nDCG/MRR + per-pair latency)")
+        results["benchmarks"]["rerank"] = _run_rerank_dimension(model_cfg, rr_cfg)
+
+    # ASR (中文 CER/WER/RTF)。仅 asr_capable 模型；缺数据/后端则 graceful BLOCKED。
+    asr_cfg = bench_cfg.get("asr", {})
+    if "asr" not in skip and _model_hint(model_cfg, "asr_capable"):
+        logger.info("▶ asr (CER/WER/RTF)")
+        results["benchmarks"]["asr"] = _run_asr_dimension(model_cfg, asr_cfg)
+
     results["vram_after"] = get_vram_info()
     return results
 
 
-def _is_translation_capable(model_cfg: ModelConfig) -> bool:
-    """读 models.yaml 的 translation_capable hint（不在 ModelConfig 上，重读 yaml）。"""
+def _model_hint(model_cfg: ModelConfig, key: str) -> bool:
+    """读 models.yaml 上某个布尔 hint 字段（不在 ModelConfig 上，重读 yaml）。"""
     try:
         import yaml
 
         data = yaml.safe_load((ROOT / "models.yaml").read_text(encoding="utf-8"))
         for m in data.get("models", []):
             if m.get("name") == model_cfg.name:
-                return bool(m.get("translation_capable", False))
+                return bool(m.get(key, False))
     except Exception:
         pass
     return False
+
+
+def _is_translation_capable(model_cfg: ModelConfig) -> bool:
+    """读 models.yaml 的 translation_capable hint。"""
+    return _model_hint(model_cfg, "translation_capable")
+
+
+def _run_embedding_dimension(model_cfg: ModelConfig, emb_cfg: dict) -> dict:
+    """Embedding 检索质量 + 延迟/内存。数据集缺失时回退内置合成检索集。"""
+    corpus = emb_cfg.get("corpus", "datasets/retrieval/cmteb_zh_subset.jsonl")
+    corpus_path = ROOT / corpus
+    num_samples = emb_cfg.get("num_samples")
+    thresholds = emb_cfg.get("thresholds")
+    queries = load_retrieval(corpus_path if corpus_path.exists() else None,
+                             num_samples=num_samples)
+    out = run_embedding(model_cfg, queries, thresholds=thresholds)
+    out["performance"] = run_embedding_performance(
+        model_cfg, queries, samples=emb_cfg.get("latency_samples", 12)
+    )
+    return out
+
+
+def _run_rerank_dimension(model_cfg: ModelConfig, rr_cfg: dict) -> dict:
+    """Reranker 重排质量 + 单 pair 延迟。复用同一检索集。"""
+    corpus = rr_cfg.get("corpus", "datasets/retrieval/cmteb_zh_subset.jsonl")
+    corpus_path = ROOT / corpus
+    num_samples = rr_cfg.get("num_samples")
+    thresholds = rr_cfg.get("thresholds")
+    queries = load_retrieval(corpus_path if corpus_path.exists() else None,
+                             num_samples=num_samples)
+    return run_rerank(model_cfg, queries, thresholds=thresholds)
+
+
+def _run_asr_dimension(model_cfg: ModelConfig, asr_cfg: dict) -> dict:
+    """ASR CER/WER/RTF。缺 manifest 或 onnx 后端时 graceful BLOCKED。"""
+    manifest = asr_cfg.get("manifest", "datasets/asr/manifest.jsonl")
+    manifest_path = ROOT / manifest
+    return run_asr(
+        model_cfg,
+        manifest_path=manifest_path if manifest_path.exists() else None,
+        audio_root=ROOT / asr_cfg.get("audio_root", "datasets/asr") if asr_cfg.get("audio_root") else None,
+        asr_model_dir=asr_cfg.get("model_dir"),
+        num_samples=asr_cfg.get("num_samples"),
+        thresholds=asr_cfg.get("thresholds"),
+    )
 
 
 def _run_translation_dimension(model_cfg: ModelConfig, tr_cfg: dict) -> dict:
@@ -260,6 +336,21 @@ def render_markdown(result: dict) -> str:
             f"- 总输入 tokens: {tp.get('total_input_tokens',0)}",
             f"- 总输出 tokens: {tp.get('total_output_tokens',0)}",
         ]
+    pd = bm.get("prefill_decode") or {}
+    if pd:
+        pp = pd.get("prefill", {})
+        tg = pd.get("decode", {})
+        lines += [
+            "", "## PP / TG 分阶段吞吐", "",
+            f"- **PP (prefill) tok/s**: {pp.get('tok_per_sec',{}).get('p50',0):.1f} "
+            f"(mean {pp.get('tok_per_sec',{}).get('mean',0):.1f}, "
+            f"avg prompt {pp.get('avg_prompt_tokens',0):.0f} tok)",
+            f"- **TG (decode) tok/s**: {tg.get('tok_per_sec',{}).get('p50',0):.1f} "
+            f"(mean {tg.get('tok_per_sec',{}).get('mean',0):.1f}, "
+            f"avg decode {tg.get('avg_decode_tokens',0):.0f} tok)",
+            f"- 测得样本: {pd.get('measured',0)}/{pd.get('samples',0)}  "
+            f"无 usage 跳过: {pd.get('no_usage_samples',0)}  错误: {pd.get('errors',0)}",
+        ]
     lines += ["", "## 并发稳定性", ""]
     if con and con.get("steps"):
         lines += ["| 并发 | 成功率 | P50 ms | P95 ms | 聚合 TPS |", "|---|---|---|---|---|"]
@@ -300,6 +391,67 @@ def render_markdown(result: dict) -> str:
                 )
         for r in tr.get("verdict_reasons", []):
             lines.append(f"  - {r}")
+
+    emb = bm.get("embedding") or {}
+    if emb and not emb.get("skipped"):
+        agg = emb.get("aggregate", {})
+        val = agg.get("validation", {})
+        perf = emb.get("performance", {})
+        lat = perf.get("latency", {}).get("single_query_latency_ms_stats", {})
+        mem = perf.get("memory", {})
+        lines += [
+            "", "## Embedding 检索", "",
+            f"- **判定**: {emb.get('verdict','?')}",
+            f"- recall@1 / @5 / @10: {agg.get('recall@1',0):.3f} / "
+            f"{agg.get('recall@5',0):.3f} / {agg.get('recall@10',0):.3f}",
+            f"- MRR: {agg.get('mrr',0):.4f}  nDCG@10: {agg.get('ndcg@10',0):.4f}",
+            f"- 单条 embed 延迟 P50 (常驻): {lat.get('p50',0):.1f} ms",
+            f"- 数值校验: {'OK' if val.get('ok') else 'FAIL'} "
+            f"(zero={val.get('zero_vectors',0)} nan={val.get('nan_vectors',0)} "
+            f"inf={val.get('inf_vectors',0)} dim={val.get('dim',0)})",
+        ]
+        if mem.get("available"):
+            lines.append(
+                f"- RSS: 常驻查询 {mem.get('resident_query_rss_mb',0):.0f} MB / "
+                f"批量 {mem.get('batch_rss_mb',0):.0f} MB"
+            )
+        else:
+            lines.append(f"- RSS: 未采集 ({mem.get('reason','')})")
+        for r in emb.get("verdict_reasons", []):
+            lines.append(f"  - {r}")
+
+    rr = bm.get("rerank") or {}
+    if rr and not rr.get("skipped"):
+        agg = rr.get("aggregate", {})
+        sep = agg.get("score_separation", {})
+        plat = agg.get("single_pair_latency_ms_stats", {})
+        lines += [
+            "", "## Reranker 重排", "",
+            f"- **判定**: {rr.get('verdict','?')}",
+            f"- nDCG@10: {agg.get('ndcg@10',0):.4f}  MRR: {agg.get('mrr',0):.4f}",
+            f"- recall@1 / @5: {agg.get('recall@1',0):.3f} / {agg.get('recall@5',0):.3f}",
+            f"- 单 pair 延迟 P50: {plat.get('p50',0):.0f} ms  (pairs={agg.get('num_pairs',0)})",
+            f"- 分数分离: pos {sep.get('pos_mean',0):.2f} vs neg {sep.get('neg_mean',0):.2f}",
+        ]
+        for r in rr.get("verdict_reasons", []):
+            lines.append(f"  - {r}")
+
+    asr = bm.get("asr") or {}
+    if asr:
+        lines += ["", "## ASR (CER/WER/RTF)", ""]
+        if asr.get("status") == "blocked":
+            lines.append(f"- BLOCKED: {asr.get('reason')}")
+        else:
+            agg = asr.get("aggregate", {})
+            lines += [
+                f"- **判定**: {asr.get('verdict','?')}",
+                f"- CER: {agg.get('cer',0)*100:.2f}%  WER: {agg.get('wer',0)*100:.2f}%",
+                f"- RTF mean: {agg.get('rtf_mean',0):.4f}",
+                f"- 样本: {agg.get('num_samples',0)}  音频时长: {agg.get('total_audio_s',0):.1f} s",
+                f"- 空输出: {agg.get('empty_output_count',0)}  错误: {agg.get('error_count',0)}",
+            ]
+            for r in asr.get("verdict_reasons", []):
+                lines.append(f"  - {r}")
     return "\n".join(lines)
 
 
@@ -337,7 +489,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="all", help="模型名（见 models.yaml）或 all")
     parser.add_argument("--skip", default="",
-                        help="逗号分隔跳过的 benchmark: accuracy,ttft,throughput,concurrency,stability,translation")
+                        help="逗号分隔跳过的 benchmark: accuracy,ttft,throughput,"
+                             "prefill_decode,concurrency,stability,translation,"
+                             "embedding,rerank,asr")
     parser.add_argument("--golden", default=str(GOLDEN))
     args = parser.parse_args()
 
@@ -364,8 +518,8 @@ def main() -> int:
         result = run_all_for_model(m, golden, skip, bench_cfg)
         all_results.append(result)
 
-        # 判定（accuracy + translation 任一 FAIL 即 FAIL）
-        for dim in ("accuracy", "translation"):
+        # 判定（质量维度任一 FAIL 即整体 FAIL）
+        for dim in ("accuracy", "translation", "embedding", "rerank", "asr"):
             verdict = result.get("benchmarks", {}).get(dim, {}).get("verdict")
             if verdict == "FAIL":
                 has_fail = True

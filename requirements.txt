@@ -13,3 +13,10 @@ sacrebleu>=2.4                 # SacreBLEU + chrF (pure-Python, CPU)
 # Optional extras (translation dimension degrades gracefully without them):
 #   datasets>=2.14             # Flores-200 download (else built-in fallback set)
 #   unbabel-comet>=2.2         # COMET neural metric — GPU-recommended; auto-skipped on CPU
+
+# Embedding + rerank dimensions (benchmark/embedding, benchmark/rerank)
+#   reuse numpy above for cosine/ranking metrics; call /v1/embeddings + chat — no extra deps.
+
+# ASR dimension (benchmark/asr) — optional; dimension reports BLOCKED without these:
+#   sherpa-onnx>=1.10          # ONNX SenseVoice / CTC transcription backend
+#   soundfile>=0.12            # WAV decode for the transcriber

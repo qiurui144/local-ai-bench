@@ -77,9 +77,13 @@ has been absorbed under `benchmark/llama_benchmark/`.
 | **Concurrency** | Success rate + P50/P95 across 1 / 5 / 10 / 30 / 50 concurrent requests | Production load shape |
 | **Stability** | 30-min sustained run; latency drift between first 5 min and last 5 min | Memory leaks, KV-cache thrashing |
 | **Token budget** | Input/output token distribution + truncation rate | Cost monitoring + silent truncation detection |
+| **PP / TG split** | Prefill (PP) vs decode (TG) tokens-per-second measured separately (llama-bench style) | Aggregate throughput hides two different hardware regimes — prefill is compute-bound, decode is bandwidth-bound |
 | **Translation** | zh↔en MT quality (SacreBLEU / chrF / COMET) + per-language-pair latency, across 3 task levels | Validates a model's bilingual deployment readiness |
+| **Embedding** | Retrieval recall@k / MRR / nDCG@10 + single-query latency P50 (resident) + RSS dual distinction + numerical validation | The core AI-box RAG retriever — quality, real chat-query latency/memory, and a zero/NaN-vector gate |
+| **Rerank** | Standalone reranker nDCG@10 / MRR + per-pair latency (distinct from the RAG-internal reranker) | Second-stage re-rank quality vs its latency cost (real-time vs offline) |
+| **ASR** | Chinese CER / WER / RTF over an audio manifest (ONNX backend) | Speech transcription accuracy + real-time capability |
 
-Pass/Warn/Fail is determined by thresholds in `golden/expectations.json::acceptance_criteria` — exit code `0` PASS / `1` WARN / `2` FAIL, ready for CI consumption.
+Pass/Warn/Fail is determined by thresholds in `golden/expectations.json::*_acceptance_criteria` and `models.yaml::benchmarks.*.thresholds` — exit code `0` PASS / `1` WARN / `2` FAIL, ready for CI consumption.
 
 ---
 
@@ -132,6 +136,70 @@ needed):
 ```bash
 python -m pytest tests/translation -q
 ```
+
+---
+
+## AI-box capabilities (`benchmark/embedding`, `benchmark/rerank`, `benchmark/asr`)
+
+Core retrieval + speech capabilities synced from the K23 edge AI-box evaluation,
+adapted from edge `llama.cpp`/`ONNX` to served **OpenAI-compatible** endpoints
+(vLLM / sglang / llama.cpp server / Ollama). Each is an optional dimension in
+the standard `run_benchmark.py` flow, enabled per model via a `*_capable: true`
+hint in `models.yaml`, and skippable (`--skip embedding,rerank,asr`).
+
+### Embedding (`benchmark/embedding/`)
+
+Retrieval-quality + latency/memory characterisation of an embedding deployment —
+the retriever stage of a RAG pipeline.
+
+| Metric | Compute | Notes |
+|---|---|---|
+| **recall@1 / @5 / @10** | CPU (NumPy) | per query: embed query + candidate docs, cosine top-k, measure where the gold doc lands |
+| **MRR** | CPU | mean reciprocal rank of the first relevant doc |
+| **nDCG@10** | CPU | normalized DCG, binary relevance |
+| **Single-query latency P50** | resident model | timed against a resident endpoint — the real chat-query path (not per-process CLI load) |
+| **RSS dual distinction** | local proc | *batch RSS* (inflated by logical-batch KV) vs *resident-query RSS* (≈ weights + small KV — the real chat memory); reported `available: false` for remote endpoints |
+| **Numerical validation** | CPU | NaN / Inf / **zero-vector** / dim-drift check — a zero vector is a hard FAIL (the classic "fast but wrong" trap) |
+
+Datasets: a Chinese retrieval set in `datasets/retrieval/cmteb_zh_subset.jsonl`
+(you provide; e.g. a C-MTEB subset), with a built-in synthetic Chinese fallback
+for offline / unit-test runs (flagged `source="builtin"`, never mistaken for a
+real score). See [`datasets/retrieval/README.md`](datasets/retrieval/README.md).
+
+### Rerank (`benchmark/rerank/`)
+
+A **standalone** reranker benchmark (distinct from the RAG-internal reranker in
+`benchmark/rag/reranker.py`): score every (query, candidate-doc) pair via the
+served endpoint (yes/no relevance, logprob when available), re-rank, and report
+**nDCG@10 / MRR** over the same retrieval gold as embedding, plus **per-pair
+latency P50** and a positive-vs-negative score-separation sanity check. Per-pair
+latency is reported but not gated — a high-quality reranker can be offline-only.
+
+### ASR (`benchmark/asr/`)
+
+Chinese **CER / WER / RTF** over an audio manifest. CER (character error rate) is
+the primary metric for Chinese; RTF < 1.0 means real-time capable. The
+transcription backend is pluggable ONNX (default sherpa-onnx SenseVoice); when
+the runtime / model / dataset is absent the dimension reports `blocked` and the
+verdict is `SKIP` rather than crashing. Audio files are not shipped — see
+[`datasets/asr/README.md`](datasets/asr/README.md) for the manifest schema.
+
+### Usage
+
+```bash
+# Embedding-only run on the embedding primary
+python run_benchmark.py --model qwen3-embedding-0.6b \
+    --skip accuracy,ttft,throughput,prefill_decode,concurrency,stability,translation,rerank,asr
+
+# CPU-only tests (no vLLM / GPU / model needed) — metric math + numerical gates:
+python -m pytest tests/embedding tests/rerank tests/asr tests/performance -q
+```
+
+> **vLLM / GPU caveat**: the metric/validation logic is fully unit-tested on CPU
+> with injected fakes. End-to-end numbers (recall on a real embedder, rerank
+> nDCG, ASR CER, PP/TG tok/s) require a served endpoint + GPU/ONNX backend and
+> are **not** run here — run `run_benchmark.py` against a live deployment to
+> produce them.
 
 ---
 
@@ -225,8 +293,11 @@ vlm-llm-benchmark/
 ├── requirements.txt          # httpx / pyyaml / Pillow / pynvml
 ├── benchmark/
 │   ├── accuracy.py           # golden-set driven accuracy
-│   ├── performance.py        # TTFT / throughput / concurrency / stability
-│   └── translation/          # zh<->en MT: SacreBLEU/chrF/COMET + latency (L1/L2/L3)
+│   ├── performance.py        # TTFT / throughput / concurrency / stability / PP-TG split
+│   ├── translation/          # zh<->en MT: SacreBLEU/chrF/COMET + latency (L1/L2/L3)
+│   ├── embedding/            # retrieval recall@k/MRR/nDCG + latency/RSS + numerical validation
+│   ├── rerank/               # standalone reranker nDCG/MRR + per-pair latency
+│   └── asr/                  # Chinese CER/WER/RTF (ONNX backend, graceful BLOCKED)
 ├── vllm_configs/
 │   ├── launch_helpers.sh     # vllm serve helper functions
 │   └── start_all.sh          # batch model startup (default: VLM primary only)
@@ -235,11 +306,13 @@ vlm-llm-benchmark/
 │   ├── bootstrap.sh          # GPU host: install vLLM, link models
 │   └── setup_zerotier.sh     # OPTIONAL: ZeroTier VPN for remote deploy
 ├── datasets/
-│   └── translation/          # zh<->en parallel corpora (custom JSONL; Flores at runtime)
+│   ├── translation/          # zh<->en parallel corpora (custom JSONL; Flores at runtime)
+│   ├── retrieval/            # embedding/rerank retrieval set (custom JSONL; builtin fallback)
+│   └── asr/                  # ASR manifest template (audio + reference transcript)
 ├── fixtures/
 │   └── README.md             # bring-your-own-data guide
 ├── golden/
-│   └── expectations.json     # acceptance criteria + demo cases (incl. translation_cases)
+│   └── expectations.json     # acceptance criteria (per dimension) + demo cases
 └── .github/workflows/ci.yml  # lint / syntax / shellcheck
 ```
 

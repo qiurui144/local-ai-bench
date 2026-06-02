@@ -264,3 +264,101 @@ def run_stability(
         "drift_verdict": "PASS" if drift_ratio < 1.30 else "WARN",
         "all_samples": samples,  # 大对象，生成报告时可选择裁剪
     }
+
+
+# ────────────────────────────────────────────────────────────
+# 5. PP / TG 分阶段吞吐 —— prefill 与 decode 分开计 tok/s（llama-bench 法）
+# ────────────────────────────────────────────────────────────
+
+
+def run_prefill_decode(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    *,
+    samples: int = 5,
+    prompt_text: Optional[str] = None,
+    decode_tokens: int = 128,
+) -> dict:
+    """分别测 prefill (PP) 与 decode (TG) 的 tok/s。
+
+    单一聚合吞吐 (``run_throughput``) 把 prefill 和 decode 混在一起，掩盖了二者
+    截然不同的硬件行为：prefill 是大矩阵并行（compute-bound），decode 是逐 token
+    自回归（memory-bandwidth-bound）。沿用 K23 ``llama-bench -p/-n`` 的 PP/TG
+    分离思路（见 ``runs/2026-06-01_S0_vendor_stack/`` PP128/TG128），用流式请求把
+    两阶段分开计时：
+
+    - **PP (prefill) tok/s** = ``prompt_tokens / TTFT``（首 token 到达即 prefill 完成）
+    - **TG (decode) tok/s**  = ``completion_tokens / (total_latency - TTFT)``
+
+    需要服务端在流式响应里返回 ``usage``（vLLM ``--enable-... usage``/默认开启、
+    sglang、llama.cpp server 均支持）。拿不到 usage 时该样本跳过。
+    """
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+    prompt = prompt_text or (
+        VLM_PROMPT if model_cfg.is_vlm
+        else TEXT_PROMPT + "详细比较合同违约金、定金与赔偿损失三者的法律性质与适用条件。"
+    )
+
+    pp_tps: list[float] = []
+    tg_tps: list[float] = []
+    ttfts: list[float] = []
+    prompt_toks: list[int] = []
+    decode_toks: list[int] = []
+    errors = no_usage = 0
+
+    for i in range(samples):
+        image = image_files[i % len(image_files)] if image_files else None
+        res = infer_stream(
+            model_cfg,
+            prompt=prompt,
+            image_path=image,
+            max_tokens=decode_tokens,
+        )
+        if not res.ok:
+            errors += 1
+            continue
+        # 需要 usage（prompt/completion tokens）与 TTFT 才能拆分两阶段。
+        if res.input_tokens <= 0 or res.output_tokens <= 0 or res.ttft_ms <= 0:
+            no_usage += 1
+            continue
+
+        prefill_s = res.ttft_ms / 1000.0
+        decode_s = max((res.latency_ms - res.ttft_ms) / 1000.0, 1e-6)
+        pp = res.input_tokens / prefill_s if prefill_s > 0 else 0.0
+        tg = res.output_tokens / decode_s
+
+        pp_tps.append(pp)
+        tg_tps.append(tg)
+        ttfts.append(res.ttft_ms)
+        prompt_toks.append(res.input_tokens)
+        decode_toks.append(res.output_tokens)
+        logger.info("  [PP/TG %d/%d] %s  PP=%.1f t/s (prompt=%d)  TG=%.1f t/s (decode=%d)",
+                    i + 1, samples, model_cfg.name, pp, res.input_tokens, tg, res.output_tokens)
+
+    def _stats(xs: list[float]) -> dict:
+        return {
+            "mean": statistics.mean(xs) if xs else 0.0,
+            "p50": statistics.median(xs) if xs else 0.0,
+            "min": min(xs) if xs else 0.0,
+            "max": max(xs) if xs else 0.0,
+        }
+
+    return {
+        "benchmark": "prefill_decode",
+        "model": model_cfg.name,
+        "samples": samples,
+        "measured": len(pp_tps),
+        "errors": errors,
+        "no_usage_samples": no_usage,   # 服务端未回 usage/TTFT → 无法拆分
+        "prefill": {
+            "stage": "PP",
+            "tok_per_sec": _stats(pp_tps),
+            "ttft_ms_stats": summarize_latencies(ttfts),
+            "avg_prompt_tokens": (sum(prompt_toks) / len(prompt_toks)) if prompt_toks else 0,
+        },
+        "decode": {
+            "stage": "TG",
+            "tok_per_sec": _stats(tg_tps),
+            "avg_decode_tokens": (sum(decode_toks) / len(decode_toks)) if decode_toks else 0,
+        },
+    }
