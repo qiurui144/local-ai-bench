@@ -7,3 +7,9 @@ pynvml>=11.5; sys_platform == 'linux'
 numpy>=1.24
 scipy>=1.11
 pytest>=7.0
+
+# Translation dimension (benchmark/translation)
+sacrebleu>=2.4                 # SacreBLEU + chrF (pure-Python, CPU)
+# Optional extras (translation dimension degrades gracefully without them):
+#   datasets>=2.14             # Flores-200 download (else built-in fallback set)
+#   unbabel-comet>=2.2         # COMET neural metric — GPU-recommended; auto-skipped on CPU

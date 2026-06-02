@@ -1,0 +1,60 @@
+{"src": "向量化是 RAG 流程的第一步。", "tgt": "Vectorization is the first step of the RAG pipeline.", "domain": "ai_infra", "glossary": {"向量化": "vectorization", "RAG": "RAG"}}
+{"src": "请把提示词模板存放在配置文件中。", "tgt": "Please store the prompt template in the configuration file.", "domain": "ai_infra", "glossary": {"提示词": "prompt"}}
+{"src": "嵌入模型把文本转换成稠密向量。", "tgt": "The embedding model converts text into dense vectors.", "domain": "ai_infra", "glossary": {"嵌入": "embedding"}}
+{"src": "重排序器会对召回结果重新打分。", "tgt": "The reranker re-scores the retrieved results.", "domain": "ai_infra", "glossary": {"重排序器": "reranker"}}
+{"src": "我们使用余弦相似度来比较两个向量。", "tgt": "We use cosine similarity to compare two vectors.", "domain": "ai_infra", "glossary": {"余弦相似度": "cosine similarity"}}
+{"src": "推理延迟在高并发下显著上升。", "tgt": "Inference latency rises noticeably under high concurrency.", "domain": "ai_infra", "glossary": {"推理延迟": "inference latency"}}
+{"src": "首 token 延迟是衡量用户体验的关键指标。", "tgt": "Time to first token is a key metric for user experience.", "domain": "ai_infra", "glossary": {"首 token 延迟": "time to first token"}}
+{"src": "量化可以在精度损失很小的情况下减少显存占用。", "tgt": "Quantization can reduce memory usage with minimal accuracy loss.", "domain": "ai_infra", "glossary": {"量化": "quantization"}}
+{"src": "请检查 GPU 的显存是否已经耗尽。", "tgt": "Please check whether the GPU memory has been exhausted.", "domain": "ai_infra", "glossary": {"显存": "GPU memory"}}
+{"src": "微调后的模型在领域数据上表现更好。", "tgt": "The fine-tuned model performs better on domain data.", "domain": "ai_infra", "glossary": {"微调": "fine-tuned"}}
+{"src": "检索增强生成结合了检索器和生成器。", "tgt": "Retrieval-augmented generation combines a retriever and a generator.", "domain": "ai_infra", "glossary": {"检索增强生成": "retrieval-augmented generation"}}
+{"src": "我们用批处理来提升吞吐量。", "tgt": "We use batching to improve throughput.", "domain": "ai_infra", "glossary": {"吞吐量": "throughput"}}
+{"src": "知识库需要定期重新索引。", "tgt": "The knowledge base needs to be re-indexed periodically.", "domain": "ai_infra", "glossary": {"知识库": "knowledge base"}}
+{"src": "向量数据库支持近似最近邻搜索。", "tgt": "The vector database supports approximate nearest neighbor search.", "domain": "ai_infra", "glossary": {"向量数据库": "vector database"}}
+{"src": "幻觉是大语言模型常见的失败模式。", "tgt": "Hallucination is a common failure mode of large language models.", "domain": "ai_infra", "glossary": {"幻觉": "hallucination"}}
+{"src": "上下文窗口限制了一次能处理的 token 数量。", "tgt": "The context window limits how many tokens can be processed at once.", "domain": "ai_infra", "glossary": {"上下文窗口": "context window"}}
+{"src": "我们对评测集采用了多种子复跑来降低方差。", "tgt": "We re-ran the evaluation set with multiple seeds to reduce variance.", "domain": "ai_infra", "glossary": {"多种子": "multiple seeds"}}
+{"src": "请在合并代码前先通过单元测试。", "tgt": "Please pass the unit tests before merging the code.", "domain": "engineering", "glossary": {"单元测试": "unit tests"}}
+{"src": "这个接口返回 JSON 格式的响应。", "tgt": "This endpoint returns a response in JSON format.", "domain": "engineering", "glossary": {"接口": "endpoint"}}
+{"src": "我们使用容器化来保证环境一致。", "tgt": "We use containerization to ensure environment consistency.", "domain": "engineering", "glossary": {"容器化": "containerization"}}
+{"src": "持续集成会在每次提交时自动运行测试。", "tgt": "Continuous integration runs the tests automatically on every commit.", "domain": "engineering", "glossary": {"持续集成": "continuous integration"}}
+{"src": "请把密钥存放在环境变量里，不要硬编码。", "tgt": "Please store the secret in an environment variable, not hard-coded.", "domain": "engineering", "glossary": {"环境变量": "environment variable"}}
+{"src": "这个服务的可用性达到了百分之九十九点九。", "tgt": "This service achieves ninety-nine point nine percent availability.", "domain": "engineering", "glossary": {"可用性": "availability"}}
+{"src": "回滚到上一个稳定版本以恢复服务。", "tgt": "Roll back to the previous stable version to restore the service.", "domain": "engineering", "glossary": {"回滚": "roll back"}}
+{"src": "负载均衡器把流量分发到多个实例。", "tgt": "The load balancer distributes traffic across multiple instances.", "domain": "engineering", "glossary": {"负载均衡器": "load balancer"}}
+{"src": "我们用缓存来减少数据库的压力。", "tgt": "We use caching to reduce the load on the database.", "domain": "engineering", "glossary": {"缓存": "caching"}}
+{"src": "日志里记录了完整的请求链路。", "tgt": "The logs record the complete request trace.", "domain": "engineering", "glossary": {"链路": "trace"}}
+{"src": "这个功能还在灰度发布阶段。", "tgt": "This feature is still in the canary release stage.", "domain": "engineering", "glossary": {"灰度发布": "canary release"}}
+{"src": "请提交一个包含复现步骤的工单。", "tgt": "Please file a ticket with steps to reproduce.", "domain": "support", "glossary": {"工单": "ticket"}}
+{"src": "我们的技术支持团队会在两小时内回复。", "tgt": "Our technical support team will respond within two hours.", "domain": "support", "glossary": {"技术支持": "technical support"}}
+{"src": "您的订阅将在月底自动续费。", "tgt": "Your subscription will renew automatically at the end of the month.", "domain": "support", "glossary": {"订阅": "subscription"}}
+{"src": "如需退款，请在七天内联系客服。", "tgt": "For a refund, please contact customer service within seven days.", "domain": "support", "glossary": {"退款": "refund"}}
+{"src": "请升级到最新版本以修复这个漏洞。", "tgt": "Please upgrade to the latest version to fix this vulnerability.", "domain": "support", "glossary": {"漏洞": "vulnerability"}}
+{"src": "您可以在设置页面更改默认语言。", "tgt": "You can change the default language on the settings page.", "domain": "support", "glossary": {}}
+{"src": "导出功能支持 CSV 和 Excel 两种格式。", "tgt": "The export feature supports both CSV and Excel formats.", "domain": "support", "glossary": {}}
+{"src": "免费套餐每月有一千次调用额度。", "tgt": "The free tier includes a quota of one thousand calls per month.", "domain": "support", "glossary": {"免费套餐": "free tier", "额度": "quota"}}
+{"src": "企业版提供专属的部署支持。", "tgt": "The enterprise edition provides dedicated deployment support.", "domain": "support", "glossary": {"企业版": "enterprise edition"}}
+{"src": "请阅读隐私政策了解我们如何处理您的数据。", "tgt": "Please read the privacy policy to learn how we handle your data.", "domain": "support", "glossary": {"隐私政策": "privacy policy"}}
+{"src": "今天的会议改到下午两点。", "tgt": "Today's meeting is moved to two o'clock in the afternoon.", "domain": "general", "glossary": {}}
+{"src": "这个季度的销售额比上一个季度增长了。", "tgt": "Sales this quarter grew compared with the previous quarter.", "domain": "general", "glossary": {}}
+{"src": "我们需要在周五之前完成这份报告。", "tgt": "We need to finish this report before Friday.", "domain": "general", "glossary": {}}
+{"src": "团队决定推迟产品的发布日期。", "tgt": "The team decided to postpone the product launch date.", "domain": "general", "glossary": {}}
+{"src": "新员工将在下周一正式入职。", "tgt": "The new employee will officially start next Monday.", "domain": "general", "glossary": {}}
+{"src": "感谢您一直以来对我们的支持。", "tgt": "Thank you for your continued support.", "domain": "general", "glossary": {}}
+{"src": "请确认收到这封邮件后回复我们。", "tgt": "Please reply to confirm receipt of this email.", "domain": "general", "glossary": {}}
+{"src": "由于天气原因，航班可能会延误。", "tgt": "Due to the weather, the flight may be delayed.", "domain": "general", "glossary": {}}
+{"src": "他把项目的进度更新到了共享文档里。", "tgt": "He updated the project progress in the shared document.", "domain": "general", "glossary": {}}
+{"src": "这份合同的有效期是两年。", "tgt": "This contract is valid for two years.", "domain": "general", "glossary": {}}
+{"src": "The model achieves state-of-the-art accuracy on this benchmark.", "tgt": "该模型在这个基准上达到了最先进的准确率。", "src_lang": "en", "tgt_lang": "zh", "domain": "ai_infra", "glossary": {"benchmark": "基准", "accuracy": "准确率"}}
+{"src": "Tokenization splits raw text into model-readable units.", "tgt": "分词把原始文本拆分成模型可读的单元。", "src_lang": "en", "tgt_lang": "zh", "domain": "ai_infra", "glossary": {"Tokenization": "分词"}}
+{"src": "The retriever returns the top ten most relevant documents.", "tgt": "检索器返回最相关的前十篇文档。", "src_lang": "en", "tgt_lang": "zh", "domain": "ai_infra", "glossary": {"retriever": "检索器"}}
+{"src": "Lower the temperature to make the output more deterministic.", "tgt": "调低温度可以让输出更确定。", "src_lang": "en", "tgt_lang": "zh", "domain": "ai_infra", "glossary": {"temperature": "温度"}}
+{"src": "The pipeline streams tokens back to the client in real time.", "tgt": "流水线把 token 实时流式返回给客户端。", "src_lang": "en", "tgt_lang": "zh", "domain": "ai_infra", "glossary": {"pipeline": "流水线"}}
+{"src": "Please rotate the API key immediately after it is leaked.", "tgt": "密钥泄露后请立即轮换 API 密钥。", "src_lang": "en", "tgt_lang": "zh", "domain": "engineering", "glossary": {"rotate": "轮换"}}
+{"src": "The deployment failed because of a missing dependency.", "tgt": "由于缺少依赖，部署失败了。", "src_lang": "en", "tgt_lang": "zh", "domain": "engineering", "glossary": {"deployment": "部署", "dependency": "依赖"}}
+{"src": "We schedule a nightly backup of the production database.", "tgt": "我们为生产数据库安排了每晚一次的备份。", "src_lang": "en", "tgt_lang": "zh", "domain": "engineering", "glossary": {"backup": "备份"}}
+{"src": "The dashboard shows latency, throughput, and error rate.", "tgt": "仪表盘展示了延迟、吞吐量和错误率。", "src_lang": "en", "tgt_lang": "zh", "domain": "engineering", "glossary": {"dashboard": "仪表盘", "throughput": "吞吐量"}}
+{"src": "Your trial period ends in three days.", "tgt": "您的试用期将在三天后结束。", "src_lang": "en", "tgt_lang": "zh", "domain": "support", "glossary": {"trial period": "试用期"}}
+{"src": "Contact our sales team for a custom enterprise quote.", "tgt": "如需定制的企业报价，请联系我们的销售团队。", "src_lang": "en", "tgt_lang": "zh", "domain": "support", "glossary": {"enterprise": "企业"}}
+{"src": "All meeting notes are summarized and shared after the call.", "tgt": "所有会议记录会在通话结束后整理并分享。", "src_lang": "en", "tgt_lang": "zh", "domain": "general", "glossary": {}}

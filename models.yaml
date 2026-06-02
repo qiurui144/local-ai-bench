@@ -42,6 +42,7 @@ models:
     hardware_min: H100-80G
     role: llm_primary
     task_type: text_only
+    translation_capable: true          # 参与 translation 维度（zh<->en）
     notes: "🌟 LLM 首选：30B MoE 官方 FP8，激活 3B 推理快，2507 最新版"
 
   - name: qwen3-235b-a22b-instruct-2507-fp8
@@ -52,6 +53,7 @@ models:
     hardware_min: 8xH100-80G
     role: llm_ultra_flagship
     task_type: text_only
+    translation_capable: true          # 参与 translation 维度（zh<->en）
     notes: "🌟🌟🌟 LLM 旗舰：235B MoE（激活 22B）官方 FP8，需 8×H100"
 
 
@@ -97,3 +99,20 @@ benchmarks:
     description: "input/output token 预算 + 截断率"
     thresholds:
       truncation_rate_max: 0.10
+
+  translation:
+    description: "机器翻译质量 + 延迟（zh<->en；L1 单句 / L2 上下文一致 / L3 术语）"
+    # Quality metrics: SacreBLEU + chrF (CPU); COMET (GPU-only, 自动跳过)。
+    flores:
+      split: devtest
+      num_samples: 100               # Flores-200 子集（HF facebook/flores，离线回退到内置样本）
+    custom_corpus: datasets/translation/custom_zh_en.jsonl   # 产品域语料（合成，明示）
+    directions: [zh->en, en->zh]
+    levels: [l1, l2, l3]
+    run_comet: true                  # 无 GPU 时优雅跳过，不崩
+    thresholds:
+      bleu_min: 20.0
+      chrf_min: 40.0
+      term_match_rate_min: 0.80      # L3 术语保留率
+      ttft_p95_ms_max: 2000
+      tps_min: 30

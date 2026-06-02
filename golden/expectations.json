@@ -120,5 +120,70 @@
     "fact_recall_drop_max":        0.10,
     "p95_latency_ratio_max":       1.50,
     "must_not_say_delta_max":      0
+  },
+  "translation_cases": {
+    "_description": "Translation golden set (synthetic, all hand-authored — no PII). zh<->en across three task levels. Per-case expected_bleu_min / chrf_min are sanity floors for a competent DGX-class model; replace with your own reviewed references for production acceptance.",
+    "_levels": {
+      "l1": "single-sentence zh<->en",
+      "l2": "multi-sentence context consistency (pronoun / tense agreement)",
+      "l3": "terminology preservation (exact-match technical term rate)"
+    },
+    "l1": [
+      {
+        "id": "l1_zh_en_weather",
+        "level": "l1",
+        "src_lang": "zh", "tgt_lang": "en",
+        "src_text": "今天天气很好，我们去公园散步吧。",
+        "reference": "The weather is nice today; let's go for a walk in the park.",
+        "expected_bleu_min": 20.0, "chrf_min": 40.0
+      },
+      {
+        "id": "l1_en_zh_revenue",
+        "level": "l1",
+        "src_lang": "en", "tgt_lang": "zh",
+        "src_text": "The company's revenue grew by fifteen percent last year.",
+        "reference": "公司去年的营业收入增长了百分之十五。",
+        "expected_bleu_min": 15.0, "chrf_min": 30.0
+      }
+    ],
+    "l2": [
+      {
+        "id": "l2_zh_en_purchase",
+        "level": "l2",
+        "src_lang": "zh", "tgt_lang": "en",
+        "src_sentences": [
+          "小明买了一台新电脑。",
+          "它的屏幕非常清晰。",
+          "他打算用它来做视频剪辑。"
+        ],
+        "references": [
+          "Xiaoming bought a new computer.",
+          "Its screen is very clear.",
+          "He plans to use it for video editing."
+        ],
+        "consistency_checks": ["pronoun 'it/he' resolves to computer/Xiaoming", "tense consistent (past/present)"],
+        "expected_bleu_min": 18.0, "chrf_min": 38.0
+      }
+    ],
+    "l3": [
+      {
+        "id": "l3_zh_en_rag",
+        "level": "l3",
+        "src_lang": "zh", "tgt_lang": "en",
+        "src_text": "向量化是 RAG 流程的第一步，重排序器会对召回结果重新打分。",
+        "reference": "Vectorization is the first step of the RAG pipeline; the reranker re-scores the retrieved results.",
+        "glossary": {"向量化": "vectorization", "RAG": "RAG", "重排序器": "reranker"},
+        "expected_bleu_min": 20.0, "chrf_min": 40.0, "term_match_rate_min": 0.80
+      }
+    ]
+  },
+  "translation_acceptance_criteria": {
+    "_description": "Aggregate thresholds for the translation dimension (per direction).",
+    "bleu_min":             20.0,
+    "chrf_min":             40.0,
+    "term_match_rate_min":  0.80,
+    "empty_rate_max":       0.05,
+    "ttft_p95_ms_max":      2000,
+    "tps_min":              30
   }
 }

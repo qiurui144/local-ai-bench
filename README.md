@@ -3,7 +3,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml)
 
-A small, reproducible benchmark harness for evaluating **VLM** (vision-language) and **LLM** (text) models served via **vLLM** — across 6 dimensions on a single high-end GPU node — plus a **complete RAG / LLM validation framework** for production deployments.
+A small, reproducible benchmark harness for evaluating **VLM** (vision-language) and **LLM** (text) models served via **vLLM** — across accuracy, latency, throughput, concurrency, stability, token-budget and **translation** dimensions on a single high-end GPU node — plus a **complete RAG / LLM validation framework** for production deployments.
 
 Built for the question: *"Can model X replace model Y in production without quality regression?"* — and now: *"Is my RAG pipeline ready to ship?"*
 
@@ -77,8 +77,61 @@ has been absorbed under `benchmark/llama_benchmark/`.
 | **Concurrency** | Success rate + P50/P95 across 1 / 5 / 10 / 30 / 50 concurrent requests | Production load shape |
 | **Stability** | 30-min sustained run; latency drift between first 5 min and last 5 min | Memory leaks, KV-cache thrashing |
 | **Token budget** | Input/output token distribution + truncation rate | Cost monitoring + silent truncation detection |
+| **Translation** | zh↔en MT quality (SacreBLEU / chrF / COMET) + per-language-pair latency, across 3 task levels | Validates a model's bilingual deployment readiness |
 
 Pass/Warn/Fail is determined by thresholds in `golden/expectations.json::acceptance_criteria` — exit code `0` PASS / `1` WARN / `2` FAIL, ready for CI consumption.
+
+---
+
+## Translation scenario (`benchmark/translation/`)
+
+Evaluates **machine-translation quality and latency** for any LLM serving an
+OpenAI-compatible endpoint, on the zh↔en pair. Enabled per model via the
+`translation_capable: true` hint in `models.yaml`; it is one more dimension in
+the standard `run_benchmark.py` flow (skip with `--skip translation`).
+
+### Metrics
+
+| Metric | Package | Compute | Notes |
+|---|---|---|---|
+| **SacreBLEU** | `sacrebleu` | CPU | Corpus BLEU, reproducible tokenization (`zh` tokenizer for Chinese targets). Pure-Python fallback if the package is absent. |
+| **chrF** | `sacrebleu` | CPU | Character n-gram F-score — tokenization-free, the robust backstop for Chinese. |
+| **COMET** | `unbabel-comet` | **GPU-recommended** | Neural quality estimate (`Unbabel/wmt22-comet-da`). Auto-skipped with `"COMET requires GPU/DGX"` when no CUDA GPU / package — never crashes the run. |
+| **Term-match rate** | — | CPU | L3 exact-match rate for a required terminology glossary. |
+
+Every metric is numerically validated (non-empty hypotheses, `0 ≤ BLEU/chrF ≤ 100`, finite / non-NaN-Inf) so a silently broken model surfaces as a FAIL rather than a plausible-looking number.
+
+### Task levels
+
+- **L1 — single sentence**: straight zh↔en sentence translation (raw adequacy + fluency).
+- **L2 — context consistency**: a 3–5 sentence passage translated as a block, so pronoun reference / tense / named entities stay consistent across sentence boundaries.
+- **L3 — terminology**: domain text where required technical terms (`prompt` / `embedding` / `向量化` …) must be rendered with the canonical translation; scored by exact-match term rate.
+
+### Datasets
+
+- **Flores-200** zh↔en (`devtest` split, 100-sentence subset by default) — pulled at runtime from the HF `facebook/flores` dataset. Offline / air-gapped hosts fall back to a small built-in synthetic set automatically (set `TRANSLATION_OFFLINE=1` to force it).
+- **Custom product-domain corpus** — `datasets/translation/custom_zh_en.jsonl` (~60 hand-authored, synthetic, no PII pairs, AI-infra / engineering / support domains; L3 glossaries inline). Replace with your own reviewed corpus using the same JSONL schema (`{src, tgt, domain, glossary}`).
+
+### Usage
+
+```bash
+# Translation dimension only, on the LLM primary
+python run_benchmark.py --model qwen3-30b-a3b-instruct-2507-fp8 \
+    --skip accuracy,ttft,throughput,concurrency,stability
+
+# Force offline Flores fallback (air-gapped host)
+TRANSLATION_OFFLINE=1 python run_benchmark.py --model qwen3-30b-a3b-instruct-2507-fp8 \
+    --skip accuracy,ttft,throughput,concurrency,stability
+```
+
+Thresholds live in `models.yaml::benchmarks.translation.thresholds` (`bleu_min`,
+`chrf_min`, `term_match_rate_min`, …); golden cases in
+`golden/expectations.json::translation_cases`. CPU-only tests (no vLLM/GPU
+needed):
+
+```bash
+python -m pytest tests/translation -q
+```
 
 ---
 
@@ -172,7 +225,8 @@ vlm-llm-benchmark/
 ├── requirements.txt          # httpx / pyyaml / Pillow / pynvml
 ├── benchmark/
 │   ├── accuracy.py           # golden-set driven accuracy
-│   └── performance.py        # TTFT / throughput / concurrency / stability
+│   ├── performance.py        # TTFT / throughput / concurrency / stability
+│   └── translation/          # zh<->en MT: SacreBLEU/chrF/COMET + latency (L1/L2/L3)
 ├── vllm_configs/
 │   ├── launch_helpers.sh     # vllm serve helper functions
 │   └── start_all.sh          # batch model startup (default: VLM primary only)
@@ -180,10 +234,12 @@ vlm-llm-benchmark/
 │   ├── prepare_offline.sh    # internet host: pull wheels + models
 │   ├── bootstrap.sh          # GPU host: install vLLM, link models
 │   └── setup_zerotier.sh     # OPTIONAL: ZeroTier VPN for remote deploy
+├── datasets/
+│   └── translation/          # zh<->en parallel corpora (custom JSONL; Flores at runtime)
 ├── fixtures/
 │   └── README.md             # bring-your-own-data guide
 ├── golden/
-│   └── expectations.json     # acceptance criteria + demo cases
+│   └── expectations.json     # acceptance criteria + demo cases (incl. translation_cases)
 └── .github/workflows/ci.yml  # lint / syntax / shellcheck
 ```
 

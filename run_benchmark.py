@@ -43,6 +43,9 @@ from benchmark.performance import (
     run_throughput,
     run_ttft,
 )
+from benchmark.translation.accuracy import run_translation
+from benchmark.translation.datasets import load_custom_jsonl, load_flores
+from benchmark.translation.performance import run_translation_performance
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,8 +74,10 @@ def run_all_for_model(
     model_cfg: ModelConfig,
     golden: dict,
     skip: set[str],
+    bench_cfg: dict | None = None,
 ) -> dict:
     """对单个模型跑全量 benchmark"""
+    bench_cfg = bench_cfg if bench_cfg is not None else load_benchmarks_config(ROOT / "models.yaml")
     results: dict = {
         "model": model_cfg.name,
         "hf_repo": model_cfg.hf_repo,
@@ -123,8 +128,79 @@ def run_all_for_model(
             model_cfg, FIXTURES, duration_s=1800.0, sample_interval_s=5.0
         )
 
+    # 翻译（zh<->en，L1/L2/L3 + 延迟）。仅 translation_capable 模型；用 hint 字段判定。
+    tr_cfg = bench_cfg.get("translation", {})
+    if "translation" not in skip and _is_translation_capable(model_cfg):
+        logger.info("▶ translation (zh<->en)")
+        results["benchmarks"]["translation"] = _run_translation_dimension(model_cfg, tr_cfg)
+
     results["vram_after"] = get_vram_info()
     return results
+
+
+def _is_translation_capable(model_cfg: ModelConfig) -> bool:
+    """读 models.yaml 的 translation_capable hint（不在 ModelConfig 上，重读 yaml）。"""
+    try:
+        import yaml
+
+        data = yaml.safe_load((ROOT / "models.yaml").read_text(encoding="utf-8"))
+        for m in data.get("models", []):
+            if m.get("name") == model_cfg.name:
+                return bool(m.get("translation_capable", False))
+    except Exception:
+        pass
+    return False
+
+
+def _run_translation_dimension(model_cfg: ModelConfig, tr_cfg: dict) -> dict:
+    """对单模型跑翻译质量（每方向 × L1/L2/L3）+ 每方向延迟。"""
+    flores = tr_cfg.get("flores", {})
+    num_samples = flores.get("num_samples", 100)
+    split = flores.get("split", "devtest")
+    thresholds = tr_cfg.get("thresholds", {})
+    run_comet = tr_cfg.get("run_comet", True)
+    custom_path = ROOT / tr_cfg.get("custom_corpus", "datasets/translation/custom_zh_en.jsonl")
+
+    out: dict = {"benchmark": "translation", "model": model_cfg.name,
+                 "directions": {}, "verdict": "PASS", "verdict_reasons": []}
+    pairs_by_dir: dict[str, list] = {}
+
+    for direction in tr_cfg.get("directions", ["zh->en", "en->zh"]):
+        src_lang, tgt_lang = direction.split("->")
+        flores_pairs = load_flores(src_lang, tgt_lang, split=split, num_samples=num_samples)
+        pairs_by_dir[direction] = flores_pairs
+
+        dir_block: dict = {}
+        # L1 single-sentence (Flores)
+        dir_block["l1_flores"] = run_translation(
+            model_cfg, flores_pairs, level="l1", thresholds=thresholds, run_comet=run_comet
+        )
+        # L3 terminology (custom corpus filtered to this direction + has glossary)
+        try:
+            custom = [p for p in load_custom_jsonl(custom_path)
+                      if p.src_lang == src_lang and p.tgt_lang == tgt_lang and p.glossary]
+        except Exception:
+            custom = []
+        if custom:
+            dir_block["l3_terminology"] = run_translation(
+                model_cfg, custom, level="l3", thresholds=thresholds, run_comet=False
+            )
+        out["directions"][direction] = dir_block
+
+        for block in dir_block.values():
+            if block.get("verdict") == "FAIL":
+                out["verdict"] = "FAIL"
+            elif block.get("verdict") == "WARN" and out["verdict"] != "FAIL":
+                out["verdict"] = "WARN"
+            out["verdict_reasons"] += [f"[{direction}] {r}" for r in block.get("verdict_reasons", [])]
+
+    # latency per direction (TTFT + tok/s)
+    out["performance"] = run_translation_performance(
+        model_cfg, pairs_by_dir,
+        ttft_samples=tr_cfg.get("ttft_samples", 5),
+        throughput_duration_s=tr_cfg.get("throughput_duration_s", 60.0),
+    )
+    return out
 
 
 def render_markdown(result: dict) -> str:
@@ -205,6 +281,25 @@ def render_markdown(result: dict) -> str:
             f"- 错误率: {stab.get('error_rate',0)*100:.1f}%",
             f"- 样本数: {stab.get('total_samples',0)}",
         ]
+
+    tr = bm.get("translation") or {}
+    if tr:
+        lines += ["", "## 翻译（zh<->en）", "", f"- 判定: {tr.get('verdict','?')}", ""]
+        lines += ["| 方向 | 任务 | BLEU | chrF | COMET | 术语率 |",
+                  "|---|---|---|---|---|---|"]
+        for direction, blocks in tr.get("directions", {}).items():
+            for task, block in blocks.items():
+                agg = block.get("aggregate", {})
+                comet = agg.get("comet", {}) or {}
+                comet_s = f"{comet['score']:.3f}" if comet.get("available") else "skip(GPU)"
+                terms = agg.get("terminology") or {}
+                term_s = f"{terms['term_match_rate']*100:.0f}%" if terms else "-"
+                lines.append(
+                    f"| {direction} | {task} | {agg.get('bleu',0):.1f} "
+                    f"| {agg.get('chrf',0):.1f} | {comet_s} | {term_s} |"
+                )
+        for r in tr.get("verdict_reasons", []):
+            lines.append(f"  - {r}")
     return "\n".join(lines)
 
 
@@ -242,12 +337,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="all", help="模型名（见 models.yaml）或 all")
     parser.add_argument("--skip", default="",
-                        help="逗号分隔跳过的 benchmark: accuracy,ttft,throughput,concurrency,stability")
+                        help="逗号分隔跳过的 benchmark: accuracy,ttft,throughput,concurrency,stability,translation")
     parser.add_argument("--golden", default=str(GOLDEN))
     args = parser.parse_args()
 
     skip = set(s.strip() for s in args.skip.split(",") if s.strip())
 
+    bench_cfg = load_benchmarks_config(ROOT / "models.yaml")
     models = load_models(ROOT / "models.yaml")
     if args.model != "all":
         models = [m for m in models if m.name == args.model]
@@ -265,15 +361,16 @@ def main() -> int:
 
     for m in models:
         logger.info("═══ %s ═══", m.name)
-        result = run_all_for_model(m, golden, skip)
+        result = run_all_for_model(m, golden, skip, bench_cfg)
         all_results.append(result)
 
-        # 判定
-        acc = result.get("benchmarks", {}).get("accuracy", {})
-        if acc.get("verdict") == "FAIL":
-            has_fail = True
-        elif acc.get("verdict") == "WARN":
-            has_warn = True
+        # 判定（accuracy + translation 任一 FAIL 即 FAIL）
+        for dim in ("accuracy", "translation"):
+            verdict = result.get("benchmarks", {}).get(dim, {}).get("verdict")
+            if verdict == "FAIL":
+                has_fail = True
+            elif verdict == "WARN":
+                has_warn = True
 
         # 保存单模型报告
         stem = f"{m.name}_{timestamp}"

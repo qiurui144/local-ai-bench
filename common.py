@@ -21,7 +21,7 @@ import json
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Optional
 
@@ -60,7 +60,11 @@ class ModelConfig:
 def load_models(yaml_path: Path | str = "models.yaml") -> list[ModelConfig]:
     with open(yaml_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
-    return [ModelConfig(**m) for m in data.get("models", [])]
+    # models.yaml carries documentation-only hint fields (dtype, translation_capable, ...)
+    # that are not ModelConfig fields; keep them out of the constructor instead of
+    # forcing every entry to match the dataclass exactly.
+    known = {f.name for f in fields(ModelConfig)}
+    return [ModelConfig(**{k: v for k, v in m.items() if k in known}) for m in data.get("models", [])]
 
 
 def load_benchmarks_config(yaml_path: Path | str = "models.yaml") -> dict:
