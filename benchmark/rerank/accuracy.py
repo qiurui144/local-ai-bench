@@ -22,7 +22,7 @@ from common import ModelConfig, summarize_latencies
 from benchmark.embedding.datasets import RetrievalQuery
 from benchmark.embedding.metrics import ndcg_at_k, reciprocal_rank, aggregate_retrieval
 
-from .scorer import score_pair
+from .scorer import score_pair, score_query_native
 
 logger = logging.getLogger(__name__)
 
@@ -49,25 +49,47 @@ def run_rerank(
         return {"benchmark": "rerank", "model": model_cfg.name,
                 "skipped": True, "reason": "no queries"}
 
+    # Native rerankers (bge cross-encoder via /v1/rerank) score the whole
+    # candidate list in one request → one query latency sample instead of N pair
+    # samples. Generative proxies score per pair. Record both so the latency
+    # stats below reflect how the reranker is actually called.
+    native = bool(getattr(model_cfg, "rerank_native", False))
+
     rankings: list[list[int]] = []
     relevants: list[set] = []
     per_query: list[dict] = []
     pair_latencies: list[float] = []
+    query_latencies: list[float] = []
     pos_scores: list[float] = []
     neg_scores: list[float] = []
     pair_errors = total_pairs = 0
 
     for q in queries:
-        scores: list[float] = []
-        for j, doc in enumerate(q.candidates):
-            total_pairs += 1
-            s, ok, lat = score_pair(model_cfg, q.query, doc)
-            scores.append(s)
+        n = len(q.candidates)
+        total_pairs += n
+        if native:
+            scores, ok, lat = score_query_native(model_cfg, q.query, q.candidates)
             if ok:
-                pair_latencies.append(lat)
-                (pos_scores if j in q.relevant else neg_scores).append(s)
+                query_latencies.append(lat)
+                # Per-pair latency for the native path = batch latency / n_docs
+                # (amortised single-pass cost), so the single-pair stat stays
+                # comparable to the generative per-pair numbers.
+                per_doc = lat / n if n else lat
+                pair_latencies.extend([per_doc] * n)
+                for j in range(n):
+                    (pos_scores if j in q.relevant else neg_scores).append(scores[j])
             else:
-                pair_errors += 1
+                pair_errors += n
+        else:
+            scores = []
+            for j, doc in enumerate(q.candidates):
+                s, ok, lat = score_pair(model_cfg, q.query, doc)
+                scores.append(s)
+                if ok:
+                    pair_latencies.append(lat)
+                    (pos_scores if j in q.relevant else neg_scores).append(s)
+                else:
+                    pair_errors += 1
         ranked = _rank_by_scores(scores)
         rankings.append(ranked)
         relevants.append(q.relevant)
@@ -80,9 +102,13 @@ def run_rerank(
 
     agg = aggregate_retrieval(rankings, relevants)
     agg["data_source"] = queries[0].source
+    agg["scoring_path"] = "native_rerank" if native else "generative_proxy"
     agg["num_pairs"] = total_pairs
     agg["pair_error_rate"] = pair_errors / total_pairs if total_pairs else 0.0
     agg["single_pair_latency_ms_stats"] = summarize_latencies(pair_latencies)
+    if native:
+        # Whole-query (top-N) rerank latency — the real-time-relevant number.
+        agg["query_rerank_latency_ms_stats"] = summarize_latencies(query_latencies)
     # Score separation sanity (anti random / collapsed reranker).
     agg["score_separation"] = {
         "pos_mean": (sum(pos_scores) / len(pos_scores)) if pos_scores else 0.0,

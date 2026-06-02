@@ -46,6 +46,8 @@ class ModelConfig:
     quantization: Optional[str] = None
     hardware_min: str = "A100-40G"
     task_type: str = "vlm"             # vlm | text_only
+    rerank_native: bool = False        # rerank dim: True → native /v1/rerank (BERT
+                                       # cross-encoder single pass) vs generative yes/no
     notes: str = ""
 
     @property
@@ -501,6 +503,91 @@ def infer_embedding(
         input_tokens=int(usage.get("prompt_tokens", 0) or usage.get("total_tokens", 0)),
         latency_ms=elapsed,
     )
+
+
+# ────────────────────────────────────────────────────────────
+# Rerank 客户端（OpenAI 兼容 /v1/rerank — BERT cross-encoder 单 pass）
+# ────────────────────────────────────────────────────────────
+
+
+@dataclass
+class RerankResult:
+    """One native ``/v1/rerank`` call: a relevance score per input document.
+
+    Distinct from the generative yes/no reranker proxy: a BERT cross-encoder
+    served by llama.cpp ``--reranking`` (``--pooling rank``) / vLLM scores the
+    whole candidate list in a single pass. ``scores`` is aligned to the input
+    ``documents`` order (re-sorted by the response ``index`` so backend ordering
+    never silently shuffles relevance).
+    """
+
+    model: str
+    ok: bool = False
+    error: str = ""
+    scores: Optional[list] = None  # list[float], aligned to input documents
+    latency_ms: float = 0.0
+
+    def __post_init__(self) -> None:
+        if self.scores is None:
+            self.scores = []
+
+
+def infer_rerank(
+    model_cfg: ModelConfig,
+    query: str,
+    documents,
+    *,
+    timeout_s: float = 600.0,
+) -> RerankResult:
+    """Call a native ``/v1/rerank`` endpoint; return per-document relevance scores.
+
+    Single forward pass over ``[CLS] query [SEP] doc [SEP]`` for each document —
+    no generation, no KV cache. The GGUF model carries its own tokenizer, so the
+    serving host needs no Python ``transformers``/``tokenizers`` (the path that
+    unblocks reranking on tokenizer-less edge devices). Endpoints that don't
+    expose ``/v1/rerank`` return ok=False so the caller degrades gracefully.
+
+    Response contract (cohere-style, as served by llama.cpp / vLLM / sglang):
+      ``{"results": [{"index": i, "relevance_score": s}, ...]}``
+    """
+    documents = list(documents)
+    if not documents:
+        return RerankResult(model=model_cfg.name, ok=True, scores=[])
+    payload = {"model": model_cfg.hf_repo, "query": query, "documents": documents}
+    url = f"{model_cfg.base_url}/rerank"
+
+    t0 = time.monotonic()
+    try:
+        r = httpx.post(url, json=payload, timeout=timeout_s,
+                       headers={"Authorization": "Bearer EMPTY"})
+        elapsed = (time.monotonic() - t0) * 1000
+    except Exception as e:
+        return RerankResult(model=model_cfg.name, ok=False,
+                            error=f"{type(e).__name__}: {e}",
+                            latency_ms=(time.monotonic() - t0) * 1000)
+
+    if r.status_code != 200:
+        return RerankResult(model=model_cfg.name, ok=False,
+                            error=f"HTTP {r.status_code}: {r.text[:200]}",
+                            latency_ms=elapsed)
+
+    data = r.json()
+    # Accept "results" (cohere/llama.cpp) or "data" (some OpenAI-style backends).
+    rows = data.get("results", data.get("data", []))
+    scores = [0.0] * len(documents)
+    seen = 0
+    for row in rows:
+        idx = int(row.get("index", -1))
+        if not (0 <= idx < len(documents)):
+            continue
+        # llama.cpp/cohere use "relevance_score"; some use "score".
+        scores[idx] = float(row.get("relevance_score", row.get("score", 0.0)))
+        seen += 1
+    if seen != len(documents):
+        return RerankResult(model=model_cfg.name, ok=False,
+                            error=f"rerank returned {seen} scores != {len(documents)} docs",
+                            scores=scores, latency_ms=elapsed)
+    return RerankResult(model=model_cfg.name, ok=True, scores=scores, latency_ms=elapsed)
 
 
 # ────────────────────────────────────────────────────────────

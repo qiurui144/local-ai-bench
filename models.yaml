@@ -92,7 +92,31 @@ models:
     role: reranker_primary
     task_type: text_only
     rerank_capable: true               # 参与 rerank 维度（生成式 yes/no 重排）
-    notes: "Reranker：生成式 yes/no，重排质量强；单 pair 延迟高，宜离线/小 top-k"
+    notes: "Reranker：生成式 yes/no，重排质量强；单 pair 延迟高（K3 实测 2.9s/pair），宜离线/小 top-k"
+
+  - name: bge-reranker-v2-m3
+    hf_repo: BAAI/bge-reranker-v2-m3
+    quantization: q8_0                  # 对照可加 q4_k_m（reranker 对量化较敏感，需查 score_separation）
+    port: 9202
+    vram_estimate_gb: 1
+    hardware_min: K3-X100               # encoder-only，X100 CPU + IME2 即可，无需 GPU
+    role: reranker_realtime
+    task_type: text_only
+    rerank_capable: true               # 参与 rerank 维度
+    rerank_native: true                # 走 llama.cpp /v1/rerank 单 pass（非生成式 yes/no）
+    notes: "🌟 实时 Reranker：BERT cross-encoder 单 pass，GGUF 自带 tokenizer（零 Python tokenizer 依赖）；延迟预期 <<生成式（推断 20-100×，待 163 实测）。起服：llama-server -m bge-reranker-v2-m3.Q8_0.gguf --reranking -t 8 -c 512 --port 9202"
+
+  - name: bge-reranker-base
+    hf_repo: BAAI/bge-reranker-base
+    quantization: q4_k_m
+    port: 9203
+    vram_estimate_gb: 1
+    hardware_min: K3-X100
+    role: reranker_realtime_min         # 延迟下限对照（~278M，更小更快，质量略低）
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    notes: "实时 Reranker 延迟下限对照：bge-reranker-base ~278M，单 pass，给产品「质量 vs 延迟」选择曲线"
 
   - name: sensevoice-small
     hf_repo: FunAudioLLM/SenseVoiceSmall

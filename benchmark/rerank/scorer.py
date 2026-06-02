@@ -1,24 +1,33 @@
-"""Reranker scoring against a served chat / completions endpoint.
+"""Reranker scoring against a served endpoint — two paths.
 
-The K23 edge eval used a **generative** reranker (Qwen3-Reranker): an
-Instruct + Query + Document prompt, reading the yes/no token probability as the
-relevance score. Served OpenAI-compatible endpoints don't reliably expose
-per-token logprobs across backends, so this scorer uses a robust portable
-proxy: ask the model to answer strictly ``yes`` / ``no`` (low temperature) for
-"is this document relevant to the query", and map the answer to a score
-(yes=1.0, no=0.0, unparseable=0.5). When a backend *does* expose ``logprobs``
-for the first token, the yes-probability is used instead for a finer score.
+**Native (real-time) path** — ``rerank_native: true``. A BERT cross-encoder
+(e.g. bge-reranker-v2-m3) served by llama.cpp ``--reranking`` (``--pooling
+rank``) / vLLM, scoring ``[CLS] query [SEP] doc [SEP]`` in a single encoder pass
+via the native ``/v1/rerank`` endpoint. No generation, no KV cache → ~20-100×
+faster than the generative path, the difference between offline-only and
+real-time reranking. The GGUF model carries its own tokenizer, so the serving
+host needs no Python ``transformers`` (unblocks tokenizer-less edge devices —
+the same path the embedding GGUFs already run on).
 
-This is independent of the embedding model — it benchmarks a dedicated reranker
-deployment (the second stage of a retrieve-then-rerank pipeline).
+**Generative (proxy) path** — the default. The K23 edge eval used a generative
+reranker (Qwen3-Reranker): an Instruct + Query + Document prompt, reading the
+yes/no token probability as the relevance score. Served OpenAI-compatible
+endpoints don't reliably expose per-token logprobs across backends, so this
+scorer uses a robust portable proxy: ask the model to answer strictly ``yes`` /
+``no`` (low temperature), and map the answer to a score (yes=1.0, no=0.0,
+unparseable=0.5).
+
+Both benchmark a dedicated reranker deployment (the second stage of a
+retrieve-then-rerank pipeline), independent of the embedding model.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from typing import Sequence
 
-from common import ModelConfig, infer_sync
+from common import ModelConfig, infer_rerank, infer_sync
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +70,19 @@ def score_pair(
     *,
     max_tokens: int = 4,
 ) -> tuple[float, bool, float]:
-    """Score one (query, doc) pair. Return (score, ok, latency_ms)."""
+    """Score one (query, doc) pair. Return (score, ok, latency_ms).
+
+    Routes to the native ``/v1/rerank`` endpoint when the model is
+    ``rerank_native`` (single-doc request → one relevance score), otherwise the
+    generative yes/no proxy. For native models prefer :func:`score_query_native`,
+    which batches the whole candidate list into one request.
+    """
+    if getattr(model_cfg, "rerank_native", False):
+        res = infer_rerank(model_cfg, query, [doc])
+        if not res.ok or not res.scores:
+            return 0.0, False, res.latency_ms
+        return float(res.scores[0]), True, res.latency_ms
+
     res = infer_sync(
         model_cfg,
         prompt=rerank_prompt(query, doc),
@@ -72,3 +93,21 @@ def score_pair(
     if not res.ok:
         return 0.0, False, res.latency_ms
     return parse_relevance(res.content), True, res.latency_ms
+
+
+def score_query_native(
+    model_cfg: ModelConfig,
+    query: str,
+    docs: Sequence[str],
+) -> tuple[list[float], bool, float]:
+    """Score a whole candidate list in one native ``/v1/rerank`` request.
+
+    Returns (scores aligned to ``docs``, ok, latency_ms). One request per query
+    (instead of one per pair) amortises HTTP + model-resident overhead and lets
+    the backend batch the candidates internally — closer to how a real-time
+    reranker is actually called. Only meaningful for ``rerank_native`` models.
+    """
+    res = infer_rerank(model_cfg, query, list(docs))
+    if not res.ok:
+        return [0.0] * len(docs), False, res.latency_ms
+    return [float(s) for s in res.scores], True, res.latency_ms
