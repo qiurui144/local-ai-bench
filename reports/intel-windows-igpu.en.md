@@ -1,4 +1,3 @@
-> [中文版](./intel-windows-igpu.zh.md)
 > [← Intel Windows overview](./intel-windows.en.md)
 
 # Intel Windows — iGPU / OpenVINO / DirectML Paths

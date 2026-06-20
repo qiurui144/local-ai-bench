@@ -442,12 +442,105 @@ models:
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
     notes: "AMD Windows 参数提升覆盖：qwen2.5:14b via Ollama Vulkan；用于验证 7B 以上模型可运行与性能边界"
 
-  # ═══ Rockchip RK3588 ARM SoC（aarch64，RKNN NPU 6 TOPS + Mali-G610）+ RK182X NPU ═══
-  # 硬件：linaro@192.168.100.206；RKNN adapter: benchmark/backends/rknn_adapter.py
+  # ═══ AMD Windows — XDNA NPU LLM（via Lemonade Server）═══
+  # AMD Lemonade: https://github.com/amd/lemonade — OpenAI-compat LLM server for XDNA NPU
+  # 安装：pip install lemonade-server
+  # 启动：lemonade-server serve --model Phi-3.5-mini-instruct --device npu --port 8000
+  # 激活：export LEMONADE_AMD_BASE_URL=http://<AMD_HOST>:8000/v1
+  # 支持模型（W4A8 量化，RyzenAI runtime）：Phi-3.5-mini、Llama-3.2-1B/3B、Qwen2.5-1.5B、AMD-OLMo-1B
+  # 与 Ollama Vulkan 对比：NPU TPS 相近或略低；优势在于 iGPU 解放可同时跑其他任务（独立算力）
+
+  - name: llama3.2-1b-amd-npu
+    provider: generic
+    port: 8000
+    base_url_env: LEMONADE_AMD_BASE_URL
+    target: amd-win-x86
+    model_id: llama3.2-1b-instruct-npu
+    capabilities: [chat]
+    task_type: text_only
+    hardware_min: amd-xdna
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 600                      # PENDING-VERIFY；iGPU 参考 875ms，NPU 预期更快
+          p95_ttft_ms_max: 1200
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 50                               # PENDING-VERIFY；XDNA 1B 预期 ~80–100 TPS
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.40                        # 1B 模型能力上限低
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, translation]
+    notes: "AMD XDNA NPU（Lemonade Server）Llama-3.2-1B；port 8000；W4A8 量化；PENDING-VERIFY E2E；iGPU 同路径参考 TPS~25 (Vulkan)"
+
+  - name: phi-3.5-mini-amd-npu
+    provider: generic
+    port: 8000
+    base_url_env: LEMONADE_AMD_BASE_URL
+    target: amd-win-x86
+    model_id: Phi-3.5-mini-instruct-npu
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: amd-xdna
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 1000
+          p95_ttft_ms_max: 2000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 25                               # PENDING-VERIFY；XDNA 3.8B 预期 ~30–50 TPS
+      general_ability:
+        max_questions: 30
+        thresholds:
+          min_accuracy: 0.55
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 13.0
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode]
+    notes: "AMD XDNA NPU（Lemonade Server）Phi-3.5-mini-instruct（3.8B）；port 8000；W4A8 量化；PENDING-VERIFY E2E"
+
+  - name: qwen2.5-1.5b-amd-npu
+    provider: generic
+    port: 8000
+    base_url_env: LEMONADE_AMD_BASE_URL
+    target: amd-win-x86
+    model_id: Qwen2.5-1.5B-Instruct-npu
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: amd-xdna
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 700
+          p95_ttft_ms_max: 1500
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 40                               # PENDING-VERIFY；XDNA 1.5B 预期 ~60–80 TPS
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 13.0
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
+    notes: "AMD XDNA NPU（Lemonade Server）Qwen2.5-1.5B-Instruct；port 8000；W4A8 量化；PENDING-VERIFY E2E"
+
+  # ═══ Rockchip RK3588 ARM SoC（aarch64）+ RK1820 PCIe NPU ═══
+  # 双芯片架构（source: /userdata/model_hub/model_hub_config.yaml + 实测 2026-06-20）:
+  #   RK3588 内置 RKNPU3（3×2 TOPS）→ embedding（port 18080，uvicorn server.py）
+  #   RK1820 PCIe NPU（Device 182a，官方名 RK1820）→ LLM/ASR/TTS（port 18001/18002/18003）
   # 激活：export RK3588_HOST=192.168.100.206 RK3588_USER=linaro RK3588_PASS=linaro
-  #        export RK3588_LLM_BASE_URL=http://192.168.100.206:8080/v1
-  # 注：RKNN 模型需从 PyTorch 预转换（rknn-toolkit2）；Ollama aarch64 也可直接跑 CPU/RKNN
-  # RK182X（RK1808/RK1826）NPU 加速板通过 PCIe/USB 挂载，独立推理路径，端口 8090
+  #        export RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1
+  #        export RK182X_EMBED_BASE_URL=http://192.168.100.206:18080/v1
 
   - name: qwen2.5-0.5b-rk3588
     provider: generic
@@ -569,11 +662,11 @@ models:
   # 激活：export RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1
   # 注：ctx 768；顶层 top-k=1 greedy；qwenvl chat template；--qwenvl flag 已激活
 
-  - name: qwen3-vl-2b-rk3588
+  - name: qwen3-vl-2b-rk1820
     provider: generic
     port: 18001
     base_url_env: RKLLM3_LLM_BASE_URL
-    target: rk3588-linux
+    target: rk182x-linux
     model_id: Qwen3-VL-2B-llm.rknn                  # /v1/models 返回的实际 id
     capabilities: [chat]
     task_type: text_only
@@ -601,22 +694,22 @@ models:
           chrf_min: 26.0                              # E2E实测 en->zh chrF=35.5；73% floor
           term_match_rate_min: 0.50                   # E2E实测 zh->en term=68%；74% floor
       skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
-    notes: "RK3588 内置 RKNPU3（3×2TOPS）运行 Qwen3-VL-2B；ctx=768；rkllm3-server port 18001；TTFT+TPS 2026-06-20 E2E校准（P50=144ms，P95=168ms，TPS=109）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达无法下载 MMLU/HellaSwag；GSM8K 参考值 66%（2026-06-19 非正式）"
+    notes: "RK1820 PCIe NPU（rkllm3-server port 18001）运行 Qwen3-VL-2B；ctx=768；TTFT+TPS 2026-06-20 E2E校准（P50=144ms，P95=168ms，TPS=109）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达无法下载 MMLU/HellaSwag；GSM8K 参考值 66%（2026-06-19 非正式）"
 
   # MiniCPM embedding on port 18080（已运行）
-  # 实际运行在 RK1822 PCIe NPU 上（0003:31:00.0 Device 182a），不是 RK3588 内置 RKNPU
+  # 实际运行在 RK3588 内置 RKNPU3（3×2 TOPS）上，不是 RK1820 PCIe NPU
   # 激活：export RK182X_EMBED_BASE_URL=http://192.168.100.206:18080/v1
 
-  - name: minicpm-embed-rk1822
+  - name: minicpm-embed-rk3588
     provider: generic
     port: 18080
     base_url_env: RK182X_EMBED_BASE_URL
-    target: rk182x-linux
+    target: rk3588-linux
     model_id: rknn-embedding                         # /v1/models 返回的实际 id
     capabilities: [embedding]
     task_type: embedding
     embedding_capable: true
-    hardware_min: rk1822-npu
+    hardware_min: rk3588-npu
     benchmarks:
       embedding:
         max_pairs: 20
@@ -626,49 +719,145 @@ models:
           mrr_min: 0.85               # 实测 MRR=1.000
           ndcg_at_10_min: 0.85        # 实测 nDCG@10=1.000
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, stability, concurrency, rerank, asr, ocr]
-    notes: "RK1822 PCIe NPU（Device 182a，0003:31:00.0）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；阈值 2026-06-19 实测校准（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=143ms）"
+    notes: "RK3588 内置 RKNPU3（3×2 TOPS）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；阈值 2026-06-19 实测校准（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=143ms）"
 
-  # ═══ RK182X NPU 加速板（RK1808/RK1826，独立 PCIe/USB NPU）═══
-  # 运行时：独立 rknn_adapter 实例，端口 8090；NPU TOPS > RK3588 内置 NPU
-  # 激活：RK182X_LLM_BASE_URL=http://192.168.100.206:8090/v1（同 RK3588 主机）
+  # ═══ RK1820 PCIe NPU（独立 PCIe NPU 卡，官方名 RK1820，SDK: RKNN3 V0.3.0b0）═══
+  # 运行时：rkllm3-server（port 18001 LLM；port 18002 ASR；port 18003 TTS）
+  # RKNN3 Model Zoo 官方 TPS（参考）：Qwen2.5-0.5B 158.9；Qwen2.5-3B 82.5；InternVL3-2B 119.4；FastVLM-1.5B 119.0；Qwen2.5-VL-3B 47.4
+  # 预转换模型下载：https://console.box.lenovo.com/l/H1fig1（code: rknn）
+  # 激活：RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1（LLM）
+  #        RKLLM3_ASR_BASE_URL=http://192.168.100.206:18002（ASR；POST /asr/transcribe，Content-Type: audio/wav）
 
-  - name: qwen2.5-0.5b-rk182x
+  # RKNN3 Model Zoo 官方支持模型（预转换，W4A16 量化）
+  # 来源：/userdata/1820.md（RKNN3 SDK V0.3.0b0 release notes，2025-09-12）
+  # 以下 TPS 均来自官方发布数据，PENDING-VERIFY 表示本机尚未实测校准
+
+  - name: qwen2.5-0.5b-rk1820
     provider: generic
-    port: 8090
-    base_url_env: RK182X_LLM_BASE_URL
+    port: 18001
+    base_url_env: RKLLM3_LLM_BASE_URL
     target: rk182x-linux
-    model_id: qwen2.5-0.5b-instruct
+    model_id: Qwen2.5-0.5B-Instruct-rk1820.rknn    # RKNN3 Model Zoo 预转换文件名（PENDING-VERIFY）
     capabilities: [chat]
     task_type: text_only
     translation_capable: true
-    hardware_min: rk182x-npu
+    hardware_min: rk1820-npu
     benchmarks:
-      accuracy:
-        golden_set: vlm_lite
       ttft:
-        prompt_tokens: 128
+        prompt_tokens: 64
         thresholds:
-          p50_ttft_ms_max: 1500            # PENDING-VERIFY: RK182X 更高 TOPS
-          p95_ttft_ms_max: 3000
+          p50_ttft_ms_max: 200                      # PENDING-VERIFY；参考 qwen3-vl-2b P50=144ms
+          p95_ttft_ms_max: 300
       throughput:
-        output_tokens: 64
+        output_tokens: 32
         thresholds:
-          tps_min: 12
-      prefill_decode:
-        samples: 3
-        thresholds:
-          pp_tps_min: 30
-          tg_tps_min: 12
+          tps_min: 95                               # PENDING-VERIFY；官方 158.9 TPS × 60%
       general_ability:
         max_questions: 30
         thresholds:
           min_accuracy: 0.50
       translation:
-        max_pairs: 20
+        max_pairs: 10
         thresholds:
-          bleu_min: 15.0
-      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr]
-    notes: "RK182X NPU — PENDING-VERIFY；阈值比 RK3588 内置 NPU 更激进（预期更快）"
+          bleu_min: 12.0
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode]
+    notes: "RK1820 PCIe NPU（rkllm3-server port 18001）Qwen2.5-0.5B；官方 TPS=158.9（RKNN3 SDK V0.3.0b0）；PENDING-VERIFY E2E"
+
+  - name: qwen2.5-3b-rk1820
+    provider: generic
+    port: 18001
+    base_url_env: RKLLM3_LLM_BASE_URL
+    target: rk182x-linux
+    model_id: Qwen2.5-3B-Instruct-rk1820.rknn
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: rk1820-npu
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 300
+          p95_ttft_ms_max: 500
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 50                               # PENDING-VERIFY；官方 82.5 TPS × 60%
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
+    notes: "RK1820 PCIe NPU Qwen2.5-3B；官方 TPS=82.5（RKNN3 SDK V0.3.0b0）；PENDING-VERIFY E2E"
+
+  - name: qwen2.5-vl-3b-rk1820
+    provider: generic
+    port: 18001
+    base_url_env: RKLLM3_LLM_BASE_URL
+    target: rk182x-linux
+    model_id: Qwen2.5-VL-3B-Instruct-rk1820.rknn
+    capabilities: [chat]
+    task_type: text_only
+    hardware_min: rk1820-npu
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 400
+          p95_ttft_ms_max: 600
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 28                               # PENDING-VERIFY；官方 47.4 TPS × 60%
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability, translation]
+    notes: "RK1820 PCIe NPU Qwen2.5-VL-3B；官方 TPS=47.4（RKNN3 SDK V0.3.0b0）；PENDING-VERIFY E2E"
+
+  - name: internvl3-2b-rk1820
+    provider: generic
+    port: 18001
+    base_url_env: RKLLM3_LLM_BASE_URL
+    target: rk182x-linux
+    model_id: InternVL3-2B-rk1820.rknn
+    capabilities: [chat]
+    task_type: text_only
+    hardware_min: rk1820-npu
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 250
+          p95_ttft_ms_max: 400
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 70                               # PENDING-VERIFY；官方 119.4 TPS × 60%
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability, translation]
+    notes: "RK1820 PCIe NPU InternVL3-2B；官方 TPS=119.4（RKNN3 SDK V0.3.0b0）；PENDING-VERIFY E2E"
+
+  # ASR on RK1820 PCIe NPU — rk-asr service（Qwen3-based ASR）
+  # API: POST http://192.168.100.206:18002/asr/transcribe
+  # Content-Type: audio/wav（raw WAV body，非 multipart）
+  # 实测 RTF（2026-06-20）：0.040（最优）~ 0.066（一般）
+  # 激活：export RKLLM3_ASR_BASE_URL=http://192.168.100.206:18002
+
+  - name: rk-asr-rk1820
+    provider: generic
+    port: 18002
+    base_url_env: RKLLM3_ASR_BASE_URL
+    target: rk182x-linux
+    model_id: rk-asr                               # Qwen3-based ASR on RK1820
+    capabilities: [asr]
+    task_type: asr
+    asr_capable: true
+    hardware_min: rk1820-npu
+    benchmarks:
+      asr:
+        max_samples: 20
+        thresholds:
+          cer_max: 0.15                             # PENDING-VERIFY；参考 SenseVoice CER=7.69%
+          rtf_max: 0.10                             # 实测 RTF 0.040~0.066；留 1.5× margin
+      skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, embedding, rerank, ocr, stability, concurrency]
+    notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 RTF=0.040~0.066（2026-06-20）；模型基于 Qwen3；阈值 PENDING-VERIFY"
 
   # ═══ Intel Windows（Ollama CPU 模式，x86_64）═══
   # 硬件：Intel CPU（无独显），通过 Ollama CPU 推理

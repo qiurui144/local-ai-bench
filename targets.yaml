@@ -20,6 +20,7 @@ targets:
     npu: amd-xdna                 # XDNA NPU; driver v32.0.20101.3760 已就绪; onnxruntime-vitisai 依赖闭源 vai_rt，不可自编译，需从 AMD 开发者门户下载 RyzenAI SDK; 替代: onnxruntime-directml 1.24.4 (GPU DirectX 12) 已安装 (2026-06-17)
     env_overrides:
       OLLAMA_AMD_BASE_URL: http://localhost:11434/v1
+      LEMONADE_AMD_BASE_URL: http://localhost:8000/v1  # Lemonade NPU LLM server（lemonade-server serve）
     remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
     python_cmd: "C:\\Users\\happy\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
 
@@ -30,28 +31,28 @@ targets:
     ip_env: RK3588_HOST              # 192.168.100.206
     ssh_user_env: RK3588_USER        # linaro
     ssh_pass_env: RK3588_PASS        # linaro
-    runtime: rknn                    # RKNN NPU via rknn_adapter.py；也可切 ollama（runtime: ollama, runtime_port: 11434）
-    runtime_port: 8080               # rknn_adapter 默认端口
+    runtime: rknn                    # RK3588 内置 RKNPU3；embedding 服务 uvicorn port 18080
+    runtime_port: 18080              # embedding 服务端口（/userdata/model_hub/embedding/server.py）
     accelerator: rknn-npu
     mali_gpu: mali-g610
-    npu: rk3588-npu                  # 6 TOPS RKNN NPU（3 × 2 TOPS core）
+    npu: rk3588-npu                  # 内置 RKNPU3（3×2 TOPS = 6 TOPS）；仅运行 embedding
     remote_workdir: "/home/linaro/vlm-llm-benchmark"
     python_cmd: "python3"
-    notes: "Rock 5B / OrangePi 5+ + RK182X NPU 加速板 (RK1808/RK1826 via USB/PCIe)；16GB LPDDR5"
+    notes: "Rock 5B / OrangePi 5+；RK3588 内置 RKNPU3（3×2 TOPS）运行 embedding（port 18080）；RK1820 PCIe NPU 运行 LLM/ASR/TTS（port 18001/18002/18003）；16GB LPDDR5"
 
   rk182x-linux:
     platform: linux
     arch: aarch64
     connection: ssh
-    ip_env: RK3588_HOST              # 同 RK3588 主机（192.168.100.206），PCIe 挂载 RK1822 NPU
+    ip_env: RK3588_HOST              # 同 RK3588 主机（192.168.100.206），PCIe 挂载 RK1820 NPU
     ssh_user_env: RK3588_USER
     ssh_pass_env: RK3588_PASS
-    runtime: rknn                    # RK1822 独立 rknn runtime；embedding 服务 uvicorn port 18080
-    runtime_port: 18080              # embedding 服务实际端口（uvicorn server.py）
-    accelerator: rk1822-npu          # PCI 182a = Rockchip RK1822 NPU（Device 0003:31:00.0）
+    runtime: rkllm3                  # RK1820 PCIe NPU 独立 rkllm3-server；LLM/ASR/TTS 端口分别 18001/18002/18003
+    runtime_port: 18001              # rkllm3-server LLM 端口（-c 768 --n_predict 512 --top-k 1 --qwenvl）
+    accelerator: rk1820-npu          # PCI 182a = Rockchip RK1820 NPU（Device 0003:31:00.0）；官方名: RK1820（RKNN3 SDK V0.3.0b0）
     remote_workdir: "/home/linaro/vlm-llm-benchmark"
     python_cmd: "python3"
-    notes: "Rockchip RK1822 PCIe NPU（lspci: 0003:31:00.0 Device 182a）；与 RK3588 共机器（同 IP/SSH）；embedding 服务 /userdata/model_hub/embedding/server.py port 18080；LLM 服务由 RK3588 内置 RKNPU3 提供（port 18001）"
+    notes: "Rockchip RK1820 PCIe NPU（lspci: 0003:31:00.0 Device 182a；系统别名 rk1828）；官方 SDK 名 RK1820（RKNN3 SDK V0.3.0b0 2025-09-12）；与 RK3588 共机器（同 IP/SSH）；LLM via rkllm3-server port 18001；ASR port 18002（POST /asr/transcribe）；TTS port 18003；embedding 由 RK3588 RKNPU3 提供（port 18080）"
 
   k3-riscv:
     platform: linux

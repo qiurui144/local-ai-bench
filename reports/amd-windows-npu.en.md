@@ -1,11 +1,10 @@
-> [中文版](./amd-windows-npu.zh.md)
 > [← AMD Windows overview](./amd-windows.en.md)
 
-# AMD Windows — NPU (AMD XDNA / VitisAI) Performance
+# AMD Windows — NPU (AMD XDNA / VitisAI / Lemonade) Performance
 
 **Hardware:** AMD Ryzen 8845H with AMD AI 300 Series NPU (XDNA, 16 TOPS)  
-**Backends:** VitisAI via ONNX Runtime (OCR) · ONNX DirectML (ASR)  
-**Last calibrated:** 2026-06-19
+**Backends:** VitisAI via ONNX Runtime (OCR) · ONNX DirectML (ASR) · Lemonade Server (LLM)  
+**Last calibrated:** 2026-06-19 (OCR/ASR); Lemonade LLM PENDING-VERIFY
 
 ---
 
@@ -15,12 +14,55 @@
 |---|---|---|
 | OCR (text + structured) | VitisAI EP (onnxruntime-vitisai) | **PASS** |
 | ASR | DirectML (onnxruntime-directml on XDNA) | **PASS** |
-| LLM inference | Not supported — AMD XDNA requires proprietary AMD NPU SDK; Ollama uses Vulkan iGPU instead | N/A |
+| **LLM inference** | **Lemonade Server** (AMD RyzenAI + W4A8 quantization, port 8000) | **PENDING-VERIFY** |
 | Embedding / Reranker | Not supported via NPU; uses Vulkan (Ollama) or CPU (ONNX) | N/A |
 
-The AMD XDNA NPU targets fixed-function ONNX model execution. General-purpose LLM
-serving (like Ollama) does not use it — LLM inference routes to the 780M iGPU via Vulkan.
-See [iGPU mode](./amd-windows-igpu.en.md) for LLM performance.
+**LLM on XDNA NPU is now supported** via AMD's [Lemonade Server](https://github.com/amd/lemonade)
+(`pip install lemonade-server`). It runs small models (≤3.8B) directly on the XDNA NPU using
+the RyzenAI W4A8 runtime — freeing the 780M iGPU for concurrent tasks.
+See [iGPU mode](./amd-windows-igpu.en.md) for calibrated LLM performance via Vulkan.
+
+---
+
+## NPU LLM via Lemonade Server (PENDING-VERIFY)
+
+### Setup
+
+```cmd
+pip install lemonade-server
+
+# Phi-3.5-mini (3.8B, default recommended)
+lemonade-server serve --model Phi-3.5-mini-instruct --device npu --port 8000
+
+# Llama-3.2-1B (fastest)
+lemonade-server serve --model llama3.2-1b --device npu --port 8000
+
+# Qwen2.5-1.5B
+lemonade-server serve --model Qwen2.5-1.5B-Instruct --device npu --port 8000
+```
+
+The server exposes OpenAI-compatible `/v1/chat/completions` on port 8000.
+
+### Run Benchmark
+
+```bash
+export LEMONADE_AMD_BASE_URL="http://<AMD_HOST>:8000/v1"
+python run_benchmark.py --model phi-3.5-mini-amd-npu --target amd-win-x86
+python run_benchmark.py --model llama3.2-1b-amd-npu --target amd-win-x86
+```
+
+### Expected Performance (PENDING-VERIFY)
+
+| Model | Expected TPS | iGPU baseline | Notes |
+|---|---|---|---|
+| `llama3.2-1b-amd-npu` | ~80–100 t/s | 25 t/s (Vulkan) | Significant NPU speedup expected |
+| `phi-3.5-mini-amd-npu` | ~30–50 t/s | N/A tested | 3.8B model on XDNA |
+| `qwen2.5-1.5b-amd-npu` | ~60–80 t/s | N/A tested | W4A8, multilingual |
+
+**These values are pre-calibration estimates. Run E2E harness to calibrate thresholds.**
+
+**Key trade-off**: NPU LLM frees iGPU for OCR/embedding concurrent workloads; useful when
+running multi-modal pipelines where OCR + LLM need to overlap.
 
 ---
 
@@ -86,8 +128,8 @@ This is the best ASR path on AMD Windows.
 
 ## 中文摘要
 
-**硬件：** AMD XDNA NPU（16 TOPS），VitisAI + DirectML  
-**最后校准：** 2026-06-19
+**硬件：** AMD XDNA NPU（16 TOPS），VitisAI + DirectML + Lemonade Server  
+**最后校准：** 2026-06-19（OCR/ASR）；Lemonade LLM PENDING-VERIFY
 
 ### NPU 覆盖范围
 
@@ -95,7 +137,10 @@ This is the best ASR path on AMD Windows.
 |---|---|
 | OCR | **PASS**（VitisAI） |
 | ASR | **PASS**（DirectML） |
-| LLM/Embedding | 不支持（走 iGPU Vulkan） |
+| **LLM 推理** | **PENDING-VERIFY**（Lemonade Server，XDNA NPU，W4A8 量化） |
+| Embedding | 不支持（走 iGPU Vulkan） |
+
+AMD XDNA NPU 现支持 LLM 推理，通过 AMD [Lemonade Server](https://github.com/amd/lemonade)（`pip install lemonade-server`）实现。支持 ≤3.8B 的小模型直接在 XDNA NPU 上运行，释放 780M iGPU 用于并发 OCR/Embedding 任务。
 
 ### 关键数据
 
@@ -103,5 +148,8 @@ This is the best ASR path on AMD Windows.
 |---|---|---|
 | rapidocr-amd-npu（OCR） | p50 2031 ms，CER 7.04% | **PASS** |
 | sensevoice-small-amd-win（ASR） | RTF 0.073，CER 7.69% | **PASS** |
+| llama3.2-1b-amd-npu（LLM） | 预期 ~80–100 t/s | **PENDING-VERIFY** |
+| phi-3.5-mini-amd-npu（LLM） | 预期 ~30–50 t/s | **PENDING-VERIFY** |
+| qwen2.5-1.5b-amd-npu（LLM） | 预期 ~60–80 t/s | **PENDING-VERIFY** |
 
 OCR 三条路径延迟对比：CPU 1593 ms → DirectML 469 ms（最快） → VitisAI 2031 ms。

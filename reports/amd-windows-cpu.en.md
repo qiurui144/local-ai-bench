@@ -1,4 +1,3 @@
-> [中文版](./amd-windows-cpu.zh.md)
 > [← AMD Windows overview](./amd-windows.en.md)
 
 # AMD Windows — CPU-Only Paths (ONNX Runtime CPU)

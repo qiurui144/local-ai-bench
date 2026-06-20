@@ -1,4 +1,3 @@
-> [中文版](./amd-windows.zh.md)
 # AMD Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA NPU, Windows 11  
@@ -22,9 +21,12 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 
 | Workload | CPU path | iGPU path (Vulkan / DirectML) | NPU path (VitisAI) |
 |---|---|---|---|
-| **LLM 7B** | ~3–5 TPS (est.) | **13.33 TPS** ✓ | — not supported |
+| **LLM 7B** | ~3–5 TPS (est.) | **13.33 TPS** ✓ | — |
 | **LLM 3B** | ~8–12 TPS (est.) | **28.99 TPS** ✓ | — |
 | **LLM 0.6B** | — | **91.09 TPS** ✓ | — |
+| **LLM NPU (1B, Lemonade)** | — | — | **~80–100 TPS** PENDING-VERIFY |
+| **LLM NPU (1.5B, Lemonade)** | — | — | **~60–80 TPS** PENDING-VERIFY |
+| **LLM NPU (3.8B, Lemonade)** | — | — | **~30–50 TPS** PENDING-VERIFY |
 | **Embedding 0.6B** | — | 875 ms p50 ✓ | — |
 | **OCR text (p50)** | 1593 ms | **469 ms** ✓ fastest | 2031 ms |
 | **OCR structured (p50)** | 859 ms | **477 ms** ✓ | 1868 ms |
@@ -34,6 +36,7 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 
 CPU-only LLM is not independently benchmarked; Ollama defaults to Vulkan iGPU.
 OCR quality (CER 7.04%) is identical across all three paths.
+**NPU LLM via Lemonade**: AMD XDNA NPU can run LLM inference using `lemonade-server` — all values PENDING-VERIFY.
 
 **→ Mode details:**
 - [iGPU (Vulkan + DirectML) — LLM, Embedding, OCR fastest path](./amd-windows-igpu.en.md)
@@ -90,7 +93,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 - **LLM conversation_drift FAIL** — Multi-turn drift detection fails.
 - **LLM scenarios FAIL** — Domain scenario tests fail.
 - **No qualified VLM** — `llava-7b-amd-win` accuracy FAIL; no VLM workloads recommended until a better model is validated.
-- **NPU LLM not supported** — AMD XDNA NPU is not accessible via Ollama; LLM uses Vulkan iGPU.
+- **NPU LLM PENDING-VERIFY** — AMD XDNA NPU LLM via Lemonade Server (`lemonade-server serve --device npu`) supports Llama-3.2-1B, Phi-3.5-mini, Qwen2.5-1.5B (W4A8). Thresholds not yet calibrated; all TPS estimates are pre-measurement.
 
 ---
 
@@ -119,11 +122,14 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 | 任务 | CPU 路径 | iGPU 路径（Vulkan/DirectML） | NPU 路径（VitisAI） |
 |---|---|---|---|
-| LLM 7B | ~3–5 TPS（估算） | **13.33 TPS** ✓ | — 不支持 |
+| LLM 7B | ~3–5 TPS（估算） | **13.33 TPS** ✓ | — |
 | LLM 3B | ~8–12 TPS（估算） | **28.99 TPS** ✓ | — |
+| **LLM NPU（Lemonade）** | — | — | **~80–100 TPS**（PENDING-VERIFY） |
 | OCR 文字 p50 | 1593 ms | **469 ms** ✓ 最快 | 2031 ms |
 | ASR RTF | — | — | **0.073** ✓ |
 | Reranker base p50 | **78 ms** ✓ | — | — |
+
+AMD XDNA NPU 现通过 Lemonade Server 支持 LLM 推理（W4A8 量化，≤3.8B 模型）。PENDING-VERIFY。
 
 **→ 详细模式文档：**
 - [iGPU（Vulkan + DirectML）— LLM、Embedding、OCR 最快路径](./amd-windows-igpu.en.md)

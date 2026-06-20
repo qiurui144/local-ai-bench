@@ -1,4 +1,3 @@
-> [中文版](./intel-windows.zh.md)
 # Intel Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** intel-win-x86 | Intel Core Ultra laptop, Windows 11  
