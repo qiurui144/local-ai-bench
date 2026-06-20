@@ -921,8 +921,22 @@ models:
       ttft: {samples: 3}
       throughput: {duration_s: 20}
       prefill_decode: {samples: 3}
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
-    notes: "Intel CPU Ollama — qwen2.5:3b Q4 ~2GB，中文能力强"
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.40
+          hellaswag_min: 0.40
+      translation:
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 40.0
+          term_match_rate_min: 0.80
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
+    notes: "Intel CPU Ollama — qwen2.5:3b Q4 ~2GB; TPS 19.47; TTFT p50/p95 781/3495 ms; GA(2026-06-21,100q): GSM8K 0.74 PASS MMLU 0.53 PASS HellaSwag 0.76 PASS; translation FAIL(en->zh chrF 33/34.8<40, term 64/74%<80%)"
 
   - name: qwen2.5-7b-intel-win
     provider: ollama
@@ -930,7 +944,7 @@ models:
     base_url_env: OLLAMA_INTEL_WIN_BASE_URL
     model_id: qwen2.5:7b
     port: 11434
-    role: llm_intel_win_parameter_uplift
+    role: llm_intel_win_primary
     task_type: text_only
     translation_capable: true
     benchmarks:
@@ -944,8 +958,22 @@ models:
           tps_min: 1
       prefill_decode:
         samples: 2
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
-    notes: "Intel Windows 参数提升覆盖：qwen2.5:7b via Ollama；用于验证 3B 以上模型可运行与性能边界"
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 30}
+          mmlu: {per_subject: 8}
+          hellaswag: {num_samples: 30}
+        thresholds:
+          gsm8k_min: 0.60
+          mmlu_min: 0.55
+          hellaswag_min: 0.55
+      translation:
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 40.0
+          term_match_rate_min: 0.80
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
+    notes: "Intel CPU Ollama — qwen2.5:7b Q4; TPS 8.25; TTFT p50/p95 4820/8441 ms; general_ability+translation 2026-06-21 calibrated"
 
   - name: qwen3-embedding-0.6b-intel-win
     provider: ollama
@@ -1056,13 +1084,55 @@ models:
     embedding_capable: true
     notes: "Intel Linux CPU — embedding 跨平台对比"
 
-  # ═══ SpacemiT K3 RISC-V（llama.cpp RVV，riscv64，进迭时空 X60，16GB）═══
-  # 硬件：bianbu@192.168.100.140，SpacemiT X60（8核 RVV 0.7.1，16GB LPDDR4X）
-  # 运行时：llama-server（llama.cpp cmake -DGGML_RVV=ON），端口 8080
-  # 激活：export K3_HOST=192.168.100.140 K3_USER=bianbu K3_PASS=bianbu
-  #        export K3_LLM_BASE_URL=http://192.168.100.140:8080/v1
-  # 模型：GGUF Q4_K_M 格式，scp 到 K3 后 llama-server --model /path/model.gguf
-  # 性能预期：0.5B ~5 tok/s，1B ~2-3 tok/s，1.5B ~1-2 tok/s（RVV 加速）
+  # ═══ SpacemiT K3 RISC-V（llama.cpp RVV，riscv64，进迭时空 X100，16GB）═══
+  # 硬件：root@192.168.100.215（ipco-k3），SpacemiT X100（8核 RVV，16GB LPDDR5）
+  # 运行时：/usr/bin/llama-server（llama.cpp v8355），端口 11434
+  # 激活：export K3_HOST=192.168.100.215 K3_USER=root K3_PASS=bianbu
+  #        export K3_LLM_BASE_URL=http://192.168.100.215:11434/v1
+  # 模型：GGUF Q4_K_M 格式，已预置 /root/models/ 目录
+  # 性能预期：3B ~5-10 tok/s（RVV 加速），RISC-V 纯 CPU
+  # 注：旧 IP 192.168.100.140 / 端口 8080 已废弃（2026-06-21 更新）
+
+  - name: qwen2.5-3b-k3-riscv
+    provider: generic
+    target: k3-riscv
+    base_url_env: K3_LLM_BASE_URL
+    port: 11434
+    model_id: qwen2.5-3b-instruct-q4_k_m.gguf  # actual llama-server model ID (2026-06-21)
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 300               # calibrated 2026-06-21 run2: warm P50≈184ms (177/178/184/197ms); 1.6x buffer
+          p95_ttft_ms_max: 1200              # cold first call 1031ms included; warm P95≈197ms
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 2                          # calibrated: TG≈4.4 t/s; 2x floor with margin
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 300                    # calibrated run2 (clean): PP mean≈572 t/s (545/571/602); prev ≈361 was noisy
+          tg_tps_min: 4                      # calibrated run2 (clean): TG mean≈7.1 t/s (7.0/7.2/7.0); prev ≈4.4 was noisy
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.40
+          mmlu_min: 0.40
+          hellaswag_min: 0.40
+      translation:
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
+    notes: "SpacemiT K3 RISC-V (192.168.100.215:11434) — Qwen2.5-3B Q4_K_M via llama-server v8355; TTFT warm P50≈184ms(177/178/184/197ms), cold 1031ms; PP≈572 t/s (545/571/602); TG≈7.1 t/s (7.0/7.2/7.0); 2026-06-21 clean run"
 
   - name: qwen2.5-0.5b-k3-riscv
     provider: generic
