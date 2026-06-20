@@ -253,7 +253,7 @@ models:
     role: llm_amd_baseline
     task_type: text_only
     translation_capable: true
-    notes: "AMD 780M Vulkan GPU — llama3.2:3b Q4_K_M ~2GB, TTFT p50~1078ms/p95~2050ms, TPS 28.3, PP 100 tok/s, TG 38.8 tok/s (2026-06-17 E2E)"
+    notes: "AMD 780M Vulkan GPU — llama3.2:3b Q4_K_M ~2GB, TTFT p50~1078ms/p95~2050ms, TPS 28.3, PP 100 tok/s, TG 38.8 tok/s; general_ability FAIL(gsm8k=0.710/PASS, mmlu=0.390/FAIL, hellaswag=0.320/FAIL)(3-seed 2026-06-16); translation FAIL(zh->en term 55%<80%; en->zh chrF 27.6<40, term 57%<80%)(3-seed 2026-06-16)"
     benchmarks:
       ttft:
         samples: 3
@@ -267,7 +267,18 @@ models:
         samples: 3
         thresholds:
           tg_tps_min: 30           # 实测 decode P50=38.8 tok/s (2026-06-17 E2E)
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.55          # 实测 0.710（3-seed，2026-06-16）；PASS
+          mmlu_min: 0.55           # 实测 0.390（3-seed，2026-06-16）；FAIL（3B MMLU 能力不足）
+          hellaswag_min: 0.60      # 实测 0.320（3-seed，2026-06-16）；FAIL（3B 推理弱）
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0           # 实测 zh->en BLEU=23.1, en->zh BLEU=29.5（3-seed，2026-06-16）；PASS
+          chrf_min: 40.0           # 实测 en->zh chrF=27.6（flores）<40→FAIL（l3=33.4<40→FAIL）
+          term_match_rate_min: 0.80 # 实测 zh->en term=55%, en->zh term=57%；均<80%→FAIL
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
 
   - name: qwen2.5-7b-amd-win
     provider: ollama
@@ -292,7 +303,18 @@ models:
         samples: 3
         thresholds:
           tg_tps_min: 14             # 实测 TG P50=17.0 tok/s (2026-06-17 E2E)
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.55          # 实测 gsm8k=0.880 (2026-06-17)；保留旧阈值
+          mmlu_min: 0.55           # 实测 mmlu=0.600 (2026-06-17)
+          hellaswag_min: 0.60      # 实测 hellaswag=0.790 (2026-06-17)
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0           # 实测 zh->en l1 BLEU=27.1, l3 BLEU=56.3（2026-06-17）；均 PASS
+          chrf_min: 40.0           # 实测 en->zh l1 chrF=36.4（2026-06-17）< 40.0 → FAIL
+          term_match_rate_min: 0.80 # 实测 zh->en l3 term=79%（2026-06-17）< 80% → FAIL
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
 
   # qwen2.5:14b 需先 pull（~9GB）；16 GiB 可用应可容纳
   # - name: qwen2.5-14b-amd-win
@@ -371,7 +393,7 @@ models:
     role: llm_nano
     task_type: text_only
     translation_capable: true
-    notes: "AMD 780M Vulkan — Qwen3-0.6B；TTFT P50=2367ms，TPS=79.5；general_ability FAIL(gsm8k=0.40，mmlu/hellaswag=0.0-PARSING_BUG：qwen3 thinking模式<think>标签导致MCQ答案提取失效)；prefill_decode PENDING-VERIFY(Ollama qwen3不返回token_usage，1/5样本TG=8533异常) (2026-06-17 E2E)"
+    notes: "AMD 780M Vulkan — Qwen3-0.6B；TTFT P50=2367ms，TPS=79.5；general_ability re-run pending (thinking mode <think> parser fix applied 2026-06-20)；prefill_decode PENDING-VERIFY(Ollama qwen3不返回token_usage，1/5样本TG=8533异常) (2026-06-17 E2E)"
     benchmarks:
       ttft:
         samples: 3
@@ -387,7 +409,12 @@ models:
         thresholds:
           pp_tps_min: 30           # PENDING-VERIFY: Ollama qwen3 不返回 usage，1/5 样本，实测 48.5 tok/s 不可信
           # tg_tps_min: PENDING — TG=8533 tok/s 是 Ollama qwen3 usage bug，不可作阈值
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.30          # 0.6B 保守下限；先前实测 0.40（thinking-parse bug 影响）
+          mmlu_min: 0.30           # PENDING-VERIFY（先前 0.0 为 parse bug）
+          hellaswag_min: 0.35      # PENDING-VERIFY（先前 0.0 为 parse bug）
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank]
 
   - name: bge-reranker-base-amd-win
     provider: local_reranker
