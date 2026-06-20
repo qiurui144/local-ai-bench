@@ -973,7 +973,7 @@ models:
           chrf_min: 40.0
           term_match_rate_min: 0.80
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
-    notes: "Intel CPU Ollama — qwen2.5:7b Q4; TPS 8.25; TTFT p50/p95 4820/8441 ms; general_ability+translation 2026-06-21 calibrated"
+    notes: "Intel CPU Ollama — qwen2.5:7b Q4; TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767, 2026-06-21); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40.0)"
 
   - name: qwen3-embedding-0.6b-intel-win
     provider: ollama
@@ -1132,7 +1132,7 @@ models:
           chrf_min: 30.0
           term_match_rate_min: 0.50
       skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
-    notes: "SpacemiT K3 RISC-V (192.168.100.215:11434) — Qwen2.5-3B Q4_K_M via llama-server v8355; TTFT warm P50≈184ms(177/178/184/197ms), cold 1031ms; PP≈572 t/s (545/571/602); TG≈7.1 t/s (7.0/7.2/7.0); 2026-06-21 clean run"
+    notes: "SpacemiT K3 RISC-V (192.168.100.215:11434) — Qwen2.5-3B Q4_K_M via llama-server v8355; TTFT warm P50≈184ms(177/178/184/197ms), cold 1031ms; PP≈572 t/s; TG≈7.1 t/s; translation PASS (zh→en chrF 57.5/70.4, en→zh chrF 33.6/32.4, term 74%/57%); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750, 2026-06-21)"
 
   - name: qwen2.5-0.5b-k3-riscv
     provider: generic

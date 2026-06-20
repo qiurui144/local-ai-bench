@@ -42,7 +42,7 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
-| LLM quality | `qwen2.5-7b-intel-win` | CPU | Best quality on platform; MEASURED (latency is high for interactive use) |
+| LLM quality | `qwen2.5-7b-intel-win` | CPU | Best GA quality on platform; FAIL translation (term/chrF thresholds); high TTFT for interactive use |
 | LLM daily use | `qwen2.5-3b-intel-win` | CPU | Lightweight, 8-concurrency verified; TTFT 781 ms suitable for interactive |
 | LLM lightweight | `llama3.2-1b-intel-win` | CPU | 32-concurrency, 32k context verified |
 | Embedding | `qwen3-embedding-0.6b-intel-win` | CPU | PASS: hit@1 1.000, p50 617.5 ms |
@@ -58,8 +58,8 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 
 | Model | Execution | Role | Status | Key Metrics |
 |---|---|---|---|---|
-| `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **MEASURED** | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; max ctx 16k |
-| `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **FAIL** | TPS 19.47; TTFT p50/p95 781/3495 ms; PP/TG 124/26 t/s; max ctx 16k |
+| `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **FAIL** (translation) | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) |
+| `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **FAIL** (translation) | TPS 19.47; TTFT p50/p95 781/3495 ms; GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); translation FAIL (en→zh chrF 33/34.8 < 40) |
 | `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max ctx 32k |
 | `llava-7b-intel-win` | CPU (Ollama) | vlm_baseline | **FAIL** | TPS 10.02; TTFT p50 703 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | embedding | **PASS** | hit@1 1.000; nDCG 1.000; p50 617.5 ms |
@@ -76,12 +76,13 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 ## Known Limitations
 
-- **general_ability BLOCKED** — `datasets` library not installed on target machine; general_ability and conditioned dimensions cannot run until resolved.
-- **conditioned BLOCKED** — Same root cause as general_ability.
+- **qwen2.5-3b translation FAIL** — en→zh chrF 33.0/34.8 < 40.0 threshold; term-match 64/74% < 80%. 3B CPU model insufficient for Chinese translation; use 7B or cloud backend for translation tasks.
+- **conditioned BLOCKED** — Requires running from controller with HF cache; not yet measured.
 - **Intel DirectML OCR not usable** — `rapidocr-intel-directml` CER 202.35%; FP16 precision issue on Intel iGPU with DirectML. Use OpenVINO path.
 - **No qualified VLM** — `llava-7b-intel-win` accuracy FAIL.
 - **LLM TTFT high (7B)** — `qwen2.5-7b-intel-win` p50 TTFT 4820 ms is driven by CPU-only prefill; prefer `qwen2.5-3b-intel-win` for interactive use.
 - **iGPU LLM not tested** — Intel iGPU LLM acceleration (via OpenVINO or IPEX) is not yet configured.
+- **general_ability unblocked 2026-06-21** — Resolved by running inference from controller over HTTP with local HF cache. qwen2.5-3b GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); qwen2.5-7b GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767).
 
 ---
 
@@ -90,6 +91,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 | Date | Event |
 |---|---|
 | 2026-06-19 | Initial full calibration: all 10 models measured; CPU LLM, OpenVINO OCR, DirectML ASR calibrated; general_ability/conditioned BLOCKED pending datasets install |
+| 2026-06-21 | general_ability unblocked (HTTP inference from controller + local HF cache); qwen2.5-3b: GSM8K 0.74/MMLU 0.53/HellaSwag 0.76 PASS; translation FAIL (en→zh chrF 33-34.8 < 40); qwen2.5-7b: GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) |
 
 ---
 
@@ -135,5 +137,6 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 ### 已知局限
 
 - **Intel DirectML OCR 不可用** — CER 202.35%，改用 OpenVINO 路径。
-- **general_ability BLOCKED** — 目标机未安装 `datasets` 库。
+- **general_ability 已解锁（2026-06-21）** — qwen2.5-3b GA PASS（GSM8K 0.74/MMLU 0.53/HellaSwag 0.76）；qwen2.5-7b GA PASS（GSM8K 0.833/MMLU 0.719/HellaSwag 0.767）；两者翻译维度均 FAIL。
+- **qwen2.5-3b 翻译 FAIL** — en→zh chrF 33.0/34.8 < 40.0，3B 模型中文翻译不足；翻译任务建议用 7B 或云端。
 - **iGPU LLM 未测试** — Intel iGPU LLM 加速尚未配置。

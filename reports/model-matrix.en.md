@@ -2,7 +2,7 @@
 
 # Full Model Matrix — Results and Selection
 
-> Last calibrated: 2026-06-20. This file is updated in place. RK3588 section revised 2026-06-20: RK1822 PCIe NPU service distinguished from RK3588 RKNPU3.
+> Last calibrated: 2026-06-21. This file is updated in place. 2026-06-21: Intel 7b GA PASS + translation FAIL calibrated; K3 3b full calibration complete (translation PASS + GA PASS).
 
 
 
@@ -48,13 +48,13 @@
 | bge-reranker-base-amd-win | amd-win-x86 | local_reranker | reranker_amd_win_cross_encoder | rerank | PASS | rerank:PASS | rerank nDCG 1.000, MRR 1.000, p50 78.0 ms | output/reports/amd-win-x86/reports/bge-reranker-base-amd-win_20260619_191441.json |
 | bge-reranker-v2-m3-amd-win | amd-win-x86 | local_reranker | reranker_amd_win_cross_encoder_stronger | rerank | PASS | rerank:PASS | rerank nDCG 1.000, MRR 1.000, p50 289.0 ms | output/reports/amd-win-x86/reports/bge-reranker-v2-m3-amd-win_20260619_191544.json |
 | qwen2.5-14b-amd-win | amd-win-x86 | ollama | llm_amd_win_parameter_uplift | translation | MEASURED | model_limits:MEASURED | PP/TG 94.25/9.14 tok/s; TPS 7.67; TTFT p50/p95 8273.5/14791.7 ms; limit concurrency c8 8.95 tok/s; max context 16k | output/reports/amd-win-x86/reports/ollama_model_limits_amd_qwen25_14b.json |
-| qwen3-vl-2b-rk3588 | rk3588-linux | generic | llm_npu_primary | - | PASS | translation:PASS | TTFT p50/p95 144.6/167.8 ms; TPS 109 t/s; translation BLEU 19.8, chrF 35.5 | reports/rk3588.en.md |
+| qwen3-vl-2b-rk1820 | rk182x-linux | generic | llm_npu_primary | - | PASS | translation:PASS | TTFT p50/p95 647/822 ms (VL server, 3-seed, 2026-06-20); TPS 99.8±15.5 t/s; translation PASS (BLEU≥14, chrF≥26); CER corrected: runs on RK1820 PCIe NPU, not RK3588 | reports/rk3588.en.md |
 | minicpm-embed-rk1822 | rk182x-linux | generic | embedding_npu | embedding | PASS | embedding:PASS | hit@1 1.000, nDCG 1.000, MRR 1.000, p50 143 ms | reports/rk3588.en.md |
 | qwen2.5-0.5b-rk3588 | rk3588-linux | generic |  | - | REGISTERED | - | - | - |
 | minicpm-v-rk3588 | rk3588-linux | generic |  | - | REGISTERED | - | - | - |
 | llama3.2-1b-intel-win | intel-win-x86 | ollama | llm_intel_win_nano | translation | FAIL | conversation_drift:FAIL, general_ability:BLOCKED, model_limits:MEASURED, translation:FAIL | PP/TG 130.29/34.78 tok/s; TPS 25.26; TTFT p50/p95 875.0/3307.7 ms; conversation_drift FAIL; general_ability BLOCKED; limit concurrency c32 32.52 tok/s; max context 32k; translation FAIL | output/reports/intel-win-x86/reports/ollama_model_limits_intel_llama32_1b.json |
-| qwen2.5-3b-intel-win | intel-win-x86 | ollama | llm_intel_win_baseline | translation | FAIL | conditioned:BLOCKED, conversation_drift:WARN, general_ability:BLOCKED, scenarios:FAIL, translation:FAIL | PP/TG 124.42/26.21 tok/s; TPS 19.47; TTFT p50/p95 781.0/3495.4 ms; concurrency c8 24.68 tok/s; conditioned BLOCKED; conversation_drift WARN; general_ability BLOCKED; scenarios FAIL; stability drift 1.00; translation FAIL | output/reports/intel-win-x86/reports/qwen2.5-3b-intel-win_scenarios-20260619_20260619_002817.json |
-| qwen2.5-7b-intel-win | intel-win-x86 | ollama | llm_intel_win_parameter_uplift | translation | MEASURED | model_limits:MEASURED | PP/TG 112.20/9.10 tok/s; TPS 8.25; TTFT p50/p95 4820.0/8440.7 ms; limit concurrency c16 9.54 tok/s; max context 16k | output/reports/intel-win-x86/reports/ollama_model_limits_intel_qwen25_7b.json |
+| qwen2.5-3b-intel-win | intel-win-x86 | ollama | llm_intel_win_baseline | translation | FAIL | conditioned:BLOCKED, conversation_drift:WARN, general_ability:PASS, scenarios:FAIL, translation:FAIL | PP/TG 124.42/26.21 tok/s; TPS 19.47; TTFT p50/p95 781.0/3495.4 ms; concurrency c8 24.68 tok/s; conditioned BLOCKED; conversation_drift WARN; general_ability PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76, 2026-06-21); scenarios FAIL; stability drift 1.00; translation FAIL (en→zh chrF 33-34.8 < 40) | output/reports/intel-win-x86/reports/qwen2.5-3b-intel-win_scenarios-20260619_20260619_002817.json |
+| qwen2.5-7b-intel-win | intel-win-x86 | ollama | llm_intel_win_parameter_uplift | translation | FAIL | general_ability:PASS, model_limits:MEASURED, translation:FAIL | PP/TG 112.20/9.10 tok/s; TPS 8.25; TTFT p50/p95 4820.0/8440.7 ms; limit concurrency c16 9.54 tok/s; max context 16k; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) | output/reports/qwen2.5-7b-intel-win_20260621_030322.md |
 | qwen3-embedding-0.6b-intel-win | intel-win-x86 | ollama | embedding_intel_win | embedding | PASS | embedding:PASS | embed hit@1 1.000, nDCG 1.000, p50 617.5 ms | output/reports/intel-win-x86/reports/qwen3-embedding-0.6b-intel-win_20260618_221933.json |
 | llava-7b-intel-win | intel-win-x86 | ollama | vlm_intel_win_baseline | vlm | FAIL | accuracy:FAIL | PP/TG 1073.89/10.56 tok/s; TPS 10.02; TTFT p50/p95 703.0/703.0 ms | output/reports/intel-win-x86/reports/llava-7b-intel-win_20260618_174001.json |
 | bge-reranker-base-intel-win | intel-win-x86 | local_reranker | reranker_intel_win_cross_encoder | rerank | PASS | rerank:PASS | rerank nDCG 1.000, MRR 1.000, p50 148.5 ms | output/reports/intel-win-x86/reports/bge-reranker-base-intel-win_20260619_191441.json |
@@ -62,6 +62,7 @@
 | llama3.2-3b-intel-linux | intel-linux | ollama | llm_intel_linux_baseline | translation | REGISTERED | - | - | - |
 | qwen2.5-7b-intel-linux | intel-linux | ollama | llm_intel_linux_primary | translation | REGISTERED | - | - | - |
 | qwen3-embedding-0.6b-intel-linux | intel-linux | ollama | embedding_intel_linux | embedding | REGISTERED | - | - | - |
+| qwen2.5-3b-k3-riscv | k3-riscv | generic | llm_k3_primary | translation | PASS | general_ability:PASS, translation:PASS | TTFT p50/p95 184/864 ms; PP 572 t/s; TG 7.0 t/s; GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4, term 74%/57%) | output/reports/qwen2.5-3b-k3-riscv_20260621_025208.md |
 | qwen2.5-0.5b-k3-riscv | k3-riscv | generic |  | - | REGISTERED | - | - | - |
 | llama3.2-1b-k3-riscv | k3-riscv | generic |  | - | REGISTERED | - | - | - |
 

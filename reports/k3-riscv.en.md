@@ -3,7 +3,7 @@
 **Platform:** k3-riscv | SpacemiT K3, 8×X100 RISC-V RVV, A100 NPU + IME2, 16 GB LPDDR5
 **Primary framework:** llama.cpp with IME2 acceleration (llama-server port 8080)
 **Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)
-**Last calibrated:** 2026-06-20. This file is updated in place.
+**Last calibrated:** 2026-06-21. This file is updated in place.
 
 ---
 
@@ -75,9 +75,28 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 ---
 
-## LLM Benchmark Results (qwen2.5-0.5b-k3-riscv)
+## LLM Benchmark Results
 
-> Note: 0.5B is the only calibrated LLM variant on-device. The recommended 7B model is PENDING-VERIFY.
+### qwen2.5-3b-k3-riscv (2026-06-21 — Clean Calibration Run)
+
+**llama-server v8355 on port 11434, Qwen2.5-3B-Instruct Q4_K_M via Ollama K3_LLM_BASE_URL**
+
+| Metric | Measured | Threshold | Status |
+|---|---|---|---|
+| TTFT warm P50 | 184 ms (177/178/184/197 ms) | ≤ 300 ms | **PASS** |
+| TTFT cold (1st call) | 1031 ms | ≤ 1200 ms | **PASS** |
+| Prefill (PP) | 572 t/s mean (545/571/602) | ≥ 300 t/s | **PASS** |
+| Decode (TG) | 7.1 t/s mean (7.0/7.2/7.0) | ≥ 4 t/s | **PASS** |
+| Throughput | ~4–7 t/s | ≥ 2 t/s | **PASS** |
+| Translation zh→en | chrF 57.5 (flores) / 70.4 (term, 74% term-match) | BLEU≥14 / chrF≥30 | **PASS** |
+| Translation en→zh | chrF 33.6 (flores) / 32.4 (term, 57% term-match) | chrF≥30 / term≥50% | **PASS** |
+| General ability (GSM8K/MMLU/HellaSwag) | 0.550 / 0.500 / 0.750 (n=20 each) | ≥40% each | **PASS** |
+
+> Note: Previous calibration showed PP≈361 t/s and TG≈4.4 t/s due to duplicate background processes contaminating measurements. Clean-run values (PP≈572, TG≈7.1) are the authoritative baseline.
+
+### qwen2.5-0.5b-k3-riscv (2026-06-20 — Reference)
+
+> Note: 0.5B is the smaller variant. The 3B model is now the primary calibrated choice.
 
 | Metric | Measured | Threshold | Status |
 |---|---|---|---|
@@ -87,7 +106,17 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 | general_ability (gsm8k) | 66% | — | PASS |
 | translation | — | — | **PENDING-VERIFY** |
 
-### Calibrated Thresholds (qwen2.5-0.5b-k3-riscv)
+### Calibrated Thresholds (qwen2.5-3b-k3-riscv) — 2026-06-21
+
+| Metric | Threshold | Source |
+|---|---|---|
+| TTFT p50 | ≤ 300 ms | warm P50=184ms × 1.6x |
+| TTFT p95 | ≤ 1200 ms | cold first-call 1031ms × 1.16x |
+| PP t/s | ≥ 300 t/s | measured min 545 t/s |
+| TG t/s | ≥ 4 t/s | measured min 7.0 t/s |
+| Throughput | ≥ 2 t/s | TG floor with margin |
+
+### Calibrated Thresholds (qwen2.5-0.5b-k3-riscv) — 2026-06-20
 
 | Metric | Threshold |
 |---|---|
@@ -121,8 +150,9 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 | Date | Event |
 |---|---|
-| 2026-06-20 | Initial calibration: TTFT, throughput, general_ability (gsm8k) measured; thresholds set from E2E device runs |
+| 2026-06-20 | Initial calibration: TTFT, throughput, general_ability (gsm8k) measured; thresholds set from E2E device runs (qwen2.5-0.5b) |
 | 2026-06-20 | Expanded: K3 model selection from attune-k3 reference (bottom models verified, 7B LLM dual-framework decision, memory budget analysis) |
+| 2026-06-21 | Added qwen2.5-3b-k3-riscv: new llama-server port 11434 (IP 215); clean single-process run: PP≈572 t/s (545/571/602), TG≈7.1 t/s (7.0/7.2/7.0), TTFT warm P50≈184ms (cold 1031ms); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750) |
 
 ---
 
@@ -156,7 +186,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 | 候选 | q4 内存 | 状态 |
 |---|---|---|
 | **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（待 K3 实测 t/s）|
-| Qwen2.5-3B-Instruct q4（兜底） | ~2.2 GB | 参考 1.5B IME2 实测 27.73 t/s |
+| Qwen2.5-3B-Instruct q4（兜底） | ~2.2 GB | **已验证 2026-06-21**：TTFT warm P50≈184ms，PP≈572 t/s，TG≈7.1 t/s；翻译 PASS；GA PASS（GSM8K 0.55/MMLU 0.50/HellaSwag 0.75） |
 | Qwen3-30B-A3B q4（MoE） | ~16–18 GB | ❌ 超 16 GB，留 32G 设备 |
 
 **本地框架**：llama.cpp + IME2（最优，RVV + INT8/INT4 加速）。**云端**：deepseek-v4（默认关闭，隐私优先）。

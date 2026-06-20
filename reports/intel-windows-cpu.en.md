@@ -34,13 +34,24 @@ ollama ps
 
 | Model | TPS | TTFT p50 | TTFT p95 | PP t/s | TG t/s | Max ctx | Status |
 |---|---|---|---|---|---|---|---|
-| `qwen2.5-7b-intel-win` | 8.25 | 4820 ms | 8441 ms | 112 | 9 | 16k | MEASURED |
-| `qwen2.5-3b-intel-win` | 19.47 | 781 ms | 3495 ms | 124 | 26 | 16k | FAIL (quality) |
+| `qwen2.5-7b-intel-win` | 8.25 | 4820 ms | 8441 ms | 112 | 9 | 16k | FAIL (translation); GA PASS |
+| `qwen2.5-3b-intel-win` | 19.47 | 781 ms | 3495 ms | 124 | 26 | 16k | FAIL (translation); GA PASS |
 | `llama3.2-1b-intel-win` | 25.26 | 875 ms | 3308 ms | 130 | 35 | 32k | FAIL (quality) |
 | `llava-7b-intel-win` | 10.02 | 703 ms | 703 ms | 1074 | 11 | — | FAIL (accuracy) |
 
 **MEASURED** = latency and throughput collected; quality dimensions not fully qualified.  
-**FAIL (quality)** = perf metrics valid; quality gates (translation / general_ability) not passed.
+**FAIL (translation)** = perf metrics valid; general_ability PASS; translation gates not passed.
+
+### Quality Dimensions (2026-06-21)
+
+| Model | GSM8K | MMLU | HellaSwag | GA Verdict | Translation |
+|---|---|---|---|---|---|
+| `qwen2.5-3b-intel-win` | 0.74 (n=100) | 0.53 (n=100) | 0.76 (n=100) | **PASS** | **FAIL** (en→zh chrF 33/34.8 < 40) |
+| `qwen2.5-7b-intel-win` | 0.833 (n=30) | 0.719 (n=32) | 0.767 (n=30) | **PASS** | **FAIL** (zh→en term 79%<80%; en→zh chrF 36.9<40) |
+
+**General_ability unblocked:** Previously BLOCKED due to `datasets` not installed on target machine. Resolved by running inference via HTTP from controller with local HF cache (`HF_DATASETS_CACHE=/data/ai-models/huggingface/datasets`). The harness sends chat completions to the Intel machine but evaluates answers locally.
+
+**Translation note:** qwen2.5-3b en→zh chrF (33.0/34.8) falls below the 40.0 threshold. 3B CPU models have limited Chinese generation quality. zh→en translation (chrF 57.0) passes. For Chinese output use qwen2.5-7b or cloud backend.
 
 ### TTFT Context (Intel CPU vs AMD iGPU)
 
@@ -95,7 +106,7 @@ consistent with the Intel platform being at a lower CPU frequency tier.
 
 | 模型 | TPS | TTFT p50 | 状态 |
 |---|---|---|---|
-| qwen2.5-7b（LLM） | 8.25 | 4820 ms | MEASURED（延迟偏高） |
+| qwen2.5-7b（LLM） | 8.25 | 4820 ms | FAIL 翻译；GA PASS（GSM8K 0.833/MMLU 0.719/HellaSwag 0.767） |
 | qwen2.5-3b（LLM） | 19.47 | 781 ms | FAIL（质量维度） |
 | llama3.2-1b（LLM） | 25.26 | 875 ms | FAIL（质量维度） |
 | qwen3-embedding-0.6b | — | 617.5 ms | **PASS** |
