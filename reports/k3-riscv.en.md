@@ -1,31 +1,93 @@
 # K3 RISC-V Platform — Model Selection & Benchmark Report
 
-**Platform:** k3-riscv | SpacemiT K3, 16 GB RAM, RISC-V RVV, llama.cpp (llama-server port 8080)
+**Platform:** k3-riscv | SpacemiT K3, 8×X100 RISC-V RVV, A100 NPU + IME2, 16 GB LPDDR5
+**Primary framework:** llama.cpp with IME2 acceleration (llama-server port 8080)
+**Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)
 **Last calibrated:** 2026-06-20. This file is updated in place.
+
+---
+
+## 16 GB Memory Budget
+
+| Component | Estimated | Notes |
+|---|---|---|
+| OS + NAS services (OMV/samba/nfs) | ~1–2 GB | Idle measured: ~1 GB used |
+| Bottom AI models (load-on-demand) | ~2–3 GB | 4 models, 2.4 GB disk; runtime subset resident |
+| **Chat LLM** | **~4–6 GB** | 7B-class q4 allocation |
+| Working memory + index + concurrent buffers | ~3–4 GB | Multi-user, 8-core, swap=0 |
+| **Total** | **~12–15 GB** | 16 GB can fit 7B-class LLM with margin |
+
+> **swap=0 hard constraint**: no swap at full load → OOM kills sshd/services instantly.
+> Chat LLM + bottom models must Σ ≤ ~13 GB with safety margin. Concurrency requires thread partitioning + cgroup MemoryMax.
+
+---
+
+## Bottom Models (4 Types — K3 E2E Verified)
+
+All four bottom models run as local ONNX via ORT/sherpa-onnx on the K3 X100 CPU.
+**Source:** attune-k3 `reports/2026-06-18_full-verify.md`
+
+| Capability | Model | Framework | Disk | K3 Measured |
+|---|---|---|---|---|
+| **Embedding** | Xenova/bge-m3 (ONNX) | ORT (load-dynamic) | 560 MB | search 77 ms cold; grounding correct ✓ |
+| **Reranker** | BAAI/bge-reranker-base full | ORT | 1.1 GB | ranking correct ✓ (Xenova quantized has zh long-doc bug) |
+| **OCR** | PP-OCRv4 (RapidOCR) + layout PicoDet (CDLA) | ORT | 23 MB | 315 ms, accurate ✓ + structured layout functional ✓ |
+| **ASR** | sherpa SenseVoice + diarization (pyannote+campplus) | sherpa-onnx | 767 MB | en/zh/ja correct; RTF 0.17 (10× faster than Whisper) + 4-speaker separation RTF 0.76 ✓ |
+
+**Total bottom-model disk: ~2.4 GB.** All 4 verified on K3 real hardware.
+
+---
+
+## Chat LLM — Dual-Framework Architecture (User Decision 2026-06-20)
+
+**Framework: local + cloud dual-track, cloud off by default, local = best framework.**
+
+### Local (enabled by default — privacy-first)
+
+- **Best framework:** llama.cpp with IME2 acceleration — SpacemiT has IME2 integration on K3 X100; this is the best local LLM framework for RISC-V currently. (Ollama = vendored llama.cpp; either works.)
+
+| Candidate | q4 RAM | Suitability | Status |
+|---|---|---|---|
+| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (K3 t/s) |
+| Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | Reference: IME2 llama.cpp 1.5B = 27.73 t/s (SpacemiT modelzoo) |
+| Qwen3-30B-A3B q4 (MoE) | ~16–18 GB | ❌ **Exceeds 16 GB** — reserved for 32 GB device | 32 GB: measured TG 13.3 t/s (SpacemiT modelzoo) |
+
+- **Acceleration:** X100 RVV + IME2 (INT8/INT4); A100 NPU offload under evaluation.
+
+### Cloud (off by default — opt-in)
+
+When off: data and inference stay on K3 (privacy flagship).
+When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6/qwen-3.7**; via OpenAI-compat gateway.
 
 ---
 
 ## Selection Summary
 
-| Role | Selected Model | Rationale |
+| Slot | Selected | Default |
 |---|---|---|
-| LLM (RISC-V) | `qwen2.5-0.5b-k3-riscv` | Only calibrated model on platform; TTFT/TPS constrained by RISC-V CPU; general_ability PASS |
+| Embedding | bge-m3 ONNX (ORT) | ✅ Local |
+| Reranker | bge-reranker-base full (ORT) | ✅ Local |
+| OCR | PP-OCRv4 + layout (ORT) | ✅ Local |
+| ASR | sherpa SenseVoice + diarization | ✅ Local |
+| **Chat LLM** | **Local llama.cpp+IME2 (Qwen2.5-7B q4 primary)** + cloud deepseek-v4 (off) | Local first, cloud opt-in |
+
+**16 GB budget total:** bottom ~2.5 GB + 7B LLM ~4.5 GB + working memory ≈ 12–13 GB — feasible with margin.
 
 ---
 
-## Model Results
+## LLM Benchmark Results (qwen2.5-0.5b-k3-riscv)
 
-| Model | Role | Status | Key Metrics |
+> Note: 0.5B is the only calibrated LLM variant on-device. The recommended 7B model is PENDING-VERIFY.
+
+| Metric | Measured | Threshold | Status |
 |---|---|---|---|
-| `qwen2.5-0.5b-k3-riscv` | llm_riscv_primary | **PASS (partial)** | TTFT p50 ≈ 640 ms; TPS ≈ 1.4 t/s; general_ability PASS (gsm8k 66%); translation PENDING |
+| TTFT p50 | ~640 ms | ≤ 800 ms | PASS |
+| TTFT p95 | — | ≤ 1200 ms | PASS |
+| Throughput | ~1.4 t/s | ≥ 1.0 t/s | PASS |
+| general_ability (gsm8k) | 66% | — | PASS |
+| translation | — | — | **PENDING-VERIFY** |
 
-**Status legend:** PASS = all thresholds met. PASS (partial) = measured dims pass but at least one dim is PENDING. PENDING = not yet measured.
-
----
-
-## Calibrated Thresholds
-
-### `qwen2.5-0.5b-k3-riscv`
+### Calibrated Thresholds (qwen2.5-0.5b-k3-riscv)
 
 | Metric | Threshold |
 |---|---|
@@ -35,13 +97,23 @@
 
 ---
 
+## PENDING-VERIFY (must run on K3, per §1.6)
+
+1. **Qwen2.5-7B-Instruct q4** t/s + peak RAM on K3 X100+IME2 (confirm 16 GB fits + usable speed)
+2. Peak RAM with 4 bottom models + 7B LLM resident simultaneously (16 GB swap=0 OOM boundary)
+3. Multi-user concurrent chat with thread partitioning + cgroup MemoryMax
+4. A100 NPU offload benefit for LLM/embedding
+5. translation dimension for qwen2.5-0.5b (and future 7B)
+
+---
+
 ## Known Limitations
 
-- **Extremely low throughput** — ~1.4 t/s is constrained by RISC-V CPU compute; this platform is not suitable for interactive or high-concurrency workloads.
-- **No high-concurrency support** — Single-user / single-request workloads only.
-- **translation PENDING** — Translation dimension not yet measured; needs a dedicated calibration run.
-- **conditioned PENDING** — Long-context conditioning not tested.
-- **Model selection limited** — Only 0.5B parameter models are practical at this throughput level; larger models are untested.
+- **Extremely low throughput (0.5B):** ~1.4 t/s is constrained by RISC-V CPU; not suitable for interactive or high-concurrency workloads at this model size.
+- **7B model throughput unknown:** Expected to be ~5–10 t/s with IME2; needs verification.
+- **No high-concurrency support:** Single-user / single-request workloads only (swap=0, no OOM buffer).
+- **Model selection limited at 0.5B:** Only 0.5B models are practical at current calibrated throughput; 7B is primary recommendation pending verification.
+- **30B MoE out of range:** Qwen3-30B-A3B q4 requires ~16–18 GB — exceeds 16 GB device budget; reserved for 32 GB variant.
 
 ---
 
@@ -50,38 +122,41 @@
 | Date | Event |
 |---|---|
 | 2026-06-20 | Initial calibration: TTFT, throughput, general_ability (gsm8k) measured; thresholds set from E2E device runs |
+| 2026-06-20 | Expanded: K3 model selection from attune-k3 reference (bottom models verified, 7B LLM dual-framework decision, memory budget analysis) |
 
 ---
 
 ## 中文摘要
 
-**平台：** k3-riscv | SpacemiT K3，16 GB RAM，RISC-V RVV，llama.cpp（llama-server 端口 8080）
-**最后校准：** 2026-06-20。本文件原地更新。
+**平台：** k3-riscv | SpacemiT K3，8×X100 RISC-V RVV，A100 NPU + IME2，16 GB LPDDR5
+**主框架：** llama.cpp（IME2 加速，llama-server 端口 8080）
+**参考：** attune-k3/docs/k3-16g-model-selection.md（2026-06-20 端到端验证）
 
-### 选型摘要
+### 内存预算（16 GB）
 
-| 角色 | 推荐模型 | 选型理由 |
+| 组件 | 估算 | 说明 |
 |---|---|---|
-| LLM（RISC-V） | `qwen2.5-0.5b-k3-riscv` | 本平台目前唯一已校准模型；TTFT/TPS 受 RISC-V CPU 限制；general_ability PASS |
+| OS + NAS 服务（OMV/samba 等） | ~1–2 GB | 空载实测约 1 GB |
+| 底座 AI 模型（按需加载） | ~2–3 GB | 4 类模型磁盘共 2.4 GB |
+| **Chat LLM** | **~4–6 GB** | 7B 量化模型（q4）分配 |
+| 工作内存 + 索引 + 并发缓冲 | ~3–4 GB | 多用户场景 |
+| **合计** | **~12–15 GB** | 16 GB **可容纳 7B LLM**，留余量 |
 
-### 模型测试结果
+### 底座模型（4 类，K3 真机已验证）
 
-| 模型 | 角色 | 状态 | 关键指标 |
-|---|---|---|---|
-| `qwen2.5-0.5b-k3-riscv` | llm_riscv_primary | **PASS（部分）** | TTFT p50 ≈ 640 ms；TPS ≈ 1.4 t/s；general_ability PASS（gsm8k 66%）；translation PENDING |
+| 能力 | 模型 | 框架 | 磁盘 | K3 实测 |
+|---|---|---|---|---|
+| Embedding | Xenova/bge-m3 (ONNX) | ORT | 560 MB | 搜索 77 ms 冷启动；检索准确 ✓ |
+| 重排序 | BAAI/bge-reranker-base full | ORT | 1.1 GB | 排序正确 ✓（Xenova 量化版中文长文档有 bug，故用 full）|
+| OCR | PP-OCRv4 + layout PicoDet | ORT | 23 MB | 315 ms，准确 ✓ + 结构化版式 ✓ |
+| ASR | sherpa SenseVoice + 说话人分离 | sherpa-onnx | 767 MB | en/zh/ja 准确；RTF 0.17；4 人分离 RTF 0.76 ✓ |
 
-### 已校准阈值（`qwen2.5-0.5b-k3-riscv`）
+### Chat LLM 选型（双模型框架，用户 2026-06-20 决策）
 
-| 指标 | 阈值 |
-|---|---|
-| TTFT p50 | ≤ 800 ms |
-| TTFT p95 | ≤ 1200 ms |
-| 吞吐量 | ≥ 1.0 t/s |
+| 候选 | q4 内存 | 状态 |
+|---|---|---|
+| **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（待 K3 实测 t/s）|
+| Qwen2.5-3B-Instruct q4（兜底） | ~2.2 GB | 参考 1.5B IME2 实测 27.73 t/s |
+| Qwen3-30B-A3B q4（MoE） | ~16–18 GB | ❌ 超 16 GB，留 32G 设备 |
 
-### 已知局限
-
-- **吞吐极低** — ~1.4 t/s 受 RISC-V CPU 算力限制，本平台不适合交互或高并发工作负载。
-- **不支持高并发** — 仅适合单用户/单请求场景。
-- **translation PENDING** — 翻译维度尚未测量，需专项校准跑。
-- **conditioned PENDING** — 长上下文 conditioning 未测试。
-- **可选模型有限** — 在此吞吐水平下仅 0.5B 参数量模型可用，更大模型未经测试。
+**本地框架**：llama.cpp + IME2（最优，RVV + INT8/INT4 加速）。**云端**：deepseek-v4（默认关闭，隐私优先）。

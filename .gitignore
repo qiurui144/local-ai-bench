@@ -58,6 +58,9 @@ reports/runs/
 # Local AI-session config — machine-specific, never commit
 .claude/
 
+# Project AI instructions — machine-specific paths (HDD symlinks, device IPs), never commit
+CLAUDE.md
+
 # Intermediate process outputs — NOT committed.
 # Only fixed-name landing reports (reports/{platform}.{en,zh}.md + model-matrix.*) are committed.
 # Date-stamped files are local-only audit/health/coverage records.
@@ -77,3 +80,4 @@ output/reports/
 # Synthetic (renderer-generated) scenario screenshots — no PII, committed
 !fixtures/scenarios/
 !fixtures/scenarios/**/*.png
+drivers

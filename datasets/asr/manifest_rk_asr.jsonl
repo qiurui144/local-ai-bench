@@ -1,0 +1,5 @@
+{"audio": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/zh.wav", "text": "开放时间早上9点至下午5点", "duration": 5.59, "uid": "zh_test_1", "source": "sherpa-onnx-test"}
+{"audio": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/en.wav", "text": "The tribal chief then called for the boy and presented him with fifty pieces of gold.", "duration": 4.8, "uid": "en_test_1", "source": "sherpa-onnx-test"}
+{"audio": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/ja.wav", "text": "うちの中学は弁当性で持って行けない場合は50円の学校販売のパンを買う。", "duration": 5.2, "uid": "ja_test_1", "source": "sherpa-onnx-test"}
+{"audio": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/ko.wav", "text": "조금만 생각을 하면서 살면 훨씬 편할 거야.", "duration": 3.4, "uid": "ko_test_1", "source": "sherpa-onnx-test"}
+{"audio": "models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/test_wavs/yue.wav", "text": "呢幾個字都表達唔到我想講嘅意思。", "duration": 3.2, "uid": "yue_test_1", "source": "sherpa-onnx-test"}

@@ -37,6 +37,32 @@ _DEFAULT_THRESHOLDS = {
 }
 
 
+def _http_transcriber(base_url: str) -> Transcriber:
+    """HTTP transcriber: POST raw WAV to <base_url>/asr/transcribe."""
+    import httpx
+
+    url = base_url.rstrip("/")
+    # Strip /v1 suffix — rk-asr endpoint is at /asr/transcribe, not /v1/asr/...
+    if url.endswith("/v1"):
+        url = url[:-3]
+    endpoint = f"{url}/asr/transcribe"
+
+    def _transcribe(path: Path) -> str:
+        with open(path, "rb") as f:
+            data = f.read()
+        resp = httpx.post(
+            endpoint,
+            content=data,
+            headers={"Content-Type": "audio/wav"},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        body = resp.json()
+        return body.get("result", "")
+
+    return _transcribe
+
+
 def _try_sherpa_transcriber(model_dir: Path | str | None) -> Optional[Transcriber]:
     """Build a sherpa-onnx SenseVoice transcriber if the dep + model exist."""
     if not model_dir:
@@ -91,10 +117,23 @@ def run_asr(
                 "reason": "no dataset (manifest missing or empty)",
                 "verdict": "SKIP"}
 
-    transcriber = transcribe_fn or _try_sherpa_transcriber(asr_model_dir)
+    # HTTP backend: if base_url is configured, use remote HTTP transcription
+    http_base = getattr(model_cfg, "base_url", None)
+    transcriber = (
+        transcribe_fn
+        or (
+            _http_transcriber(http_base)
+            if (http_base and (
+                getattr(model_cfg, "task_type", None) == "asr"
+                or "asr" in (getattr(model_cfg, "capabilities", ()) or ())
+            ))
+            else None
+        )
+        or _try_sherpa_transcriber(asr_model_dir)
+    )
     if transcriber is None:
         return {"benchmark": "asr", "model": model_cfg.name, "status": "blocked",
-                "reason": "no asr backend (sherpa-onnx + model.onnx/tokens.txt required)",
+                "reason": "no asr backend (set base_url_env for HTTP or provide sherpa-onnx model)",
                 "num_samples": len(samples), "verdict": "SKIP"}
 
     refs: list[str] = []

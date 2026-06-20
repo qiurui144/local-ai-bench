@@ -676,12 +676,12 @@ models:
       ttft:
         prompt_tokens: 64
         thresholds:
-          p50_ttft_ms_max: 200                        # E2E实测 P50=144.6ms（2026-06-20）；留 1.4× margin
-          p95_ttft_ms_max: 250                        # E2E实测 P95=167.8ms；留 1.5× margin
+          p50_ttft_ms_max: 720                        # E2E实测 P50=647ms（3-seed，2026-06-20，VL server）；1.11× margin
+          p95_ttft_ms_max: 950                        # E2E实测 P95=822ms（3-seed，2026-06-20）；1.16× margin
       throughput:
         output_tokens: 32                             # ctx=768，保守 output
         thresholds:
-          tps_min: 65                                 # E2E实测聚合 109 TPS（2026-06-20）；60% floor
+          tps_min: 80                                 # E2E实测聚合 110.1 TPS（2026-06-20，VL server，seed1）；73% floor
       prefill_decode:
         samples: 2
         thresholds:
@@ -694,7 +694,7 @@ models:
           chrf_min: 26.0                              # E2E实测 en->zh chrF=35.5；73% floor
           term_match_rate_min: 0.50                   # E2E实测 zh->en term=68%；74% floor
       skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
-    notes: "RK1820 PCIe NPU（rkllm3-server port 18001）运行 Qwen3-VL-2B；ctx=768；TTFT+TPS 2026-06-20 E2E校准（P50=144ms，P95=168ms，TPS=109）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达无法下载 MMLU/HellaSwag；GSM8K 参考值 66%（2026-06-19 非正式）"
+    notes: "RK1820 PCIe NPU（VL server：LLM+vision.rknn，ctx=768，port 18001）；TTFT 3-seed P50=647ms/P95=822ms（2026-06-20）；TPS=110.1（2026-06-20，seed1）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达；GSM8K 参考值 66%（2026-06-19 非正式）"
 
   # MiniCPM embedding on port 18080（已运行）
   # 实际运行在 RK3588 内置 RKNPU3（3×2 TOPS）上，不是 RK1820 PCIe NPU
@@ -854,10 +854,10 @@ models:
       asr:
         max_samples: 20
         thresholds:
-          cer_max: 0.15                             # PENDING-VERIFY；参考 SenseVoice CER=7.69%
-          rtf_max: 0.10                             # 实测 RTF 0.040~0.066；留 1.5× margin
+          cer_max: 0.08                             # 校准值：实测 CER=4.73%（5语言/5样本）；2× margin → 8%
+          rtf_max: 0.10                             # 校准值：实测 RTF mean=0.084；阈值 0.10（20% margin）
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, embedding, rerank, ocr, stability, concurrency]
-    notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 RTF=0.040~0.066（2026-06-20）；模型基于 Qwen3；阈值 PENDING-VERIFY"
+    notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 CER=4.73%/RTF_mean=0.084（5语言：zh/en/ja/ko/yue，2026-06-20）；zh CER 高因繁简字集差异；en/ko/yue=0% CER；阈值已校准"
 
   # ═══ Intel Windows（Ollama CPU 模式，x86_64）═══
   # 硬件：Intel CPU（无独显），通过 Ollama CPU 推理
