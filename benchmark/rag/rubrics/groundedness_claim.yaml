@@ -1,0 +1,45 @@
+# Claim-level groundedness rubric.
+#
+# Each atomic claim in the answer is rated independently. Aggregation is
+# across claims, not across answers, so a 10-claim answer with one
+# unsupported claim scores 90% (not "fail").
+
+per_claim_scale:
+  supported:
+    description: >
+      The claim is directly entailed by at least one cited evidence chunk.
+      Paraphrasing is allowed; the entailment must be checkable without
+      external knowledge.
+  partially_supported:
+    description: >
+      The claim's main content is supported but with overstatement,
+      missing caveats, or an incorrect quantifier ("always" vs "often").
+    score: 0.5
+  unsupported:
+    description: >
+      The claim cannot be inferred from the cited evidence. Could be
+      true in the world but is not grounded in the retrieved corpus.
+    score: 0.0
+  contradicted:
+    description: >
+      The claim is contradicted by the cited evidence. The most severe
+      groundedness failure.
+    score: -1.0  # treated as critical fail in aggregation
+
+aggregation:
+  mean_score:
+    formula: "mean of per-claim scores"
+    pass_threshold: 0.90
+  strict_faithfulness:
+    formula: "1.0 if all claims supported, else 0.0"
+    pass_threshold: 1.0  # binary
+  critical_fail_count:
+    formula: "count of contradicted claims"
+    fail_threshold: 1  # any contradiction is a release blocker
+
+reporting:
+  must_include:
+    - mean_score
+    - strict_faithfulness
+    - critical_fail_count
+    - per_claim_breakdown_csv

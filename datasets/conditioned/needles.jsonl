@@ -1,0 +1,8 @@
+{"id": "task-10", "role": "task", "depth": 0.10, "fact": "另查明,虚构编号Z-301的备案材料共有53页。", "question": "虚构编号Z-301的备案材料共有多少页?", "answer": "53"}
+{"id": "task-30", "role": "task", "depth": 0.30, "fact": "另查明,虚构仓库W-9当日入库货物为286箱。", "question": "虚构仓库W-9当日入库货物为多少箱?", "answer": "286"}
+{"id": "task-50", "role": "task", "depth": 0.50, "fact": "另查明,虚构车辆牌照尾号为4719的车共出车11次。", "question": "虚构车辆牌照尾号为4719的车共出车多少次?", "answer": "11"}
+{"id": "task-70", "role": "task", "depth": 0.70, "fact": "另查明,虚构账册G-5记载的往来笔数为67笔。", "question": "虚构账册G-5记载的往来笔数为多少笔?", "answer": "67"}
+{"id": "task-90", "role": "task", "depth": 0.90, "fact": "另查明,虚构站点K-12的巡检周期为7天。", "question": "虚构站点K-12的巡检周期为多少天?", "answer": "7"}
+{"id": "needle-25", "role": "needle", "depth": 0.25, "fact": "另查明,虚构卷宗Z-77存放在第41柜。", "question": "虚构卷宗Z-77存放在第几柜?", "answer": "41"}
+{"id": "needle-50", "role": "needle", "depth": 0.50, "fact": "另查明,虚构账户尾号9923的余额为615元。", "question": "虚构账户尾号9923的余额为多少元?", "answer": "615"}
+{"id": "needle-75", "role": "needle", "depth": 0.75, "fact": "另查明,虚构印章编号S-88的启用年份为1987年。", "question": "虚构印章编号S-88的启用年份是哪一年?", "answer": "1987"}

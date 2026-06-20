@@ -1,0 +1,158 @@
+{
+  "device": "k1-spacemit",
+  "timestamp": "2026-04-14T00:00:00",
+  "system_info": {
+    "device": "k1-spacemit",
+    "arch": "riscv64",
+    "isa": {
+      "has_rvv": true,
+      "rvv_spec_version": "v1.0",
+      "kernel_version": "6.6.63"
+    },
+    "toolchain": {
+      "libc_type": "glibc",
+      "libc_version": "2.39",
+      "ggml_rvv_enabled": true,
+      "ggml_backend": "cpu",
+      "blas_backend": "none"
+    }
+  },
+  "llm": [
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "short",
+      "prefill_tps": 149.82,
+      "decode_tps": 10.84,
+      "ttft_ms": 389.5,
+      "output_tokens": 64
+    },
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "medium",
+      "prefill_tps": 126.42,
+      "decode_tps": 10.25,
+      "ttft_ms": 552.5,
+      "output_tokens": 256
+    },
+    {
+      "model": "qwen2.5:0.5b",
+      "prompt": "long",
+      "prefill_tps": 117.67,
+      "decode_tps": 9.88,
+      "ttft_ms": 687.0,
+      "output_tokens": 512
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "short",
+      "prefill_tps": 23.69,
+      "decode_tps": 4.06,
+      "ttft_ms": 602.2,
+      "output_tokens": 64
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "medium",
+      "prefill_tps": 27.6,
+      "decode_tps": 3.83,
+      "ttft_ms": 1084.3,
+      "output_tokens": 256
+    },
+    {
+      "model": "deepseek-r1:1.5b",
+      "prompt": "long",
+      "prefill_tps": 26.3,
+      "decode_tps": 3.52,
+      "ttft_ms": 1584.6,
+      "output_tokens": 512
+    }
+  ],
+  "embedding": [
+    {
+      "model": "nomic-embed-text",
+      "dims": 768,
+      "throughput_samples_per_s": 2.0,
+      "cross_lingual_sim": 0.3841,
+      "unrelated_sim": 0.4922,
+      "latency_ms": 5001.5
+    },
+    {
+      "model": "bge-m3",
+      "dims": 1024,
+      "throughput_samples_per_s": 0.45,
+      "cross_lingual_sim": 0.7516,
+      "unrelated_sim": 0.3867,
+      "latency_ms": 22139.8
+    }
+  ],
+  "rerank": [
+    {
+      "model": "bge-m3",
+      "ndcg_at_5": 0.8319,
+      "precision_at_3": 1.0,
+      "throughput_pairs_per_s": 0.73,
+      "latency_ms": 11013.5
+    }
+  ],
+  "ocr": {
+    "model": "PP-OCR-v3",
+    "backend": "RapidOCR-onnxruntime",
+    "avg_latency_ms": 7949.1,
+    "throughput_img_per_s": 0.126,
+    "keyword_accuracy": 0.948,
+    "detail": [
+      {
+        "latency_ms": 7186.3,
+        "ocr_text": "SpacemiT K1 RISC-V AI Benchmark Report 2026",
+        "keyword_accuracy": 1.0
+      },
+      {
+        "latency_ms": 8212.5,
+        "ocr_text": "embedding throughput: 2.0 samples/s",
+        "keyword_accuracy": 1.0
+      },
+      {
+        "latency_ms": 8080.1,
+        "ocr_text": "NDCG@5=0.832 bge-m3",
+        "keyword_accuracy": 1.0
+      },
+      {
+        "latency_ms": 8202.8,
+        "ocr_text": "decode speed: 10.8 tok/s TTFT:390ms",
+        "keyword_accuracy": 1.0
+      },
+      {
+        "latency_ms": 8063.6,
+        "ocr_text": "RISC-V RVV1.0 llama.cpp GGML",
+        "keyword_accuracy": 0.0
+      }
+    ],
+    "status": "ok"
+  },
+  "asr": {
+    "model": "whisper-tiny-onnx",
+    "backend": "onnxruntime",
+    "encoder_results": [
+      {
+        "audio_duration_s": 5.0,
+        "encoder_latency_ms": 1741.4,
+        "rtf": 0.3483
+      },
+      {
+        "audio_duration_s": 10.0,
+        "encoder_latency_ms": 1728.5,
+        "rtf": 0.1728
+      },
+      {
+        "audio_duration_s": 15.0,
+        "encoder_latency_ms": 1979.8,
+        "rtf": 0.132
+      }
+    ],
+    "full_inference_rtf": 0.2101,
+    "qwen_postprocess_ms": 15132.8,
+    "qwen_output_preview": "ASR text normalization via Qwen2.5:0.5b",
+    "note": "Whisper-tiny ONNX (FP32) acoustic model + Qwen2.5 LLM post-processing pipeline",
+    "status": "ok"
+  }
+}

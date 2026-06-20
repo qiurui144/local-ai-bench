@@ -1,0 +1,25 @@
+{
+  "device": "k1-spacemit",
+  "timestamp": "2026-04-14T00:00:00",
+  "run_id": "k1-pilot-002",
+  "system_info": {
+    "arch": "riscv64",
+    "hw_label": "",
+    "isa_has_rvv": true
+  },
+  "metrics": {
+    "qwen2.5:0.5b/decode_tps": 10.84,
+    "qwen2.5:0.5b/prefill_tps": 149.82,
+    "qwen2.5:0.5b/ttft_ms": 389.5,
+    "deepseek-r1:1.5b/decode_tps": 4.06,
+    "deepseek-r1:1.5b/prefill_tps": 23.69,
+    "deepseek-r1:1.5b/ttft_ms": 602.2,
+    "nomic-embed-text/embed_throughput": 2.0,
+    "bge-m3/embed_throughput": 0.45,
+    "bge-m3-rerank/ndcg@10": 0.8319,
+    "bge-m3-rerank/accuracy": 1.0,
+    "whisper-tiny-onnx/accuracy": 0.8271999999999999,
+    "ppocr-v3/decode_tps": 12.6,
+    "ppocr-v3/accuracy": 0.948
+  }
+}

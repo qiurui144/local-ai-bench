@@ -1,0 +1,11 @@
+{
+  "anchors": [
+    {"scenario": "wechat_intent", "rubric": "(runtime: wechat_intent JUDGE_RUBRIC)", "case_summary": "期望意图 loan_agreement,实体[张三,5000元]", "model_output": "{\"intent\": \"loan_agreement\", \"entities\": [\"张三\", \"5000元\"], \"summary\": \"张三同意借款5000元\"}", "reference_score": 5},
+    {"scenario": "wechat_intent", "rubric": "(runtime: wechat_intent JUDGE_RUBRIC)", "case_summary": "期望意图 threat,实体[李四]", "model_output": "{\"intent\": \"negotiation\", \"entities\": [], \"summary\": \"双方在聊天\"}", "reference_score": 1},
+    {"scenario": "case_logic", "rubric": "(runtime: case_logic JUDGE_RUBRIC)", "case_summary": "标准矛盾点: fact_mismatch 段[1,2]", "model_output": "{\"consistency\": \"contradictory\", \"findings\": [{\"kind\": \"fact_mismatch\", \"segments\": [1, 2], \"explain\": \"还清与未还矛盾\"}]}", "reference_score": 5},
+    {"scenario": "case_logic", "rubric": "(runtime: case_logic JUDGE_RUBRIC)", "case_summary": "标准矛盾点: time_conflict 段[0,3]", "model_output": "{\"consistency\": \"consistent\", \"findings\": []}", "reference_score": 1},
+    {"scenario": "article_knowledge", "rubric": "(runtime: article_knowledge JUDGE_RUBRIC)", "case_summary": "标准: 声明'每天喝醋可以软化血管、根治高血压'=inaccurate,评级 D", "model_output": "{\"claims\": [{\"claim\": \"每天喝醋可以软化血管、根治高血压\", \"label\": \"inaccurate\"}], \"grade\": \"D\"}", "reference_score": 5},
+    {"scenario": "article_knowledge", "rubric": "(runtime: article_knowledge JUDGE_RUBRIC)", "case_summary": "标准: 声明'每天喝醋可以软化血管、根治高血压'=inaccurate,评级 D", "model_output": "{\"claims\": [{\"claim\": \"每天喝醋可以软化血管、根治高血压\", \"label\": \"accurate\"}], \"grade\": \"A\"}", "reference_score": 1}
+  ],
+  "thresholds": {"l2_judge_mean_min_pass": 3.5, "l2_judge_mean_min_warn": 2.5}
+}

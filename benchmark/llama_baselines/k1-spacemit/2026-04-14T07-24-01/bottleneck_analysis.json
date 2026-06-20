@@ -1,0 +1,165 @@
+{
+  "timestamp": "2026-04-14T08:12:58",
+  "device": "k1-spacemit",
+  "l1_l5_hw": {
+    "arch": "riscv64",
+    "uarch": "spacemit,x60",
+    "cpu_model": "Spacemit(R) X60",
+    "num_cpus": 8,
+    "has_rvv": true,
+    "rvv_exts": [
+      "zve32f",
+      "zve32x",
+      "zve64d",
+      "zve64f",
+      "zve64x"
+    ],
+    "has_ime": true,
+    "has_zvfh": true,
+    "isa_fragment": "rv64imafdcv_zicbom_zicboz_zicntr_zicond_zicsr_zifencei_zihintpause_zihpm_zfh_zfhmin_zca_zcd_zba_zbb_zbc_zbs_zkt_zve32f_z",
+    "vlen_bits": 256,
+    "kernel_version": "6.6.63",
+    "perf_event_paranoid": 1,
+    "huge_pages_total": 0,
+    "mem_total_mb": 15894,
+    "libc": "glibc 2.39",
+    "blas_backend": "openblas",
+    "ggml_rvv_enabled": true,
+    "ggml_backend": "cpu",
+    "spacemit_ime": true,
+    "ollama_path": "/usr/bin/ollama"
+  },
+  "l7_llm": {
+    "short": {
+      "decode_tps": 6.84,
+      "prefill_tps": 114.62,
+      "ttft_ms": 469.0,
+      "eval_count": 64,
+      "prompt_tokens": 36,
+      "pmu": {
+        "ipc": null,
+        "cache_miss_rate": null,
+        "branch_miss_rate": null
+      }
+    },
+    "medium": {
+      "decode_tps": 9.97,
+      "prefill_tps": 395.99,
+      "ttft_ms": 260.9,
+      "eval_count": 256,
+      "prompt_tokens": 46,
+      "pmu": {
+        "ipc": null,
+        "cache_miss_rate": null,
+        "branch_miss_rate": null
+      }
+    },
+    "long": {
+      "decode_tps": 9.18,
+      "prefill_tps": 461.58,
+      "ttft_ms": 263.4,
+      "eval_count": 512,
+      "prompt_tokens": 57,
+      "pmu": {
+        "ipc": null,
+        "cache_miss_rate": null,
+        "branch_miss_rate": null
+      }
+    }
+  },
+  "l7_ctx_scale": {
+    "results": [
+      {
+        "target_ctx": 64,
+        "actual_tokens": 83,
+        "ttft_ms": 270.3,
+        "prefill_tps": 665.1
+      },
+      {
+        "target_ctx": 128,
+        "actual_tokens": 137,
+        "ttft_ms": 269.7,
+        "prefill_tps": 1088.7
+      },
+      {
+        "target_ctx": 256,
+        "actual_tokens": 245,
+        "ttft_ms": 291.2,
+        "prefill_tps": 1868.2
+      },
+      {
+        "target_ctx": 512,
+        "actual_tokens": 460,
+        "ttft_ms": 283.2,
+        "prefill_tps": 3295.1
+      },
+      {
+        "target_ctx": 1024,
+        "actual_tokens": 891,
+        "ttft_ms": 296.1,
+        "prefill_tps": 5707.3
+      },
+      {
+        "target_ctx": 2048,
+        "actual_tokens": 1753,
+        "ttft_ms": 331.9,
+        "prefill_tps": 9189.3
+      }
+    ],
+    "scaling_type": "linear",
+    "knee_ctx": null
+  },
+  "l7_sustained": {
+    "windows": [
+      {
+        "time_s": 15.2,
+        "tps": 8.43
+      },
+      {
+        "time_s": 30.3,
+        "tps": 8.45
+      },
+      {
+        "time_s": 45.3,
+        "tps": 8.55
+      },
+      {
+        "time_s": 59.9,
+        "tps": 8.75
+      },
+      {
+        "time_s": 74.2,
+        "tps": 8.97
+      }
+    ],
+    "tps_first": 8.43,
+    "tps_last": 8.97,
+    "degradation_pct": -6.41
+  },
+  "roofline": [
+    {
+      "model": "Qwen2.5-0.5B",
+      "model_size_gb": 0.281,
+      "theoretical_tps": 91.0,
+      "actual_decode_tps": 6.84,
+      "bandwidth_utilization": 7.5,
+      "ddr_bw_gbps": 25.6
+    },
+    {
+      "model": "DeepSeek-R1-1.5B",
+      "model_size_gb": 0.844,
+      "theoretical_tps": 30.3,
+      "actual_decode_tps": null,
+      "bandwidth_utilization": null,
+      "ddr_bw_gbps": 25.6
+    }
+  ],
+  "bottlenecks": [
+    {
+      "type": "ddr_bandwidth_underutilized",
+      "severity": "info",
+      "evidence": "Qwen2.5-0.5B DDR 利用率=7.5%（理论 91 tok/s，实测 6.84 tok/s）",
+      "fix": "存在非带宽开销（Ollama bridge、attention 计算）；降低量化精度可提高利用率"
+    }
+  ]
+}

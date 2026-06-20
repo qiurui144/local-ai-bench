@@ -1,0 +1,1289 @@
+# Model matrix for VLM + LLM benchmarking across local GPU nodes AND cloud API providers.
+#
+# Two kinds of entries — all live in the same models: list:
+#
+#   Local (vLLM / Ollama)   Cloud API (OpenAI-compatible)
+#   ─────────────────────   ─────────────────────────────
+#   hf_repo (required)      provider: deepseek|dashscope|openai|ollama|generic
+#   port (required)         model_id: <api-catalog-name>   (e.g. "deepseek-chat")
+#   vram_estimate_gb        api_key_env: ENV_VAR_NAME       (key read at runtime, never committed)
+#                           base_url_override: <url>        (optional; wins over provider routing)
+#
+# The harness derives base_url and auth header automatically from these fields.
+# Cloud model keys injected at runtime: export DEEPSEEK_API_KEY=sk-... etc.
+#
+# Default port allocation (local GPU):
+#   8001-8003  VLM (vision tasks)
+#   9001-9003  LLM (text completion / chat)
+
+models:
+  # ═══════════════════ VLM ═══════════════════
+
+  - name: qwen3-vl-8b-instruct
+    hf_repo: Qwen/Qwen3-VL-8B-Instruct
+    quantization: null                 # 原生 BF16
+    port: 8001
+    vram_estimate_gb: 20
+    hardware_min: A100-40G
+    role: vlm_primary
+    dtype: bfloat16
+    notes: "🌟 VLM primary — Qwen3-VL flagship (https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct)"
+
+  - name: qwen2.5-vl-7b-fp16
+    hf_repo: Qwen/Qwen2.5-VL-7B-Instruct
+    quantization: null
+    port: 8002
+    vram_estimate_gb: 18
+    hardware_min: A100-40G
+    role: vlm_baseline
+    dtype: bfloat16
+    notes: "📍 VLM baseline (older but widely deployed)"
+
+  # ═══════════════════ LLM ═══════════════════
+  #
+  # 不降级到 8B/14B。DGX 主力用 30B MoE（激活 3B，速度媲美 8B）或 235B 旗舰。
+
+  - name: qwen3-30b-a3b-instruct-2507-fp8
+    hf_repo: Qwen/Qwen3-30B-A3B-Instruct-2507-FP8
+    quantization: fp8
+    port: 9001
+    vram_estimate_gb: 35
+    hardware_min: H100-80G
+    role: llm_primary
+    task_type: text_only
+    translation_capable: true          # 参与 translation 维度（zh<->en）
+    notes: "🌟 LLM 首选：30B MoE 官方 FP8，激活 3B 推理快，2507 最新版"
+
+  - name: qwen3-235b-a22b-instruct-2507-fp8
+    hf_repo: Qwen/Qwen3-235B-A22B-Instruct-2507-FP8
+    quantization: fp8
+    port: 9002
+    vram_estimate_gb: 240
+    hardware_min: 8xH100-80G
+    role: llm_ultra_flagship
+    task_type: text_only
+    translation_capable: true          # 参与 translation 维度（zh<->en）
+    notes: "🌟🌟🌟 LLM 旗舰：235B MoE（激活 22B）官方 FP8，需 8×H100"
+
+  # ═════════════ AI-box 检索/语音能力（embedding / rerank / asr）═════════════
+  #
+  # 这些走 OpenAI 兼容 /v1/embeddings（embedding）或 chat（rerank yes/no）端点。
+  # 用 *_capable hint 字段选择性参与对应维度（同 translation_capable 模式）。
+
+  - name: qwen3-embedding-0.6b
+    hf_repo: Qwen/Qwen3-Embedding-0.6B
+    quantization: null
+    port: 9101
+    vram_estimate_gb: 4
+    hardware_min: A100-40G
+    role: embedding_primary
+    task_type: text_only
+    embedding_capable: true            # 参与 embedding 维度（检索 recall/MRR/nDCG）
+    notes: "🌟 Embedding 首选：0.6B，精度-延迟-内存均衡（K23 边缘选型甜点）"
+
+  - name: qwen3-embedding-4b
+    hf_repo: Qwen/Qwen3-Embedding-4B
+    quantization: null
+    port: 9102
+    vram_estimate_gb: 12
+    hardware_min: A100-40G
+    role: embedding_high_accuracy
+    task_type: text_only
+    embedding_capable: true
+    notes: "Embedding 高精度上限：4B，nDCG@10 最高，延迟/内存更重"
+
+  - name: qwen3-reranker-4b
+    hf_repo: Qwen/Qwen3-Reranker-4B
+    quantization: null
+    port: 9201
+    vram_estimate_gb: 12
+    hardware_min: A100-40G
+    role: reranker_primary
+    task_type: text_only
+    rerank_capable: true               # 参与 rerank 维度（生成式 yes/no 重排）
+    notes: "Reranker：生成式 yes/no，重排质量强；单 pair 延迟高（K3 实测 2.9s/pair），宜离线/小 top-k"
+
+  - name: bge-reranker-v2-m3
+    hf_repo: BAAI/bge-reranker-v2-m3
+    quantization: q8_0                  # 对照可加 q4_k_m（reranker 对量化较敏感，需查 score_separation）
+    port: 9202
+    vram_estimate_gb: 1
+    hardware_min: K3-X100               # encoder-only，X100 CPU + IME2 即可，无需 GPU
+    role: reranker_realtime
+    task_type: text_only
+    rerank_capable: true               # 参与 rerank 维度
+    rerank_native: true                # 走 llama.cpp /v1/rerank 单 pass（非生成式 yes/no）
+    notes: "🌟 实时 Reranker：BERT cross-encoder 单 pass，GGUF 自带 tokenizer（零 Python tokenizer 依赖）；延迟预期 <<生成式（推断 20-100×，待 163 实测）。起服：llama-server -m bge-reranker-v2-m3.Q8_0.gguf --reranking -t 8 -c 512 --port 9202"
+
+  - name: bge-reranker-base
+    hf_repo: BAAI/bge-reranker-base
+    quantization: q4_k_m
+    port: 9203
+    vram_estimate_gb: 1
+    hardware_min: K3-X100
+    role: reranker_realtime_min         # 延迟下限对照（~278M，更小更快，质量略低）
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    notes: "实时 Reranker 延迟下限对照：bge-reranker-base ~278M，单 pass，给产品「质量 vs 延迟」选择曲线"
+
+  # ─── OCR（印刷文字识别）──────────────────────────────────────────────────────
+  #
+  # 后端优先级（auto）：VitisAI NPU → rapidocr-onnxruntime(CPU) → paddleocr(CPU)
+  # NPU 路径：AMD XDNA（Ryzen AI SDK + VitisAIExecutionProvider）；ocr_model_dir 可选
+  # CPU 路径：rapidocr-onnxruntime 自动下载 PP-OCRv4 ONNX 模型（~10 MB）
+
+  - name: rapidocr-cpu
+    provider: local_onnx
+    port: 0                          # 本地 ONNX，无 HTTP 端点
+    role: ocr_cpu_baseline
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: rapidocr
+    notes: "OCR CPU 基线：rapidocr-onnxruntime (PP-OCRv4 ONNX)"
+
+  - name: paddleocr-cpu
+    provider: local_onnx
+    port: 0
+    role: ocr_cpu_paddle
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: paddleocr
+    notes: "OCR CPU PaddleOCR v4（已本地安装）"
+
+  - name: rapidocr-amd-npu
+    provider: local_onnx
+    port: 0
+    target: amd-win-x86             # 必须在 AMD Windows 机器上执行（VitisAI EP 依赖 RyzenAI SDK）
+    role: ocr_npu
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: vitisai             # AMD XDNA NPU via VitisAI EP；无 SDK 时返回 BLOCKED
+    notes: "OCR NPU：RapidOCR PP-OCRv4 管线 + RyzenAI Python 3.12 + VitisAIExecutionProvider；需 RyzenAI 1.7.1、numpy<2、voe、RapidOCR 依赖；无 EP 或 provider 未绑定时 BLOCKED"
+
+  - name: rapidocr-amd-directml
+    provider: local_onnx
+    port: 0
+    target: amd-win-x86             # 在 AMD Windows 机器上执行
+    role: ocr_gpu_directml
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: directml            # AMD Radeon 780M GPU via DirectML EP（onnxruntime-directml 1.24.4 已安装）
+    notes: "OCR GPU DirectML：rapidocr + onnxruntime-directml 1.24.4 (Radeon 780M via DirectX 12)；PP-OCRv4 ONNX (2026-06-17 安装完成)"
+
+  - name: rapidocr-intel-directml
+    provider: local_onnx
+    port: 0
+    target: intel-win-x86
+    role: ocr_gpu_directml
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: directml
+    notes: "Intel Windows OCR GPU/Windows ML path：RapidOCR + onnxruntime-directml；无 DmlExecutionProvider 时 BLOCKED"
+
+  - name: rapidocr-intel-openvino
+    provider: local_onnx
+    port: 0
+    target: intel-win-x86
+    role: ocr_openvino_probe
+    task_type: text_only
+    ocr_capable: true
+    ocr_backend: openvino
+    notes: "Intel OpenVINO 资源探测：安装 openvino 并记录可用设备；OCR native OpenVINO pipeline 未接入时 BLOCKED"
+
+  - name: sensevoice-small
+    hf_repo: FunAudioLLM/SenseVoiceSmall
+    quantization: int8
+    port: 0                            # ONNX 本地推理（非 HTTP 端点）
+    vram_estimate_gb: 1
+    hardware_min: CPU
+    role: asr_primary
+    task_type: text_only
+    asr_capable: true                  # 参与 asr 维度（中文 CER/WER/RTF）
+    notes: "ASR：SenseVoice CTC（ONNX）；需 sherpa-onnx + model.onnx/tokens.txt + manifest"
+
+  - name: sensevoice-small-amd-win
+    hf_repo: FunAudioLLM/SenseVoiceSmall
+    provider: local_onnx
+    target: amd-win-x86
+    quantization: int8
+    port: 0
+    vram_estimate_gb: 1
+    hardware_min: CPU
+    role: asr_amd_win
+    task_type: text_only
+    asr_capable: true
+    benchmarks:
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, ocr]
+    notes: "AMD Windows ASR：SenseVoice sherpa-onnx 本地 ONNX；CPU baseline，可后续接入 DirectML/RyzenAI 专用图"
+
+  - name: sensevoice-small-intel-win
+    hf_repo: FunAudioLLM/SenseVoiceSmall
+    provider: local_onnx
+    target: intel-win-x86
+    quantization: int8
+    port: 0
+    vram_estimate_gb: 1
+    hardware_min: CPU
+    role: asr_intel_win
+    task_type: text_only
+    asr_capable: true
+    benchmarks:
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, ocr]
+    notes: "Intel Windows ASR：SenseVoice sherpa-onnx 本地 ONNX；CPU baseline，OpenVINO/NPU ASR 可作为后续专用 backend"
+
+  # ═══ Windows AMD（Ryzen 7 8845H + Radeon 780M，Ollama Vulkan GPU 模式）═══
+  #
+  # 软件栈：Ollama v0.30.8 / Vulkan 后端（更新 AMD Adrenalin 驱动后解锁，2026-06-16）
+  # GPU：AMD Radeon 780M iGPU，17.9 GiB 共享显存池（Vulkan，全层卸载）
+  # NPU：XDNA（重启后驱动生效）；Ollama 不支持 NPU，NPU 路径见 asr 维度
+  # 启动命令：set OLLAMA_HOST=0.0.0.0 && set OLLAMA_IGPU_ENABLE=1 && ollama.exe serve
+  # 防火墙：TCP 11434 需放行（LAN 内访问）
+  #
+  # ── 设备 IP 配置（不进代码）────────────────────────────────────────────────
+  # 设备 IP 通过环境变量传入；远端执行器会在 Windows 机器上注入 localhost endpoint：
+  #   export OLLAMA_AMD_BASE_URL=http://<YOUR_AMD_IP>:11434/v1
+
+  - name: llama3.2-3b-amd-win
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL          # 优先读 env var
+    model_id: llama3.2:3b
+    port: 11434
+    role: llm_amd_baseline
+    task_type: text_only
+    translation_capable: true
+    notes: "AMD 780M Vulkan GPU — llama3.2:3b Q4_K_M ~2GB, TTFT p50~1078ms/p95~2050ms, TPS 28.3, PP 100 tok/s, TG 38.8 tok/s (2026-06-17 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p95_ttft_ms_max: 2500    # 实测 p95=2050ms (2026-06-17 E2E)；2500ms 留余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 20              # 实测 aggregate 28.3 tok/s (2026-06-17 E2E)
+      prefill_decode:
+        samples: 3
+        thresholds:
+          tg_tps_min: 30           # 实测 decode P50=38.8 tok/s (2026-06-17 E2E)
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+
+  - name: qwen2.5-7b-amd-win
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen2.5:7b
+    port: 11434
+    role: llm_amd_primary
+    task_type: text_only
+    translation_capable: true
+    notes: "AMD 780M Vulkan GPU — qwen2.5:7b Q4_K_M ~4.7GB; 热 TTFT P50=985ms, 吞吐13.6TPS, PP=112tok/s, TG=17tok/s; general_ability PASS (gsm8k=0.880/mmlu=0.600/hellaswag=0.790); translation FAIL(边缘: zh->en term-match 79%/80%, en->zh chrF 36.4/40) (2026-06-17 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p95_ttft_ms_max: 8000      # 实测 P95=6513ms（含冷起7891ms）；热 P95~1000ms
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 10                # 实测 13.6 TPS (2026-06-17 E2E)
+      prefill_decode:
+        samples: 3
+        thresholds:
+          tg_tps_min: 14             # 实测 TG P50=17.0 tok/s (2026-06-17 E2E)
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+
+  # qwen2.5:14b 需先 pull（~9GB）；16 GiB 可用应可容纳
+  # - name: qwen2.5-14b-amd-win
+  #   provider: ollama
+  #   base_url_env: OLLAMA_AMD_BASE_URL
+  #   model_id: qwen2.5:14b
+  #   port: 11434
+  #   role: llm_amd_large
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "AMD 780M Vulkan — qwen2.5:14b Q4_K_M ~9GB（需先 pull）"
+
+  # llava:7b — VLM 维度 benchmark（2026-06-16 pull 完成）
+  - name: llava-7b-amd-win
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: llava:7b
+    port: 11434
+    role: vlm_amd_baseline
+    task_type: vlm
+    is_vlm: true
+    notes: "AMD 780M Vulkan — llava:7b Q4 ~4.7GB；PP=199tok/s, TG=19.8tok/s, TPS=18.1；general_ability FAIL(gsm8k=0.33/mmlu=0.48/hellaswag=0.50，VLM 不适合纯文本推理基准)；accuracy BLOCKED(VLM golden set 需图像输入) (2026-06-17 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 2000     # 实测 P50=829ms
+          p95_ttft_ms_max: 12000    # 实测 P95=7069ms（首次加载含模型切换）
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 12               # 实测 18.1 tok/s；12 为下限含余量
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 100           # 实测 PP=199 tok/s
+          tg_tps_min: 12            # 实测 TG=19.8 tok/s
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+
+  # ═══ AMD Embedding 模型（Ryzen 8845H + 780M，Ollama Vulkan）═══
+
+  - name: qwen3-embedding-0.6b-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen3-embedding:0.6b
+    port: 11434
+    role: embedding_primary
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr]
+    notes: "AMD 780M Vulkan — Qwen3-Embedding-0.6B，dim=1024"
+
+  - name: bge-m3-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: bge-m3:latest
+    port: 11434
+    role: embedding_bge
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr]
+    # rerank_capable 已验证不可用：Ollama bge-m3 不暴露 /v1/chat/completions (2026-06-17 E2E 400)
+    notes: "AMD 780M Vulkan — BGE-M3，dim=1024，多语言强基线；Ollama backend 仅 embedding，rerank 不可用"
+
+  - name: qwen3-0.6b-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen3:0.6b
+    port: 11434
+    role: llm_nano
+    task_type: text_only
+    translation_capable: true
+    notes: "AMD 780M Vulkan — Qwen3-0.6B；TTFT P50=2367ms，TPS=79.5；general_ability FAIL(gsm8k=0.40，mmlu/hellaswag=0.0-PARSING_BUG：qwen3 thinking模式<think>标签导致MCQ答案提取失效)；prefill_decode PENDING-VERIFY(Ollama qwen3不返回token_usage，1/5样本TG=8533异常) (2026-06-17 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 3500    # 实测 P50=2367ms (2026-06-17)；3500ms 留余量
+          p95_ttft_ms_max: 5000    # 实测 P95=2571ms (2026-06-17)；5000ms 留余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 50              # 实测 79.5 tok/s (2026-06-17)；50 为下限含余量
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 30           # PENDING-VERIFY: Ollama qwen3 不返回 usage，1/5 样本，实测 48.5 tok/s 不可信
+          # tg_tps_min: PENDING — TG=8533 tok/s 是 Ollama qwen3 usage bug，不可作阈值
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+
+  - name: bge-reranker-base-amd-win
+    provider: local_reranker
+    target: amd-win-x86
+    model_id: BAAI/bge-reranker-base
+    port: 0
+    role: reranker_amd_win_cross_encoder
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "AMD Windows 专用 reranker：BAAI/bge-reranker-base CrossEncoder，本地进程内专用重排；替代 LLM yes/no 代理"
+
+  - name: bge-reranker-v2-m3-amd-win
+    provider: local_reranker
+    target: amd-win-x86
+    model_id: BAAI/bge-reranker-v2-m3
+    port: 0
+    role: reranker_amd_win_cross_encoder_stronger
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "AMD Windows 专用 reranker：BAAI/bge-reranker-v2-m3 CrossEncoder，高精度专用重排"
+
+  - name: qwen2.5-14b-amd-win
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen2.5:14b
+    port: 11434
+    role: llm_amd_win_parameter_uplift
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft:
+        samples: 2
+        thresholds:
+          p95_ttft_ms_max: 30000
+      throughput:
+        duration_s: 15
+        thresholds:
+          tps_min: 3
+      prefill_decode:
+        samples: 2
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+    notes: "AMD Windows 参数提升覆盖：qwen2.5:14b via Ollama Vulkan；用于验证 7B 以上模型可运行与性能边界"
+
+  # ═══ Rockchip RK3588 ARM SoC（aarch64，RKNN NPU 6 TOPS + Mali-G610）+ RK182X NPU ═══
+  # 硬件：linaro@192.168.100.206；RKNN adapter: benchmark/backends/rknn_adapter.py
+  # 激活：export RK3588_HOST=192.168.100.206 RK3588_USER=linaro RK3588_PASS=linaro
+  #        export RK3588_LLM_BASE_URL=http://192.168.100.206:8080/v1
+  # 注：RKNN 模型需从 PyTorch 预转换（rknn-toolkit2）；Ollama aarch64 也可直接跑 CPU/RKNN
+  # RK182X（RK1808/RK1826）NPU 加速板通过 PCIe/USB 挂载，独立推理路径，端口 8090
+
+  - name: qwen2.5-0.5b-rk3588
+    provider: generic
+    port: 8080
+    base_url_env: RK3588_LLM_BASE_URL
+    target: rk3588-linux
+    model_id: qwen2.5-0.5b-instruct                # .rknn 格式，已量化至 W8A8
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: rk3588-npu
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 128
+        thresholds:
+          p50_ttft_ms_max: 2000
+          p95_ttft_ms_max: 4000
+      throughput:
+        output_tokens: 64
+        thresholds:
+          tps_min: 8
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 20
+          tg_tps_min: 8
+      general_ability:
+        max_questions: 30
+        thresholds:
+          min_accuracy: 0.50
+      translation:
+        max_pairs: 20
+        thresholds:
+          bleu_min: 15.0
+      conditioned:
+        max_cases: 10
+        thresholds:
+          min_pass_rate: 0.60
+      skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr]
+    notes: "RK3588 RKNN NPU — 0.5B 全维度（ttft/tps/pp-tg/general/translation/conditioned）"
+
+  - name: qwen2.5-1.5b-rk3588
+    provider: generic
+    port: 8080
+    base_url_env: RK3588_LLM_BASE_URL
+    target: rk3588-linux
+    model_id: qwen2.5-1.5b-instruct
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: rk3588-npu
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 128
+        thresholds:
+          p50_ttft_ms_max: 3000
+          p95_ttft_ms_max: 5000
+      throughput:
+        output_tokens: 64
+        thresholds:
+          tps_min: 4
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 10
+          tg_tps_min: 4
+      general_ability:
+        max_questions: 50
+        thresholds:
+          min_accuracy: 0.55
+      translation:
+        max_pairs: 20
+        thresholds:
+          bleu_min: 18.0
+      conditioned:
+        max_cases: 15
+        thresholds:
+          min_pass_rate: 0.65
+      scenarios:
+        max_cases: 5
+        thresholds:
+          min_pass_rate: 0.60
+      skip: [stability, concurrency, embedding, rerank, asr, ocr]
+    notes: "RK3588 RKNN — 1.5B；全维度含 scenarios；PENDING-VERIFY 首次跑后校准阈值"
+
+  - name: minicpm-v-rk3588
+    provider: generic
+    port: 8080
+    base_url_env: RK3588_LLM_BASE_URL
+    target: rk3588-linux
+    model_id: minicpm-v-2_6                        # VLM，支持图文理解
+    capabilities: [chat, vlm]
+    task_type: vision
+    hardware_min: rk3588-npu
+    benchmarks:
+      accuracy:
+        golden_set: vlm_standard
+      ttft:
+        prompt_tokens: 128
+        thresholds:
+          p50_ttft_ms_max: 5000
+          p95_ttft_ms_max: 8000
+      throughput:
+        output_tokens: 64
+        thresholds:
+          tps_min: 2
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.45
+      skip: [stability, concurrency, prefill_decode, translation, conditioned, scenarios, embedding, rerank, asr, ocr]
+    notes: "RK3588 RKNN VLM — MiniCPM-V；PENDING-VERIFY .rknn 转换后首跑校准"
+
+  # 实测可用模型（2026-06-19）—— rkllm3-server on port 18001，pre-loaded on /userdata/model_hub/
+  # 激活：export RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1
+  # 注：ctx 768；顶层 top-k=1 greedy；qwenvl chat template；--qwenvl flag 已激活
+
+  - name: qwen3-vl-2b-rk3588
+    provider: generic
+    port: 18001
+    base_url_env: RKLLM3_LLM_BASE_URL
+    target: rk3588-linux
+    model_id: Qwen3-VL-2B-llm.rknn                  # /v1/models 返回的实际 id
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: rk3588-npu
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 200                        # E2E实测 P50=144.6ms（2026-06-20）；留 1.4× margin
+          p95_ttft_ms_max: 250                        # E2E实测 P95=167.8ms；留 1.5× margin
+      throughput:
+        output_tokens: 32                             # ctx=768，保守 output
+        thresholds:
+          tps_min: 65                                 # E2E实测聚合 109 TPS（2026-06-20）；60% floor
+      prefill_decode:
+        samples: 2
+        thresholds:
+          pp_tps_min: 1000                            # 服务器日志 PP=2277 t/s（2026-04-26）；44% floor
+          tg_tps_min: 85                              # 服务器日志 TG=135 t/s（2026-04-26）；63% floor
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0                              # E2E实测 zh->en BLEU=19.8；75% floor
+          chrf_min: 26.0                              # E2E实测 en->zh chrF=35.5；73% floor
+          term_match_rate_min: 0.50                   # E2E实测 zh->en term=68%；74% floor
+      skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
+    notes: "RK3588 内置 RKNPU3（3×2TOPS）运行 Qwen3-VL-2B；ctx=768；rkllm3-server port 18001；TTFT+TPS 2026-06-20 E2E校准（P50=144ms，P95=168ms，TPS=109）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达无法下载 MMLU/HellaSwag；GSM8K 参考值 66%（2026-06-19 非正式）"
+
+  # MiniCPM embedding on port 18080（已运行）
+  # 实际运行在 RK1822 PCIe NPU 上（0003:31:00.0 Device 182a），不是 RK3588 内置 RKNPU
+  # 激活：export RK182X_EMBED_BASE_URL=http://192.168.100.206:18080/v1
+
+  - name: minicpm-embed-rk1822
+    provider: generic
+    port: 18080
+    base_url_env: RK182X_EMBED_BASE_URL
+    target: rk182x-linux
+    model_id: rknn-embedding                         # /v1/models 返回的实际 id
+    capabilities: [embedding]
+    task_type: embedding
+    embedding_capable: true
+    hardware_min: rk1822-npu
+    benchmarks:
+      embedding:
+        max_pairs: 20
+        thresholds:
+          hit_at_1_min: 0.85          # 实测 hit@1=1.000（2026-06-19 20-pair 集）；留 15% margin
+          recall_at_10_min: 0.90      # 实测 recall@10=1.000
+          mrr_min: 0.85               # 实测 MRR=1.000
+          ndcg_at_10_min: 0.85        # 实测 nDCG@10=1.000
+      skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, stability, concurrency, rerank, asr, ocr]
+    notes: "RK1822 PCIe NPU（Device 182a，0003:31:00.0）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；阈值 2026-06-19 实测校准（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=143ms）"
+
+  # ═══ RK182X NPU 加速板（RK1808/RK1826，独立 PCIe/USB NPU）═══
+  # 运行时：独立 rknn_adapter 实例，端口 8090；NPU TOPS > RK3588 内置 NPU
+  # 激活：RK182X_LLM_BASE_URL=http://192.168.100.206:8090/v1（同 RK3588 主机）
+
+  - name: qwen2.5-0.5b-rk182x
+    provider: generic
+    port: 8090
+    base_url_env: RK182X_LLM_BASE_URL
+    target: rk182x-linux
+    model_id: qwen2.5-0.5b-instruct
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    hardware_min: rk182x-npu
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 128
+        thresholds:
+          p50_ttft_ms_max: 1500            # PENDING-VERIFY: RK182X 更高 TOPS
+          p95_ttft_ms_max: 3000
+      throughput:
+        output_tokens: 64
+        thresholds:
+          tps_min: 12
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 30
+          tg_tps_min: 12
+      general_ability:
+        max_questions: 30
+        thresholds:
+          min_accuracy: 0.50
+      translation:
+        max_pairs: 20
+        thresholds:
+          bleu_min: 15.0
+      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr]
+    notes: "RK182X NPU — PENDING-VERIFY；阈值比 RK3588 内置 NPU 更激进（预期更快）"
+
+  # ═══ Intel Windows（Ollama CPU 模式，x86_64）═══
+  # 硬件：Intel CPU（无独显），通过 Ollama CPU 推理
+  # 激活：export INTEL_WIN_HOST=<IP> INTEL_WIN_SSH_USER=<user> INTEL_WIN_SSH_PASS=<pass>
+  #        export OLLAMA_INTEL_WIN_BASE_URL=http://<INTEL_WIN_HOST>:11434/v1
+  # 注：CPU 推理速度慢于 GPU，建议只跑小模型（≤3B）+ 跳过 stability 维度
+
+  - name: llama3.2-1b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: llama3.2:1b
+    port: 11434
+    role: llm_intel_win_nano
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft: {samples: 3}
+      throughput: {duration_s: 20}
+      prefill_decode: {samples: 3}
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+    notes: "Intel CPU Ollama — llama3.2:1b Q4 ~0.7GB，最轻量基线"
+
+  - name: qwen2.5-3b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen2.5:3b
+    port: 11434
+    role: llm_intel_win_baseline
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft: {samples: 3}
+      throughput: {duration_s: 20}
+      prefill_decode: {samples: 3}
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+    notes: "Intel CPU Ollama — qwen2.5:3b Q4 ~2GB，中文能力强"
+
+  - name: qwen2.5-7b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen2.5:7b
+    port: 11434
+    role: llm_intel_win_parameter_uplift
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft:
+        samples: 2
+        thresholds:
+          p95_ttft_ms_max: 60000
+      throughput:
+        duration_s: 15
+        thresholds:
+          tps_min: 1
+      prefill_decode:
+        samples: 2
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+    notes: "Intel Windows 参数提升覆盖：qwen2.5:7b via Ollama；用于验证 3B 以上模型可运行与性能边界"
+
+  - name: qwen3-embedding-0.6b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen3-embedding:0.6b
+    port: 11434
+    role: embedding_intel_win
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr]
+    notes: "Intel CPU Ollama — embedding 基线对比 AMD"
+
+  - name: llava-7b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: llava:7b
+    port: 11434
+    role: vlm_intel_win_baseline
+    task_type: vlm
+    is_vlm: true
+    benchmarks:
+      ttft:
+        samples: 2
+        thresholds:
+          p95_ttft_ms_max: 30000
+      throughput:
+        duration_s: 15
+        thresholds:
+          tps_min: 2
+      prefill_decode:
+        samples: 2
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+    notes: "Intel Windows VLM 覆盖：llava:7b via Ollama；用于完整类型覆盖，速度阈值按 CPU/iGPU 保守设置"
+
+  - name: bge-reranker-base-intel-win
+    provider: local_reranker
+    target: intel-win-x86
+    model_id: BAAI/bge-reranker-base
+    port: 0
+    role: reranker_intel_win_cross_encoder
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "Intel Windows 专用 reranker：BAAI/bge-reranker-base CrossEncoder，本地进程内专用重排；替代 LLM yes/no 代理"
+
+  - name: bge-reranker-v2-m3-intel-win
+    provider: local_reranker
+    target: intel-win-x86
+    model_id: BAAI/bge-reranker-v2-m3
+    port: 0
+    role: reranker_intel_win_cross_encoder_stronger
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "Intel Windows 专用 reranker：BAAI/bge-reranker-v2-m3 CrossEncoder，高精度专用重排"
+
+  # ═══ Intel Linux（Ollama / vLLM，x86_64 CPU）═══
+  # 硬件：Intel CPU，无 GPU；vLLM CPU 模式或 Ollama CPU 模式
+  # 激活：export INTEL_LINUX_HOST=<IP> INTEL_LINUX_SSH_USER=<user> INTEL_LINUX_SSH_PASS=<pass>
+  #        export OLLAMA_INTEL_LINUX_BASE_URL=http://<INTEL_LINUX_HOST>:11434/v1
+  # 适合：作为 x86 CPU baseline，与 AMD/RK3588 对比
+
+  - name: llama3.2-3b-intel-linux
+    provider: ollama
+    target: intel-linux
+    base_url_env: OLLAMA_INTEL_LINUX_BASE_URL
+    model_id: llama3.2:3b
+    port: 11434
+    role: llm_intel_linux_baseline
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      skip: [stability, concurrency]
+    notes: "Intel Linux CPU — llama3.2:3b Q4，x86 纯 CPU 基线"
+
+  - name: qwen2.5-7b-intel-linux
+    provider: ollama
+    target: intel-linux
+    base_url_env: OLLAMA_INTEL_LINUX_BASE_URL
+    model_id: qwen2.5:7b
+    port: 11434
+    role: llm_intel_linux_primary
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      skip: [stability]
+    notes: "Intel Linux CPU — qwen2.5:7b Q4，与 AMD Windows 同模型对比基准"
+
+  - name: qwen3-embedding-0.6b-intel-linux
+    provider: ollama
+    target: intel-linux
+    base_url_env: OLLAMA_INTEL_LINUX_BASE_URL
+    model_id: qwen3-embedding:0.6b
+    port: 11434
+    role: embedding_intel_linux
+    task_type: text_only
+    embedding_capable: true
+    notes: "Intel Linux CPU — embedding 跨平台对比"
+
+  # ═══ SpacemiT K3 RISC-V（llama.cpp RVV，riscv64，进迭时空 X60，16GB）═══
+  # 硬件：bianbu@192.168.100.140，SpacemiT X60（8核 RVV 0.7.1，16GB LPDDR4X）
+  # 运行时：llama-server（llama.cpp cmake -DGGML_RVV=ON），端口 8080
+  # 激活：export K3_HOST=192.168.100.140 K3_USER=bianbu K3_PASS=bianbu
+  #        export K3_LLM_BASE_URL=http://192.168.100.140:8080/v1
+  # 模型：GGUF Q4_K_M 格式，scp 到 K3 后 llama-server --model /path/model.gguf
+  # 性能预期：0.5B ~5 tok/s，1B ~2-3 tok/s，1.5B ~1-2 tok/s（RVV 加速）
+
+  - name: qwen2.5-0.5b-k3-riscv
+    provider: generic
+    target: k3-riscv
+    base_url_env: K3_LLM_BASE_URL
+    port: 8080
+    model_id: qwen2.5-0.5b-instruct           # GGUF Q4_0 ~0.4GB（q4_0.gguf 实测）
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite                  # text_only → auto-SKIP
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 150               # E2E 实测 P50=63.5ms；2.4x buffer
+          p95_ttft_ms_max: 700               # E2E 实测 P95=305ms；2.3x buffer
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 30                        # E2E 实测 agg=47.0 tok/s；64% floor
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 500                    # E2E 实测 mean=1322 t/s，p50=1633 t/s；保守 38% floor（含冷启动）
+          tg_tps_min: 35                     # E2E 实测 mean=49.2 t/s；71% floor
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.45
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 12.0
+      # conversation_drift 跳过：ctx_size=512 时多轮对话超 context → 400 错误导致 DRIFT 判定无效
+      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
+    notes: "SpacemiT K3 RISC-V Qwen2.5-0.5B Q4_0，4 big cores（X100），SPACEMIT_DISABLE_TCM=1；2026-06-20 E2E 校准"
+
+  - name: qwen2.5-1.5b-k3-riscv
+    provider: generic
+    target: k3-riscv
+    base_url_env: K3_LLM_BASE_URL
+    port: 8080
+    model_id: qwen2.5-1.5b-instruct           # GGUF Q4_K_M ~1.0GB
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 20000
+          p95_ttft_ms_max: 40000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 1
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 2
+          tg_tps_min: 1
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.50
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 15.0
+      conditioned:
+        max_cases: 5
+        thresholds:
+          min_pass_rate: 0.55
+      skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr]
+    notes: "SpacemiT K3 — 1.5B 含 conditioned 维度；PENDING-VERIFY 首跑校准阈值"
+
+  - name: llama3.2-1b-k3-riscv
+    provider: generic
+    target: k3-riscv
+    base_url_env: K3_LLM_BASE_URL
+    port: 8080
+    model_id: llama3.2-1b-instruct            # GGUF Q4_K_M ~0.7GB
+    capabilities: [chat]
+    task_type: text_only
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 15000
+          p95_ttft_ms_max: 30000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 2
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 3
+          tg_tps_min: 2
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.45
+      skip: [stability, concurrency, conditioned, scenarios, translation, embedding, rerank, asr, ocr]
+    notes: "SpacemiT K3 — Llama3.2-1B 英文基线；与 ARM RK3588 和 AMD Vulkan 性能对比"
+
+  # ═══ SpacemiT K1 RISC-V（llama.cpp RVV，riscv64，同 K3 机架）═══
+  # 硬件：bianbu@192.168.100.140（K1_HOST），SpacemiT K1（BPI-F3/Muse-Pi，8核 RVV 0.7.1）
+  # 运行时：llama-server，端口 8081（与 K3 端口区分，可同机并发跑）
+  # 激活：export K1_HOST=192.168.100.140 K1_USER=bianbu K1_PASS=bianbu
+  #        export K1_LLM_BASE_URL=http://192.168.100.140:8081/v1
+  # 性能预期：与 K3 接近但低频 core；0.5B ~3-4 tok/s（PENDING-VERIFY）
+
+  - name: qwen2.5-0.5b-k1-riscv
+    provider: generic
+    target: k1-riscv
+    base_url_env: K1_LLM_BASE_URL
+    port: 8081
+    model_id: qwen2.5-0.5b-instruct
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 12000             # PENDING-VERIFY: K1 基线未测
+          p95_ttft_ms_max: 20000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 2
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 4
+          tg_tps_min: 2
+      general_ability:
+        max_questions: 20
+        thresholds:
+          min_accuracy: 0.45
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 12.0
+      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr]
+    notes: "SpacemiT K1 RISC-V — 0.5B 全维度基线；PENDING-VERIFY 所有阈值待 K1 首跑校准 (2026-06)"
+
+  - name: smollm2-1.7b-k1-riscv
+    provider: generic
+    target: k1-riscv
+    base_url_env: K1_LLM_BASE_URL
+    port: 8081
+    model_id: smollm2-1.7b-instruct           # HuggingFace SmolLM2，GGUF Q4_K_M ~1.1GB
+    capabilities: [chat]
+    task_type: text_only
+    benchmarks:
+      accuracy:
+        golden_set: vlm_lite
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 30000
+          p95_ttft_ms_max: 60000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 1
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 2
+          tg_tps_min: 1
+      general_ability:
+        max_questions: 15
+        thresholds:
+          min_accuracy: 0.40
+      skip: [stability, concurrency, conditioned, scenarios, translation, embedding, rerank, asr, ocr]
+    notes: "SpacemiT K1 — SmolLM2-1.7B；英文基线；PENDING-VERIFY 首跑校准 (2026-06)"
+
+  # ═══════════════════ 云端 API 模型（OpenAI 兼容）═══════════════════
+  #
+  # 无需本地 GPU；取消注释并设置对应环境变量即可加入基准矩阵。
+  # API key 从环境变量读取（export KEY=sk-xxx），从不写入代码或配置。
+  # provider 字段自动路由 base_url；也可 base_url_override 接任意兼容端点。
+
+  # --- DeepSeek ---
+  # export DEEPSEEK_API_KEY=sk-...
+  # - name: deepseek-v3
+  #   provider: deepseek               # → https://api.deepseek.com/v1
+  #   model_id: deepseek-chat          # DeepSeek API 模型名
+  #   api_key_env: DEEPSEEK_API_KEY
+  #   role: llm_cloud_primary
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "DeepSeek V3 via API；成本低，OpenAI 兼容"
+
+  # --- DashScope / Qwen API ---
+  # export DASHSCOPE_API_KEY=sk-...
+  # - name: qwen-plus-api
+  #   provider: dashscope              # → https://dashscope.aliyuncs.com/compatible-mode/v1
+  #   model_id: qwen-plus
+  #   api_key_env: DASHSCOPE_API_KEY
+  #   role: llm_cloud_qwen
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "Qwen Plus via DashScope；OpenAI 兼容模式"
+
+  # - name: qwen-vl-max-api
+  #   provider: dashscope
+  #   model_id: qwen-vl-max            # 多模态旗舰（VLM）
+  #   api_key_env: DASHSCOPE_API_KEY
+  #   role: vlm_cloud
+  #   task_type: vlm                   # 参与视觉场景维度
+  #   notes: "Qwen-VL-Max；API 调用，无本地 GPU 需求"
+
+  # --- OpenAI ---
+  # export OPENAI_API_KEY=sk-...
+  # - name: gpt-4o-mini
+  #   provider: openai                 # → https://api.openai.com/v1
+  #   model_id: gpt-4o-mini
+  #   api_key_env: OPENAI_API_KEY
+  #   role: llm_cloud_openai
+  #   task_type: text_only
+  #   translation_capable: true
+
+  # --- llama.cpp server（本地，OpenAI 兼容，无 API key）---
+  # 启动：llama-server --port 8080 --model model.gguf [--alias my-model]
+  # - name: llama-cpp-qwen2.5-7b
+  #   provider: llama_cpp              # → http://localhost:8080/v1（llama-server 默认端口）
+  #   port: 8080                       # llama-server --port（可省略，默认 8080）
+  #   model_id: qwen2.5-7b            # llama-server --alias 或实际加载模型名
+  #   hf_repo: ""                      # GGUF 本地文件，无 HF repo
+  #   role: llm_local_gguf
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "GGUF 量化推理；适合边缘 / 无 GPU 设备；起服：llama-server -m model.gguf"
+
+  # --- llama.cpp reranker（/v1/rerank 单 pass，BERT cross-encoder）---
+  # 启动：llama-server --port 9202 --model bge-reranker.gguf --reranking
+  # - name: llama-cpp-bge-reranker
+  #   provider: llama_cpp
+  #   port: 9202
+  #   model_id: bge-reranker-v2-m3
+  #   hf_repo: ""
+  #   role: reranker_gguf
+  #   task_type: text_only
+  #   rerank_capable: true
+  #   rerank_native: true              # 走 /v1/rerank（非生成式 yes/no）
+  #   notes: "llama.cpp GGUF reranker；单 pass，GGUF 自带 tokenizer，零 Python tokenizer 依赖"
+
+  # --- Ollama 本地（OpenAI 兼容，无 API key）---
+  # 先 `ollama pull qwen2.5:7b`（需 §1.3 用户批准 ollama serve）
+  # - name: qwen2.5-7b-ollama
+  #   provider: ollama                 # → http://localhost:11434/v1
+  #   model_id: qwen2.5:7b            # ollama 模型名（区分大小写）
+  #   port: 11434                      # 可省略，默认 11434
+  #   role: llm_local_light
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "Ollama 推理；适合边缘离线场景"
+
+  # --- OpenAI ---
+  # export OPENAI_API_KEY=sk-...
+  # - name: gpt-4o-mini
+  #   provider: openai                 # → https://api.openai.com/v1
+  #   model_id: gpt-4o-mini           # OpenAI 模型名（https://platform.openai.com/docs/models）
+  #   api_key_env: OPENAI_API_KEY      # 环境变量名（不写 key 本体）
+  #   role: llm_cloud_openai
+  #   task_type: text_only
+  #   translation_capable: true
+  #   notes: "OpenAI gpt-4o-mini；云端 429 自动退避重试（最多 3 次）"
+
+  # --- 任意 OpenAI 兼容端点（generic）---
+  # - name: my-custom-model
+  #   provider: generic
+  #   base_url_override: http://192.168.1.100:8000/v1
+  #   model_id: my-model-name
+  #   api_key_env: MY_API_KEY          # 不需要 key 时可省略
+  #   task_type: text_only
+
+
+# ══════════════════════════════════════════════════════
+# Benchmark 矩阵（性能 + 质量多维度）
+# ══════════════════════════════════════════════════════
+
+benchmarks:
+  accuracy:
+    description: "Golden set 9 张图，分类+实体+事实准确性（仅 VLM）"
+    skip_for_task_type: [text_only]
+    golden_file: golden/expectations.json
+    thresholds:
+      category_precision_min: 0.80
+      entity_recall_min: 0.60
+
+  ttft:
+    description: "首 token 延迟（流式）"
+    samples: 5
+    thresholds:
+      p95_ttft_ms_max: 2000
+
+  throughput:
+    description: "Token/秒吞吐（单并发，聚合）"
+    duration_s: 60
+    thresholds:
+      tps_min: 30
+
+  prefill_decode:
+    description: "PP(prefill) vs TG(decode) 分阶段 tok/s（llama-bench 法，流式 usage 拆分）"
+    samples: 5
+    decode_tokens: 128
+    thresholds:
+      tg_tps_min: 30                  # decode 阶段吞吐下限（产品对话体感）
+
+  concurrency:
+    description: "并发稳定性（1/5/10/30/50）"
+    concurrencies: [1, 5, 10, 30, 50]
+    duration_s: 60
+    thresholds:
+      success_rate_min: 0.95
+
+  stability:
+    description: "30 分钟连续跑，看延迟漂移"
+    duration_s: 1800
+    thresholds:
+      latency_drift_ratio_max: 1.30
+
+  token_budget:
+    description: "input/output token 预算 + 截断率"
+    thresholds:
+      truncation_rate_max: 0.10
+
+  translation:
+    description: "机器翻译质量 + 延迟（zh<->en；L1 单句 / L2 上下文一致 / L3 术语）"
+    # Quality metrics: SacreBLEU + chrF (CPU); COMET (GPU-only, 自动跳过)。
+    flores:
+      split: devtest
+      num_samples: 100               # Flores-200 子集（HF facebook/flores，离线回退到内置样本）
+    custom_corpus: datasets/translation/custom_zh_en.jsonl   # 产品域语料（合成，明示）
+    directions: [zh->en, en->zh]
+    levels: [l1, l2, l3]
+    run_comet: true                  # 无 GPU 时优雅跳过，不崩
+    thresholds:
+      bleu_min: 20.0
+      chrf_min: 40.0
+      term_match_rate_min: 0.80      # L3 术语保留率
+      ttft_p95_ms_max: 2000
+      tps_min: 30
+
+  embedding:
+    description: "Embedding 检索质量（recall@k/MRR/nDCG@10）+ 单条延迟 p50（常驻）+ RSS 双区分 + 数值校验"
+    # 仅 embedding_capable 模型参与；走 /v1/embeddings。
+    corpus: datasets/retrieval/cmteb_zh_subset.jsonl   # 中文检索集（缺失则回退内置合成集，明示）
+    num_samples: null                # null = 全量
+    latency_samples: 12              # 常驻单条 embed 延迟 reps（取 p50）
+    thresholds:
+      hit_at_1_min: 0.60             # 多相关文档集用首位命中率；recall@1 仍保留为诊断指标
+      recall_at_10_min: 0.90
+      mrr_min: 0.70
+      ndcg_at_10_min: 0.75
+
+  rerank:
+    description: "独立 Reranker 重排质量（nDCG@10/MRR）+ 单 pair 延迟（区别于 RAG 内嵌 reranker）"
+    # 仅 rerank_capable 模型参与；复用 embedding 同一检索集，按 query-doc 对打分重排。
+    corpus: datasets/retrieval/cmteb_zh_subset.jsonl
+    num_samples: null
+    thresholds:
+      ndcg_at_10_min: 0.75
+      mrr_min: 0.70
+
+  ocr:
+    description: "OCR 印刷文字识别 CER/NED/延迟（rapidocr / PaddleOCR / VitisAI NPU）"
+    manifest: datasets/ocr/manifest.jsonl
+    image_root: datasets/ocr
+    num_samples: null
+    # backend: auto  # auto | rapidocr | paddleocr | vitisai
+    thresholds:
+      cer_max: 0.10                  # 10% CER（印刷中文）
+      ned_max: 0.15                  # 15% NED
+      latency_p95_ms_max: 3000       # P95 ≤ 3s/图
+
+  asr:
+    description: "ASR 中文 CER/WER/RTF（SenseVoice ONNX）；缺数据集/后端时优雅 BLOCKED"
+    # 仅 asr_capable 模型参与。manifest = audio + 参考文本；model_dir = sherpa-onnx 模型目录。
+    manifest: datasets/asr/manifest.jsonl    # 音频不入库（PII/体积），仅 manifest 模板
+    audio_root: datasets/asr
+    model_dir: datasets/asr/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17  # 2026-06-16 downloaded
+    num_samples: null
+    thresholds:
+      cer_max: 0.15                  # 中文 CER 上限（干净语音）
+      rtf_max: 1.0                   # 必须实时可用
+
+  general_ability:
+    description: "通用能力:gsm8k 数学 / mmlu 知识 / hellaswag 常识(llama_benchmark 数据集适配,pin SHA)"
+    # 初始阈值 = 7B 级本地模型合理下限,首跑实测后校准;变更记 RELEASE.md(spec §11)
+    tasks:
+      gsm8k: {num_samples: 100, split: test}
+      mmlu: {per_subject: 25, subjects: [professional_law, logical_fallacies, computer_security, elementary_mathematics]}
+      hellaswag: {num_samples: 100, split: validation}
+    thresholds:
+      gsm8k_min: 0.55
+      mmlu_min: 0.55
+      hellaswag_min: 0.60
+
+  conditioned:
+    description: "条件化能力:上下文阶梯(任务质量+needle recall+TTFT/TPS 曲线)+ prefix-cache 冷热 A/B"
+    context_ladder: [1024, 4096, 8192, 16384, 32768]
+    needles_file: datasets/conditioned/needles.jsonl
+    answer_margin_tokens: 512
+    max_tokens: 64
+    thresholds:
+      quality_drop_warn: 0.20
+      quality_drop_fail: 0.35
+      needle_recall_min: 0.50
+
+  scenarios:
+    description: >
+      真实场景 8 个: S1 微信截图意图(VLM) / S2 案件逻辑 / S3 自媒体知识性 /
+      S4 指令遵循 / S5 结构化抽取(文本) / S6 函数调用 /
+      S7 VLM 文档抽取(银行流水/增值税发票/收据/汇款凭证,requires_vlm=True) /
+      S8 对抗稳健性(提示注入/锚点攻击/上下文混淆/角色混淆/边界输入)
+    judge_model: null          # null = 自动取被测之外最大的 text 模型(排除 embedding/rerank/asr)
+    num_cases: 50              # 每场景上限
+    thresholds:                # 覆盖各场景内置 L1 阈值(可省略)
+      wechat_intent: {intent_accuracy_min: 0.70, entity_recall_min: 0.60}
+      case_logic: {label_accuracy_min: 0.60, finding_f1_min: 0.50}
+      article_knowledge: {claim_accuracy_min: 0.60, grade_score_min: 0.50}
+      instruction_following: {compliance_rate_min: 0.80}
+      structured_extraction: {field_accuracy_min: 0.75}
+      function_calling: {name_accuracy_min: 0.80, arg_f1_min: 0.70}
+      vlm_document_extraction: {field_accuracy_min: 0.75}
+      adversarial_stability: {compliance_rate_min: 0.70}

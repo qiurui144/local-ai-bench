@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/rag_trace.json",
+  "title": "RAG Trace",
+  "description": "Per-request execution trace covering all 8 RAG stages. Each stage emits a sub-record so failure attribution can target the right layer.",
+  "type": "object",
+  "required": ["trace_id", "request_id", "query", "stages", "final_answer"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "trace_id": {"type": "string", "description": "UUID for this trace."},
+    "request_id": {"type": "string", "description": "Caller's request ID for cross-system correlation."},
+    "query": {"type": "string"},
+    "user_id_hash": {"type": ["string", "null"], "description": "Salted hash of the user ID; never the raw ID."},
+    "timestamp_unix": {"type": "number"},
+    "client": {
+      "type": "object",
+      "properties": {
+        "platform": {"type": "string"},
+        "version": {"type": "string"}
+      }
+    },
+    "stages": {
+      "type": "object",
+      "required": ["ingest", "chunk", "index", "retrieve", "rerank", "prompt_pack", "generate", "cite"],
+      "properties": {
+        "ingest": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "n_documents": {"type": "integer"},
+            "doc_ids": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "chunk": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "strategy": {"type": "string", "enum": ["fixed", "sentence", "semantic", "recursive", "custom"]},
+            "n_chunks": {"type": "integer"},
+            "avg_chunk_tokens": {"type": "number"}
+          }
+        },
+        "index": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "backend": {"type": "string"},
+            "n_vectors": {"type": "integer"}
+          }
+        },
+        "retrieve": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "method": {"type": "string", "enum": ["dense", "bm25", "hybrid", "knn", "graph"]},
+            "top_k": {"type": "integer"},
+            "candidates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "doc_id": {"type": "string"},
+                  "score": {"type": "number"},
+                  "rank": {"type": "integer"}
+                },
+                "required": ["doc_id", "score", "rank"]
+              }
+            }
+          }
+        },
+        "rerank": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "model": {"type": ["string", "null"]},
+            "reordered": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "prompt_pack": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "prompt_template_id": {"type": "string"},
+            "context_chunk_ids": {"type": "array", "items": {"type": "string"}},
+            "input_tokens": {"type": "integer"}
+          }
+        },
+        "generate": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "model": {"type": "string"},
+            "input_tokens": {"type": "integer"},
+            "output_tokens": {"type": "integer"},
+            "temperature": {"type": "number"},
+            "stopped_reason": {"type": "string"}
+          }
+        },
+        "cite": {
+          "type": "object",
+          "properties": {
+            "duration_ms": {"type": "number"},
+            "cited_doc_ids": {"type": "array", "items": {"type": "string"}},
+            "n_claims": {"type": "integer"}
+          }
+        }
+      }
+    },
+    "final_answer": {"type": "string"},
+    "failure_kinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "retrieval_miss",
+          "retrieval_noise",
+          "chunk_too_small",
+          "chunk_too_large",
+          "embedding_drift",
+          "context_overflow",
+          "hallucination",
+          "partial_answer",
+          "over_refusal",
+          "under_refusal",
+          "citation_missing",
+          "citation_wrong",
+          "citation_fabricated",
+          "prompt_injection",
+          "latency_blowup",
+          "schema_violation",
+          "abstention_fail",
+          "format_violation",
+          "groundedness_low"
+        ]
+      }
+    },
+    "total_duration_ms": {"type": "number"},
+    "cost_usd": {"type": ["number", "null"]}
+  }
+}

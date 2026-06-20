@@ -1,0 +1,12 @@
+{"image": "images/zh_time_01.png", "text": "开放时间早上9点至下午5点", "uid": "zh_time_01", "source": "synthetic", "description": "中文时间通知"}
+{"image": "images/zh_invoice_01.png", "text": "增值税专用发票", "uid": "zh_invoice_01", "source": "synthetic", "description": "发票标题"}
+{"image": "images/zh_contract_01.png", "text": "合同编号：2026-BJ-0042", "uid": "zh_contract_01", "source": "synthetic", "description": "合同编号"}
+{"image": "images/zh_amount_01.png", "text": "总金额（大写）：壹万元整", "uid": "zh_amount_01", "source": "synthetic", "description": "金额大写"}
+{"image": "images/zh_party_01.png", "text": "甲方：北京科技有限公司", "uid": "zh_party_01", "source": "synthetic", "description": "合同甲方"}
+{"image": "images/zh_receipt_01.png", "text": "收款人：张三  金额：¥1,280.00", "uid": "zh_receipt_01", "source": "synthetic", "description": "收据信息"}
+{"image": "images/en_invoice_01.png", "text": "Invoice No. INV-2026-00123", "uid": "en_invoice_01", "source": "synthetic", "description": "英文发票编号"}
+{"image": "images/en_date_01.png", "text": "Date: 2026-06-17  Amount: $520.00", "uid": "en_date_01", "source": "synthetic", "description": "英文日期金额"}
+{"image": "images/bilingual_name_01.png", "text": "客户姓名 / Customer Name: 李明", "uid": "bilingual_name_01", "source": "synthetic", "description": "中英双语姓名"}
+{"image": "images/zh_addr_01.png", "text": "地址：上海市浦东新区张江高科技园区", "uid": "zh_addr_01", "source": "synthetic", "description": "中文地址"}
+{"image": "images/zh_phone_01.png", "text": "手机号码：138-0013-8000", "uid": "zh_phone_01", "source": "synthetic", "description": "手机号"}
+{"image": "images/zh_note_01.png", "text": "备注：请于三个工作日内完成付款", "uid": "zh_note_01", "source": "synthetic", "description": "备注文字"}

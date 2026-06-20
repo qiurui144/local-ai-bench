@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/judge_output.json",
+  "title": "Judge Output",
+  "description": "Strict-JSON schema for LLM-as-judge replies. Used to constrain prompts and validate parses.",
+  "oneOf": [
+    {"$ref": "#/$defs/groundedness"},
+    {"$ref": "#/$defs/relevance"},
+    {"$ref": "#/$defs/pairwise"}
+  ],
+  "$defs": {
+    "groundedness": {
+      "type": "object",
+      "required": ["claims"],
+      "properties": {
+        "schema": {"const": "groundedness"},
+        "claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim_id", "supported"],
+            "properties": {
+              "claim_id": {"type": "string"},
+              "text": {"type": "string"},
+              "supported": {"type": "boolean"},
+              "supporting_evidence_ids": {"type": "array", "items": {"type": "string"}},
+              "incorrect_citations": {"type": "array", "items": {"type": "string"}},
+              "rationale": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "relevance": {
+      "type": "object",
+      "required": ["intent_satisfied", "claim_coverage", "on_topic"],
+      "properties": {
+        "schema": {"const": "relevance"},
+        "intent_satisfied": {"type": "number", "minimum": 0, "maximum": 1},
+        "claim_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "on_topic": {"type": "number", "minimum": 0, "maximum": 1},
+        "rationale": {"type": "string"}
+      }
+    },
+    "pairwise": {
+      "type": "object",
+      "required": ["winner"],
+      "properties": {
+        "schema": {"const": "pairwise"},
+        "winner": {"type": "string", "enum": ["A", "B", "tie"]},
+        "rationale": {"type": "string"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

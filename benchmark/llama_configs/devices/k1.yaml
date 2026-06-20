@@ -1,0 +1,43 @@
+# 进迭时空 SpacemiT K1 — MUSE Pi Pro
+# 用途：RISC-V RVV 1.0 推理验证
+#
+# 使用方法：
+#   llama-bench run --models configs/devices/k1.yaml --benchmarks configs/benchmarks.yaml
+
+# SSH 隧道 + 远端 ISA 采集配置
+ollama:
+  base_url: "http://localhost:11434"  # 占位符，CLI 会替换为隧道 URL
+  timeout_seconds: 300
+  device:
+    host: "${K1_HOST}"
+    user: "${K1_USER}"
+    password: "${K1_PASS}"
+    ssh_port: 22
+    ollama_remote_port: 11434
+    local_tunnel_port: 11435
+    name: "k1-spacemit"
+    arch_hint: "riscv64"
+
+# 全局配置
+global:
+  output_dir: "outputs/k1"
+  log_level: "INFO"
+  seed: 42
+  parallel_workers: 1
+  timeout_seconds: 3600
+
+# K1 已安装模型
+models:
+  - name: "qwen2.5-0.5b-k1"
+    type: llm
+    backend: ollama
+    ollama_model: "qwen2.5:0.5b"
+    context_length: 4096
+    hardware: auto
+
+  - name: "deepseek-r1-1.5b-k1"
+    type: llm
+    backend: ollama
+    ollama_model: "deepseek-r1:1.5b"
+    context_length: 4096
+    hardware: auto

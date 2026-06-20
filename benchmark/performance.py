@@ -1,0 +1,371 @@
+"""性能 benchmark — TTFT / 吞吐 / 并发稳定性 / 长时间稳定性
+
+每个 benchmark 独立函数，可单独调用也可被 run_all 串跑。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import random
+import statistics
+import time
+from pathlib import Path
+from typing import Optional
+
+import httpx
+
+from common import (
+    ModelConfig,
+    TEXT_PROMPT,
+    VLM_PROMPT,
+    infer_async,
+    infer_stream,
+    infer_sync,
+    percentile,
+    summarize_latencies,
+)
+
+logger = logging.getLogger(__name__)
+
+
+# ────────────────────────────────────────────────────────────
+# 1. TTFT（首 token 延迟）—— 用流式请求
+# ────────────────────────────────────────────────────────────
+
+
+def run_ttft(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    samples: int = 5,
+) -> dict:
+    """每模型跑 samples 次流式请求，统计 TTFT P50/P95"""
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+    ttfts: list[float] = []
+    total_lats: list[float] = []
+    errors = 0
+
+    for i in range(samples):
+        image = image_files[i % len(image_files)] if image_files else None
+        result = infer_stream(
+            model_cfg,
+            prompt=VLM_PROMPT if model_cfg.is_vlm else TEXT_PROMPT + "请简述劳动合同法第三十九条",
+            image_path=image,
+            max_tokens=200,   # 短输出让 TTFT 更纯粹
+        )
+        if result.ok and result.ttft_ms > 0:
+            ttfts.append(result.ttft_ms)
+            total_lats.append(result.latency_ms)
+        else:
+            errors += 1
+        logger.info("  [TTFT %d/%d] %s  ttft=%.0fms  total=%.0fms",
+                    i + 1, samples, model_cfg.name, result.ttft_ms, result.latency_ms)
+
+    return {
+        "benchmark": "ttft",
+        "model": model_cfg.name,
+        "samples": samples,
+        "ttft_ms_stats": summarize_latencies(ttfts),
+        "total_latency_ms_stats": summarize_latencies(total_lats),
+        "errors": errors,
+        "error_rate": errors / samples if samples else 0,
+    }
+
+
+# ────────────────────────────────────────────────────────────
+# 2. 吞吐（Throughput）—— 单并发持续 N 秒
+# ────────────────────────────────────────────────────────────
+
+
+def run_throughput(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    duration_s: float = 60.0,
+) -> dict:
+    """在 duration_s 内持续单并发请求，统计 output tokens 总数 + TPS"""
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+
+    t_start = time.monotonic()
+    deadline = t_start + duration_s
+    total_output = 0
+    total_input = 0
+    latencies = []
+    tps_per_req = []
+    errors = 0
+    n = 0
+
+    while time.monotonic() < deadline:
+        image = image_files[n % len(image_files)] if image_files else None
+        result = infer_sync(
+            model_cfg,
+            prompt=VLM_PROMPT if model_cfg.is_vlm else TEXT_PROMPT + "解释合同违约金 vs 定金",
+            image_path=image,
+            max_tokens=400,
+        )
+        n += 1
+        if result.ok:
+            total_output += result.output_tokens
+            total_input += result.input_tokens
+            latencies.append(result.latency_ms)
+            if result.tokens_per_sec > 0:
+                tps_per_req.append(result.tokens_per_sec)
+        else:
+            errors += 1
+
+    # 最后一个请求总会越过 deadline,除以名义 duration_s 会高估 TPS,
+    # 必须用实际 wall time。
+    wall_duration_s = max(time.monotonic() - t_start, 1e-9)
+    avg_tps = total_output / wall_duration_s
+
+    return {
+        "benchmark": "throughput",
+        "model": model_cfg.name,
+        "duration_s": duration_s,
+        "elapsed_s": round(wall_duration_s, 3),
+        "requests": n,
+        "errors": errors,
+        "total_input_tokens": total_input,
+        "total_output_tokens": total_output,
+        "aggregate_tps": avg_tps,           # 整体吞吐 = output tokens / wall time
+        "per_request_tps_stats": {
+            "p50": statistics.median(tps_per_req) if tps_per_req else 0,
+            "p95": percentile(tps_per_req, 95),
+        },
+        "latency_stats_ms": summarize_latencies(latencies),
+    }
+
+
+# ────────────────────────────────────────────────────────────
+# 3. 并发稳定性（Concurrency）—— 阶梯并发
+# ────────────────────────────────────────────────────────────
+
+
+async def _concurrency_probe(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    concurrency: int,
+    duration_s: float,
+) -> dict:
+    """指定并发数持续 duration_s 秒"""
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+    t_start = time.monotonic()
+    deadline = t_start + duration_s
+    results: list = []
+
+    async with httpx.AsyncClient(timeout=300.0,
+                                  limits=httpx.Limits(max_connections=concurrency * 2)) as client:
+        async def worker(worker_id: int):
+            i = 0
+            while time.monotonic() < deadline:
+                image = image_files[(worker_id + i) % max(len(image_files), 1)] if image_files else None
+                r = await infer_async(client, model_cfg,
+                                      prompt=VLM_PROMPT if model_cfg.is_vlm else TEXT_PROMPT + "列举诉讼时效例外",
+                                      image_path=image,
+                                      max_tokens=300)
+                results.append(r)
+                i += 1
+                # 小随机延迟避免同步洪峰
+                await asyncio.sleep(random.uniform(0.01, 0.05))
+
+        await asyncio.gather(*[worker(w) for w in range(concurrency)])
+
+    ok = sum(1 for r in results if r.ok)
+    latencies_ok = [r.latency_ms for r in results if r.ok]
+    out_tokens = sum(r.output_tokens for r in results if r.ok)
+    elapsed_s = max(time.monotonic() - t_start, 1e-9)
+
+    return {
+        "concurrency": concurrency,
+        "duration_s": duration_s,
+        "elapsed_s": round(elapsed_s, 3),
+        "total_requests": len(results),
+        "success": ok,
+        "success_rate": ok / len(results) if results else 0,
+        "aggregate_tps": out_tokens / elapsed_s,
+        "latency_stats_ms": summarize_latencies(latencies_ok),
+    }
+
+
+def run_concurrency(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    concurrencies: list[int] = (1, 5, 10, 30, 50),
+    duration_s: float = 60.0,
+) -> dict:
+    """阶梯并发，每个并发度跑 duration_s 秒"""
+    steps = []
+    for c in concurrencies:
+        logger.info("  [并发 %d] %s...", c, model_cfg.name)
+        step_result = asyncio.run(_concurrency_probe(model_cfg, fixtures_dir, c, duration_s))
+        steps.append(step_result)
+
+    return {
+        "benchmark": "concurrency",
+        "model": model_cfg.name,
+        "steps": steps,
+    }
+
+
+# ────────────────────────────────────────────────────────────
+# 4. 长时间稳定性 —— N 分钟持续跑，观察延迟漂移
+# ────────────────────────────────────────────────────────────
+
+
+def run_stability(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    duration_s: float = 1800.0,   # 30 分钟
+    sample_interval_s: float = 5.0,
+) -> dict:
+    """连续 duration_s 秒每 sample_interval_s 发一次请求
+
+    判定：前 5 分钟 vs 最后 5 分钟 P95 延迟的比值 < 1.30 → PASS
+    """
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+    deadline = time.monotonic() + duration_s
+    samples: list[dict] = []
+    n = 0
+
+    while time.monotonic() < deadline:
+        image = image_files[n % max(len(image_files), 1)] if image_files else None
+        result = infer_sync(
+            model_cfg,
+            prompt=VLM_PROMPT if model_cfg.is_vlm else TEXT_PROMPT + "评估合同违约",
+            image_path=image,
+            max_tokens=200,
+        )
+        samples.append({
+            "ts_offset_s": time.monotonic() - (deadline - duration_s),
+            "ok": result.ok,
+            "latency_ms": result.latency_ms,
+            "output_tokens": result.output_tokens,
+        })
+        n += 1
+        await_time = sample_interval_s - (time.monotonic() % sample_interval_s)
+        time.sleep(max(0.1, await_time) if await_time < sample_interval_s else sample_interval_s)
+
+    # 前 5 min vs 最后 5 min
+    first_window_end = 300.0
+    last_window_start = duration_s - 300.0
+    first_lats = [s["latency_ms"] for s in samples
+                  if s["ok"] and s["ts_offset_s"] <= first_window_end]
+    last_lats = [s["latency_ms"] for s in samples
+                 if s["ok"] and s["ts_offset_s"] >= last_window_start]
+
+    first_p95 = summarize_latencies(first_lats)["p95"]
+    last_p95 = summarize_latencies(last_lats)["p95"]
+    drift_ratio = (last_p95 / first_p95) if first_p95 > 0 else 1.0
+
+    total_errors = sum(1 for s in samples if not s["ok"])
+
+    return {
+        "benchmark": "stability",
+        "model": model_cfg.name,
+        "duration_s": duration_s,
+        "total_samples": len(samples),
+        "errors": total_errors,
+        "error_rate": total_errors / len(samples) if samples else 0,
+        "first_5min_p95_ms": first_p95,
+        "last_5min_p95_ms": last_p95,
+        "latency_drift_ratio": drift_ratio,
+        "drift_verdict": "PASS" if drift_ratio < 1.30 else "WARN",
+        "all_samples": samples,  # 大对象，生成报告时可选择裁剪
+    }
+
+
+# ────────────────────────────────────────────────────────────
+# 5. PP / TG 分阶段吞吐 —— prefill 与 decode 分开计 tok/s（llama-bench 法）
+# ────────────────────────────────────────────────────────────
+
+
+def run_prefill_decode(
+    model_cfg: ModelConfig,
+    fixtures_dir: Path,
+    *,
+    samples: int = 5,
+    prompt_text: Optional[str] = None,
+    decode_tokens: int = 128,
+) -> dict:
+    """分别测 prefill (PP) 与 decode (TG) 的 tok/s。
+
+    单一聚合吞吐 (``run_throughput``) 把 prefill 和 decode 混在一起，掩盖了二者
+    截然不同的硬件行为：prefill 是大矩阵并行（compute-bound），decode 是逐 token
+    自回归（memory-bandwidth-bound）。沿用 K23 ``llama-bench -p/-n`` 的 PP/TG
+    分离思路（见 ``runs/2026-06-01_S0_vendor_stack/`` PP128/TG128），用流式请求把
+    两阶段分开计时：
+
+    - **PP (prefill) tok/s** = ``prompt_tokens / TTFT``（首 token 到达即 prefill 完成）
+    - **TG (decode) tok/s**  = ``completion_tokens / (total_latency - TTFT)``
+
+    需要服务端在流式响应里返回 ``usage``（vLLM ``--enable-... usage``/默认开启、
+    sglang、llama.cpp server 均支持）。拿不到 usage 时该样本跳过。
+    """
+    image_files = sorted(fixtures_dir.glob("*.jpg")) if model_cfg.is_vlm else []
+    prompt = prompt_text or (
+        VLM_PROMPT if model_cfg.is_vlm
+        else TEXT_PROMPT + "详细比较合同违约金、定金与赔偿损失三者的法律性质与适用条件。"
+    )
+
+    pp_tps: list[float] = []
+    tg_tps: list[float] = []
+    ttfts: list[float] = []
+    prompt_toks: list[int] = []
+    decode_toks: list[int] = []
+    errors = no_usage = 0
+
+    for i in range(samples):
+        image = image_files[i % len(image_files)] if image_files else None
+        res = infer_stream(
+            model_cfg,
+            prompt=prompt,
+            image_path=image,
+            max_tokens=decode_tokens,
+        )
+        if not res.ok:
+            errors += 1
+            continue
+        # 需要 usage（prompt/completion tokens）与 TTFT 才能拆分两阶段。
+        if res.input_tokens <= 0 or res.output_tokens <= 0 or res.ttft_ms <= 0:
+            no_usage += 1
+            continue
+
+        prefill_s = res.ttft_ms / 1000.0
+        decode_s = max((res.latency_ms - res.ttft_ms) / 1000.0, 1e-6)
+        pp = res.input_tokens / prefill_s if prefill_s > 0 else 0.0
+        tg = res.output_tokens / decode_s
+
+        pp_tps.append(pp)
+        tg_tps.append(tg)
+        ttfts.append(res.ttft_ms)
+        prompt_toks.append(res.input_tokens)
+        decode_toks.append(res.output_tokens)
+        logger.info("  [PP/TG %d/%d] %s  PP=%.1f t/s (prompt=%d)  TG=%.1f t/s (decode=%d)",
+                    i + 1, samples, model_cfg.name, pp, res.input_tokens, tg, res.output_tokens)
+
+    def _stats(xs: list[float]) -> dict:
+        return {
+            "mean": statistics.mean(xs) if xs else 0.0,
+            "p50": statistics.median(xs) if xs else 0.0,
+            "min": min(xs) if xs else 0.0,
+            "max": max(xs) if xs else 0.0,
+        }
+
+    return {
+        "benchmark": "prefill_decode",
+        "model": model_cfg.name,
+        "samples": samples,
+        "measured": len(pp_tps),
+        "errors": errors,
+        "no_usage_samples": no_usage,   # 服务端未回 usage/TTFT → 无法拆分
+        "prefill": {
+            "stage": "PP",
+            "tok_per_sec": _stats(pp_tps),
+            "ttft_ms_stats": summarize_latencies(ttfts),
+            "avg_prompt_tokens": (sum(prompt_toks) / len(prompt_toks)) if prompt_toks else 0,
+        },
+        "decode": {
+            "stage": "TG",
+            "tok_per_sec": _stats(tg_tps),
+            "avg_decode_tokens": (sum(decode_toks) / len(decode_toks)) if decode_toks else 0,
+        },
+    }
