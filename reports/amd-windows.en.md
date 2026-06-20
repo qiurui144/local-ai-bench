@@ -1,3 +1,4 @@
+> [中文版](./amd-windows.zh.md)
 # AMD Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA NPU, Windows 11  

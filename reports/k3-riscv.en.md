@@ -1,3 +1,4 @@
+> [中文版](./k3-riscv.zh.md)
 # K3 RISC-V Platform — Model Selection & Benchmark Report
 
 **Platform:** k3-riscv | SpacemiT K3, 16 GB RAM, RISC-V RVV, llama.cpp (llama-server port 8080)

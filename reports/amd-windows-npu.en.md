@@ -1,3 +1,4 @@
+> [中文版](./amd-windows-npu.zh.md)
 > [← AMD Windows overview](./amd-windows.en.md)
 
 # AMD Windows — NPU (AMD XDNA / VitisAI) Performance

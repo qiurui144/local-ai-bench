@@ -1,3 +1,4 @@
+> [中文版](./amd-windows-igpu.zh.md)
 > [← AMD Windows overview](./amd-windows.en.md)
 
 # AMD Windows — iGPU (Radeon 780M / Vulkan + DirectML) Performance

@@ -1,3 +1,4 @@
+> [中文版](./intel-windows-cpu.zh.md)
 > [← Intel Windows overview](./intel-windows.en.md)
 
 # Intel Windows — CPU Mode (Ollama CPU + ONNX Runtime CPU)
