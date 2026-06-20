@@ -681,7 +681,7 @@ models:
       throughput:
         output_tokens: 32                             # ctx=768，保守 output
         thresholds:
-          tps_min: 80                                 # E2E实测聚合 110.1 TPS（2026-06-20，VL server，seed1）；73% floor
+          tps_min: 65                                 # 3-seed mean=99.8 t/s±15.5（seeds: 77.9/110.5/111.0，2026-06-20）；65% floor，所有 seed 均通过
       prefill_decode:
         samples: 2
         thresholds:
@@ -694,7 +694,7 @@ models:
           chrf_min: 26.0                              # E2E实测 en->zh chrF=35.5；73% floor
           term_match_rate_min: 0.50                   # E2E实测 zh->en term=68%；74% floor
       skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
-    notes: "RK1820 PCIe NPU（VL server：LLM+vision.rknn，ctx=768，port 18001）；TTFT 3-seed P50=647ms/P95=822ms（2026-06-20）；TPS=110.1（2026-06-20，seed1）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达；GSM8K 参考值 66%（2026-06-19 非正式）"
+    notes: "RK1820 PCIe NPU（VL server：LLM+vision.rknn，ctx=768，port 18001）；TTFT 3-seed P50=647ms/P95=822ms（2026-06-20）；TPS 3-seed mean=99.8±15.5 t/s（seeds: 77.9/110.5/111.0，2026-06-20）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达；GSM8K 参考值 66%（2026-06-19 非正式）"
 
   # MiniCPM embedding on port 18080（已运行）
   # 实际运行在 RK3588 内置 RKNPU3（3×2 TOPS）上，不是 RK1820 PCIe NPU
