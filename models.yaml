@@ -393,7 +393,7 @@ models:
     role: llm_nano
     task_type: text_only
     translation_capable: true
-    notes: "AMD 780M Vulkan — Qwen3-0.6B；TTFT P50=2367ms，TPS=79.5；general_ability re-run pending (thinking mode <think> parser fix applied 2026-06-20)；prefill_decode PENDING-VERIFY(Ollama qwen3不返回token_usage，1/5样本TG=8533异常) (2026-06-17 E2E)"
+    notes: "AMD 780M Vulkan — Qwen3-0.6B；TTFT P50=2367ms，TPS=79.5；general_ability FAIL(gsm8k=0.390/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL)(1-seed 2026-06-20, parser-fix applied — mmlu/hellaswag 0.0 is real 0.6B capability gap, not parse bug)；prefill_decode PENDING-VERIFY(Ollama qwen3不返回token_usage) (2026-06-17/06-20 E2E)"
     benchmarks:
       ttft:
         samples: 3
@@ -411,9 +411,9 @@ models:
           # tg_tps_min: PENDING — TG=8533 tok/s 是 Ollama qwen3 usage bug，不可作阈值
       general_ability:
         thresholds:
-          gsm8k_min: 0.30          # 0.6B 保守下限；先前实测 0.40（thinking-parse bug 影响）
-          mmlu_min: 0.30           # PENDING-VERIFY（先前 0.0 为 parse bug）
-          hellaswag_min: 0.35      # PENDING-VERIFY（先前 0.0 为 parse bug）
+          gsm8k_min: 0.30          # 实测 0.390（parser-fix，1-seed 2026-06-20）；PASS
+          mmlu_min: 0.30           # 实测 0.000（parser-fix 后仍为 0.0 — 0.6B MCQ 能力不足）；FAIL
+          hellaswag_min: 0.35      # 实测 0.000（parser-fix 后仍为 0.0 — 0.6B MCQ 能力不足）；FAIL
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank]
 
   - name: bge-reranker-base-amd-win
