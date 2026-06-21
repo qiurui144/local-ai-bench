@@ -1,0 +1,51 @@
+{
+  "version": "1.0",
+  "description": "VLM accuracy golden set — visual comprehension, counting, color recognition, scene description",
+  "cases": [
+    {
+      "id": "ocr_001",
+      "type": "ocr_in_image",
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png",
+      "prompt": "What text, if any, appears in this image? Reply with only the text or 'none' if no text.",
+      "expected_keywords": ["none"],
+      "match_mode": "keyword_any",
+      "provenance": "wikipedia_commons"
+    },
+    {
+      "id": "animal_001",
+      "type": "basic_visual",
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Camponotus_flavomarginatus_ant.jpg",
+      "prompt": "What animal is in this image? Answer in one word.",
+      "expected_keywords": ["ant", "insect"],
+      "match_mode": "keyword_any",
+      "provenance": "wikipedia_commons"
+    },
+    {
+      "id": "count_001",
+      "type": "counting",
+      "image_url": "__LOCAL__:benchmark/accuracy/vlm_fixtures/assets/three_circles.png",
+      "prompt": "How many circles are in the image? Answer with a number only.",
+      "expected_keywords": ["3", "three"],
+      "match_mode": "keyword_any",
+      "provenance": "synthetic_local"
+    },
+    {
+      "id": "color_001",
+      "type": "color_recognition",
+      "image_url": "__LOCAL__:benchmark/accuracy/vlm_fixtures/assets/red_square.png",
+      "prompt": "What color is the square in the image? Answer with one word.",
+      "expected_keywords": ["red"],
+      "match_mode": "keyword_any",
+      "provenance": "synthetic_local"
+    },
+    {
+      "id": "caption_001",
+      "type": "scene_description",
+      "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/320px-Cat03.jpg",
+      "prompt": "Describe this image in one sentence.",
+      "expected_keywords": ["cat", "feline", "kitten"],
+      "match_mode": "keyword_any",
+      "provenance": "wikipedia_commons"
+    }
+  ]
+}
