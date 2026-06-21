@@ -20,9 +20,7 @@ import threading
 import time
 import subprocess
 import json
-import os
-import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -125,7 +123,6 @@ class WindowsPowerSampler:
             cpu_w = igpu_w = 0.0
             for hw in lhm.Hardware:
                 hw.Update()
-                hw_type = hw.HardwareType
                 for sensor in hw.Sensors:
                     if sensor.SensorType != 5:  # 5 = Power
                         continue

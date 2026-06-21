@@ -1,8 +1,6 @@
 """Offline unit tests for the Windows power sampler — no actual Windows/SSH needed."""
 import time
-import threading
 import pytest
-from unittest.mock import patch, MagicMock
 from benchmark.power.windows_sampler import (
     WindowsPowerSampler,
     PowerReport,
