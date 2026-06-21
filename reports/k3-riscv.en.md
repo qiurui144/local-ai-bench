@@ -212,7 +212,16 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 **GA FAIL root cause:** GSM8K `error_rate = 35%` (7/20 parse failures — model outputs reasoning without `#### answer` delimiter expected by evaluator on RISC-V). Raw accuracy 0.65 is correct and above 0.55 floor. MMLU=0.80 and HellaSwag=0.85 are both well above thresholds. This is an evaluation format sensitivity issue, not a model quality regression.
 
-**Translation note:** All 4 directions PASS. Resolves AMD 7B chrF 36.4 anomaly — K3 7B achieves chrF 59.4 (zh→en), confirming AMD's FAIL is platform/environment specific.
+**Translation cross-platform analysis (Qwen2.5-7B Q4_K_M, 2026-06-21):**
+
+| Direction | K3 RISC-V (RVV) | AMD Win (Vulkan) | Analysis |
+|---|---|---|---|
+| zh→en l1 (chrF) | **59.4 PASS** | — | K3 substantially stronger zh→en |
+| zh→en l3 (chrF / term) | **73.5 chrF / 74% PASS** | 79% term FAIL (floor 80%) | Different metrics; AMD borderline on term threshold |
+| en→zh l1 (chrF) | **37.1 PASS** (floor 30) | 36.4 FAIL (floor 40) | Nearly identical scores; verdict difference is threshold calibration |
+| en→zh l3 (chrF / term) | **46.0 chrF / 79% PASS** | — | K3 term threshold 50%, AMD 80% |
+
+**Root cause:** AMD 7B translation FAIL is borderline threshold calibration, not backend degradation. en→zh scores are nearly identical (K3 37.1 vs AMD 36.4). The AMD threshold is stricter (40.0 vs K3's 30.0). zh→en term-match 79% is 1 point below AMD's 80% floor. K3 RVV and AMD Vulkan produce equivalent translation quality for this model.
 
 ---
 

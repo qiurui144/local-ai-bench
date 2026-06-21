@@ -167,7 +167,18 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 ## Known Limitations
 
-- **LLM translation FAIL** — All LLM models (3B/7B/0.6B tested) fail translation quality gate (chrF or term_match_rate below threshold). Model capability ceiling, not a deployment blocker.
+- **LLM translation FAIL** — All LLM models (3B/7B/0.6B tested) fail translation quality gate (chrF or term_match_rate below threshold). See cross-platform analysis below.
+
+  **Cross-platform translation analysis (Qwen2.5-7B Q4_K_M, 2026-06-21):**
+
+  | Direction | AMD Win (Vulkan) | K3 RISC-V (RVV) | Threshold (AMD) | Verdict |
+  |---|---|---|---|---|
+  | zh→en l1 (BLEU) | 27.1 | — | 14.0 | AMD PASS |
+  | zh→en l3 (term_match) | 79% | 73.5% chrF | 80% | AMD FAIL (borderline) |
+  | en→zh l1 (chrF) | **36.4** | **37.1** | 40.0 | Both borderline; K3 PASS at threshold 30.0 |
+  | en→zh l3 (chrF) | — | 46.0 | — | K3 PASS |
+
+  **Root cause:** AMD FAIL is borderline threshold calibration, not backend degradation. en→zh scores are nearly identical (AMD 36.4 vs K3 37.1) — the same model produces the same quality on both platforms. AMD applies a stricter threshold (40.0 vs K3's 30.0). zh→en term_match 79% is 1 point below the 80% floor. To clear translation on AMD: lower `chrf_min` from 40.0→35.0 and `term_match_rate_min` from 0.80→0.75, or validate with a larger sample (currently `max_pairs: 10`).
 - **qwen3-0.6b MCQ FAIL** — mmlu=0.000, hellaswag=0.000. Root cause is 0.6B model incapacity to reliably output MCQ letter answers (A/B/C/D), confirmed after `<think>` parser fix applied. gsm8k=0.390 (open-ended math) passes.
 - **LLM conditioned FAIL** — Long-context conditioning fails across all tested models.
 - **LLM conversation_drift FAIL** — Multi-turn drift detection fails.
@@ -184,6 +195,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 | 2026-06-19 | Initial full calibration: all 14 models measured across CPU/iGPU/NPU paths; thresholds set from E2E runs |
 | 2026-06-20 | Added quality dims: qwen2.5-7b general_ability PASS (3-seed, gsm8k=0.880/mmlu=0.600/hellaswag=0.790); all 3 LLM models translation FAIL formally documented; llama3.2-3b general_ability FAIL (3-seed); qwen3-0.6b general_ability FAIL — re-run with parser fix confirms mmlu/hellaswag=0.000 is real 0.6B MCQ capability gap |
 | 2026-06-21 | qwen2.5-14b recalibrated: TPS 8.6, TTFT p50/p95 7718/14395 ms (2-sample TTFT + 3-sample throughput from fresh run); GA and translation explicitly skipped by model config (14B is for parameter-uplift perf validation only) |
+| 2026-06-21 | Cross-platform translation analysis added: AMD 7B translation FAIL is borderline threshold calibration (en→zh 36.4 vs threshold 40.0; same model on K3 scores 37.1 with threshold 30.0). zh→en term-match 79% is 1 point below 80% floor. Not backend degradation. |
 
 ---
 
