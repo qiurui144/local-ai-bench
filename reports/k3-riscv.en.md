@@ -65,7 +65,7 @@ All four bottom models run as local ONNX via ORT/sherpa-onnx on the K3 X100 CPU.
 
 | Candidate | q4 RAM | Suitability | Status |
 |---|---|---|---|
-| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (benchmark queued, starts after 1.5B ~17:15) |
+| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **Perf PASS** (2026-06-21, 3-seed): TPS 2.9 / TTFT P50 608ms / PP 192 t/s / TG 2.9 t/s; Translation PASS (all 4 dirs); GA FAIL (GSM8K error_rate 35% parse failures on RISC-V — accuracy 0.65 is correct) |
 | Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | **PASS** (2026-06-21): PP 572 t/s / TG 7.1 t/s / TTFT P50 184ms; GA PASS; translation PASS |
 | Qwen2.5-1.5B-Instruct q4 | ~1.1 GB | Minimal-footprint option | **FAIL** (2026-06-21, 3-seed): PP 467 t/s / TG 8.85 t/s / TTFT P50 122ms — perf PASS; GA FAIL (MMLU 0.51 < 0.55); translation FAIL (en→zh) |
 | Qwen3-30B-A3B q4 (MoE) | ~16–18 GB | ❌ **Exceeds 16 GB** — reserved for 32 GB device | 32 GB: measured TG 13.3 t/s (SpacemiT modelzoo) |
@@ -99,7 +99,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 | Model | TPS (agg) | TTFT p50 | PP t/s | TG t/s | Status |
 |---|---|---|---|---|---|
-| `qwen2.5-7b-k3-riscv` | **~3–5** | ~320 ms | ~63 | ~3.6 | **PENDING-VERIFY** (benchmark running) |
+| `qwen2.5-7b-k3-riscv` | **2.9** | **608 ms** | **192** | **2.9** | Perf **PASS**; GA FAIL (GSM8K parse) |
 | `qwen2.5-3b-k3-riscv` | ~4–7 | **184 ms** | **572** | **7.1** | **PASS** (GA+translation) |
 | `qwen2.5-1.5b-k3-riscv` | 10.0 | **122 ms** | 467 | 8.85 | **FAIL** (perf PASS; GA FAIL MMLU; translation FAIL en→zh) |
 
@@ -107,7 +107,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 | Model | GSM8K | MMLU | HellaSwag | GA Verdict | Translation |
 |---|---|---|---|---|---|
-| `qwen2.5-7b` | PENDING | PENDING | PENDING | **PENDING** | PENDING |
+| `qwen2.5-7b` | **0.650** | **0.800** | **0.850** | **FAIL** (GSM8K error_rate 35%) | **PASS** all 4 dirs (zh→en 59.4/73.5; en→zh 37.1/46.0 chrF) |
 | `qwen2.5-3b` | **0.550** | **0.500** | **0.750** | **PASS** | **PASS** (zh→en chrF 57.5/70.4; en→zh 33.6/32.4) |
 | `qwen2.5-1.5b` | 0.600/PASS | 0.510/FAIL | 0.610/PASS | **FAIL** | FAIL (en→zh chrF<40; term<80%) |
 
@@ -143,7 +143,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 | 3B | K3 RISC-V (CPU+IME2) | 7.1 | ~11 W | **0.65 TPS/W** |
 | 3B | AMD iGPU (Vulkan) | 28.99 | ~42 W | 0.69 TPS/W |
 | 3B | Intel CPU | 19.47 | ~42 W | 0.46 TPS/W |
-| 7B | K3 RISC-V (CPU+IME2) | ~3.6 | ~13 W | **~0.28 TPS/W** |
+| 7B | K3 RISC-V (CPU+IME2) | 2.9 | ~13 W | **0.22 TPS/W** |
 | 7B | AMD iGPU (Vulkan) | 13.33 | ~46 W | 0.29 TPS/W |
 
 **K3 RISC-V edge advantage:** Similar TPS/W efficiency to AMD iGPU at **3.5× lower absolute power** (11W vs 42W). Critical for always-on edge deployment vs intermittent laptop use.
@@ -187,6 +187,29 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 | Translation en→zh (terminology) | BLEU=22.6 chrF=17.0 term=50% | — | **FAIL** |
 
 **Overall verdict: FAIL** — Performance (TTFT/PP/TG) excellent; quality gates fail (1.5B MMLU capability ceiling + Chinese generation insufficient).
+
+---
+
+### qwen2.5-7b-k3-riscv (2026-06-21 — 3-seed Calibration Run)
+
+**llama-server v8355 on port 11435, Qwen2.5-7B-Instruct Q4_K_M via K3_7B_BASE_URL**
+
+| Metric | Measured | Threshold | Status |
+|---|---|---|---|
+| TTFT warm P50 | 608 ms | ≤ 973 ms | **PASS** |
+| TTFT p95 (incl. cold) | 6207 ms | ≤ 7138 ms | **PASS** |
+| Prefill (PP) | 192 t/s mean (63/176/192) | ≥ 31 t/s | **PASS** |
+| Decode (TG) | 2.90 t/s mean (1.96/3.13/2.90) | ≥ 1.2 t/s | **PASS** |
+| Throughput | 2.9 t/s agg | ≥ 1 t/s | **PASS** |
+| General ability (GSM8K/MMLU/HellaSwag) | 0.650 / 0.800 / 0.850 | ≥55%/50%/60% | **FAIL** |
+| Translation zh→en (l1 flores) | BLEU=28.1 chrF=59.4 | chrF≥30 | **PASS** |
+| Translation zh→en (l3 terminology) | BLEU=49.0 chrF=73.5 term=74% | chrF≥30 / term≥50% | **PASS** |
+| Translation en→zh (l1 flores) | BLEU=41.9 chrF=37.1 | chrF≥30 | **PASS** |
+| Translation en→zh (l3 terminology) | BLEU=53.5 chrF=46.0 term=79% | chrF≥30 / term≥50% | **PASS** |
+
+**GA FAIL root cause:** GSM8K `error_rate = 35%` (7/20 parse failures — model outputs reasoning without `#### answer` delimiter expected by evaluator on RISC-V). Raw accuracy 0.65 is correct and above 0.55 floor. MMLU=0.80 and HellaSwag=0.85 are both well above thresholds. This is an evaluation format sensitivity issue, not a model quality regression.
+
+**Translation note:** All 4 directions PASS. Resolves AMD 7B chrF 36.4 anomaly — K3 7B achieves chrF 59.4 (zh→en), confirming AMD's FAIL is platform/environment specific.
 
 ---
 

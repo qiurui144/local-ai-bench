@@ -1250,17 +1250,17 @@ models:
       ttft:
         prompt_tokens: 64
         thresholds:
-          p50_ttft_ms_max: 60000         # PENDING-VERIFY: 7B cold start ~10-30s on RISC-V
-          p95_ttft_ms_max: 120000
+          p50_ttft_ms_max: 973           # warm P50=608ms × 1.6 (3-seed 2026-06-21)
+          p95_ttft_ms_max: 7138          # p95=6207ms × 1.15 (cold=666ms)
       throughput:
         output_tokens: 32
         thresholds:
-          tps_min: 1                     # PENDING-VERIFY: expected ~2-4 t/s for 7B Q4_K_M
+          tps_min: 1                     # aggregate 2.9 t/s × 0.5 (3-seed)
       prefill_decode:
         samples: 3
         thresholds:
-          pp_tps_min: 50                 # PENDING-VERIFY: PP slower than 3B on 7B
-          tg_tps_min: 1                  # PENDING-VERIFY: ~2-4 t/s
+          pp_tps_min: 31                 # measured min=63 t/s × 0.5 (3-seed)
+          tg_tps_min: 1.2               # measured min=1.96 t/s × 0.6 (3-seed)
       general_ability:
         tasks:
           gsm8k: {num_samples: 20}
@@ -1276,7 +1276,7 @@ models:
           chrf_min: 30.0
           term_match_rate_min: 0.50
       skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
-    notes: "SpacemiT K3 RISC-V — Qwen2.5-7B Q4_K_M via llama-server port 11435; model downloaded 2026-06-21; PENDING-VERIFY"
+    notes: "SpacemiT K3 RISC-V — Qwen2.5-7B Q4_K_M via llama-server port 11435; 3-seed calibrated 2026-06-21. GA FAIL: GSM8K error_rate 35% (parse failures on RISC-V), accuracy 0.65/MMLU 0.80/HellaSwag 0.85 all above floor. Translation: all 4 directions PASS (chrF zh→en 59.4/73.5, en→zh 37.1/46.0)."
 
   # ═══ SpacemiT K1 RISC-V（llama.cpp RVV，riscv64，同 K3 机架）═══
   # 硬件：bianbu@192.168.100.140（K1_HOST），SpacemiT K1（BPI-F3/Muse-Pi，8核 RVV 0.7.1）
