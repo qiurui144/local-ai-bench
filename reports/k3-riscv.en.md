@@ -49,7 +49,7 @@ All four bottom models run as local ONNX via ORT/sherpa-onnx on the K3 X100 CPU.
 
 | Candidate | q4 RAM | Suitability | Status |
 |---|---|---|---|
-| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (benchmark queued 2026-06-21) |
+| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (benchmark queued, starts after 1.5B ~17:15) |
 | Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | **PASS** (2026-06-21): PP 572 t/s / TG 7.1 t/s / TTFT P50 184ms; GA PASS; translation PASS |
 | Qwen2.5-1.5B-Instruct q4 | ~1.1 GB | Minimal-footprint option | **PENDING-VERIFY** (benchmark running 2026-06-21, est. ~17:45 completion) |
 | Qwen3-30B-A3B q4 (MoE) | ~16–18 GB | ❌ **Exceeds 16 GB** — reserved for 32 GB device | 32 GB: measured TG 13.3 t/s (SpacemiT modelzoo) |
@@ -132,8 +132,8 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 ## PENDING-VERIFY (must run on K3, per §1.6)
 
 **Benchmarks in progress (2026-06-21):**
-- `qwen2.5-1.5b-k3-riscv` — clean 3-seed benchmark running on port 8081 (restarted 14:47 without conditioned/conversation_drift; est. ~17:45 completion); note: conditioned skipped because -c 4096 server rejects rungs ≥4k
-- `qwen2.5-7b-k3-riscv` — server running on port 11435 (confirmed 2026-06-21); benchmark queued after 1.5B completes (~17:45)
+- `qwen2.5-1.5b-k3-riscv` — 3-seed benchmark running, run 2/3 started 15:37 (est. ~17:15 completion); conditioned/conversation_drift skipped (-c 4096 server)
+- `qwen2.5-7b-k3-riscv` — server running on port 11435 (confirmed 2026-06-21); benchmark queued after 1.5B completes (~17:15)
 
 **Remaining verification items:**
 1. **Qwen2.5-1.5B-Instruct q4** — TTFT/PP/TG/GA/translation thresholds (benchmark running; clean re-run for perf dims needed after GA completes)
@@ -195,9 +195,9 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 | 候选 | q4 内存 | 状态 |
 |---|---|---|
-| **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（benchmark 排队中，2026-06-21）|
+| **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（benchmark 排队中，预计 1.5B 完成后 ~17:15 启动）|
 | Qwen2.5-3B-Instruct q4（兜底） | ~2.2 GB | **已验证 2026-06-21**：TTFT warm P50≈184ms，PP≈572 t/s，TG≈7.1 t/s；翻译 PASS；GA PASS（GSM8K 0.55/MMLU 0.50/HellaSwag 0.75） |
-| Qwen2.5-1.5B-Instruct q4（极简） | ~1.1 GB | **PENDING-VERIFY**（benchmark 运行中，2026-06-21 约 17:45 完成）|
+| Qwen2.5-1.5B-Instruct q4（极简） | ~1.1 GB | **PENDING-VERIFY**（benchmark 运行中，run 2/3，2026-06-21 约 17:15 完成）|
 | Qwen3-30B-A3B q4（MoE） | ~16–18 GB | ❌ 超 16 GB，留 32G 设备 |
 
 **本地框架**：llama.cpp + IME2（最优，RVV + INT8/INT4 加速）。**云端**：deepseek-v4（默认关闭，隐私优先）。

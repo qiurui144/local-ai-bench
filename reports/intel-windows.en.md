@@ -1,7 +1,7 @@
 # Intel Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** intel-win-x86 | Intel Core Ultra laptop, Windows 11  
-**Last calibrated:** 2026-06-19. This file is updated in place.
+**Last calibrated:** 2026-06-21. This file is updated in place.
 
 ---
 
