@@ -24,9 +24,10 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 | **LLM 7B** | ~3–5 TPS (est.) | **13.33 TPS** ✓ | — |
 | **LLM 3B** | ~8–12 TPS (est.) | **28.99 TPS** ✓ | — |
 | **LLM 0.6B** | — | **91.09 TPS** ✓ | — |
-| **LLM NPU (1B, Lemonade)** | — | — | **~80–100 TPS** PENDING-VERIFY |
-| **LLM NPU (1.5B, Lemonade)** | — | — | **~60–80 TPS** PENDING-VERIFY |
-| **LLM NPU (3.8B, Lemonade)** | — | — | **~30–50 TPS** PENDING-VERIFY |
+| **LLM NPU pure (1B, Lemonade)** | — | — | **~80–100 TPS** PENDING-VERIFY |
+| **LLM NPU pure (1.5B, Lemonade)** | — | — | **~60–80 TPS** PENDING-VERIFY |
+| **LLM NPU pure (3.8B, Lemonade)** | — | — | **~30–50 TPS** PENDING-VERIFY |
+| **LLM Hybrid (7B, iGPU+NPU)** | — | — | **PENDING-VERIFY** ⚠️ Ryzen AI 300 preferred |
 | **Embedding 0.6B** | — | 875 ms p50 ✓ | — |
 | **OCR text (p50)** | 1593 ms | **469 ms** ✓ fastest | 2031 ms |
 | **OCR structured (p50)** | 859 ms | **477 ms** ✓ | 1868 ms |
@@ -36,7 +37,7 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 
 CPU-only LLM is not independently benchmarked; Ollama defaults to Vulkan iGPU.
 OCR quality (CER 7.04%) is identical across all three paths.
-**NPU LLM via Lemonade**: AMD XDNA NPU can run LLM inference using `lemonade-server` — all values PENDING-VERIFY.
+**Three LLM modes**: (1) Ollama Vulkan iGPU (calibrated); (2) Lemonade hybrid — iGPU prefill + NPU decode, PENDING-VERIFY, ⚠️ Ryzen AI 300 preferred for full support; (3) Lemonade/FastFlowLM pure NPU ≤3.8B, PENDING-VERIFY.
 
 **→ Mode details:**
 - [iGPU (Vulkan + DirectML) — LLM, Embedding, OCR fastest path](./amd-windows-igpu.en.md)
@@ -132,7 +133,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 | ASR RTF | — | — | **0.073** ✓ |
 | Reranker base p50 | **78 ms** ✓ | — | — |
 
-AMD XDNA NPU 现通过 Lemonade Server 支持 LLM 推理（W4A8 量化，≤3.8B 模型）。PENDING-VERIFY。
+**AMD LLM 三模式：** (1) Ollama Vulkan iGPU（已校准，13.33–91 TPS）；(2) Lemonade Hybrid（iGPU prefill + NPU decode，PENDING-VERIFY，⚠️ Ryzen AI 300 最佳）；(3) Lemonade/FastFlowLM 纯 NPU ≤3.8B（PENDING-VERIFY）。新增支持 DeepSeek-R1-Distill-7B-Hybrid/NPU、Gemma-4-26B-A4B（MoE）。详见 [NPU 文档](./amd-windows-npu.en.md)。
 
 **→ 详细模式文档：**
 - [iGPU（Vulkan + DirectML）— LLM、Embedding、OCR 最快路径](./amd-windows-igpu.en.md)

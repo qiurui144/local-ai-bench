@@ -1,4 +1,4 @@
-> [中文](./model-matrix.zh.md)
+> 中文摘要见各平台 .en.md 文件的「中文摘要」节
 
 # Full Model Matrix — Results and Selection
 

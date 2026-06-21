@@ -71,19 +71,63 @@ differences between Radeon 780M RDNA3 and Intel integrated graphics.
 
 ---
 
-## Intel NPU (Not Yet Tested)
+## Intel NPU / OpenVINO LLM Path (Not Yet Tested)
 
-Intel Core Ultra processors include an Intel NPU (neural processing unit) accessible via
-OpenVINO's NPU plugin or the Windows NPU SDK.
+Intel Core Ultra processors include an Intel NPU (AI Boost) accessible via OpenVINO.
+OpenVINO has also landed in llama.cpp as a first-class compute backend (OpenVINO 2026.0.0),
+enabling LLM inference on Intel CPU / iGPU / NPU via the same GGUF model files used by Ollama.
 
-Current status: **not benchmarked**. OpenVINO with `device="NPU"` is the expected path
-for Intel NPU acceleration of OCR/ASR ONNX models.
+### OpenVINO llama.cpp Integration (Reference — not benchmarked on this platform)
+
+OpenVINO became a supported backend in llama.cpp, replacing the older SYCL approach:
+
+**Build:**
+```bash
+cmake -B build -DGGML_OPENVINO=ON
+cmake --build build --config Release -j $(nproc)
+```
+
+**Runtime device selection via env:**
+```bash
+# Use Intel iGPU (Arc/Xe)
+export GGML_OPENVINO_DEVICE=GPU
+./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
+
+# Use Intel NPU (AI Boost)
+export GGML_OPENVINO_DEVICE=NPU
+./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
+
+# Use Intel CPU via OpenVINO (optimized path)
+export GGML_OPENVINO_DEVICE=CPU
+./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
+```
+
+**Supported quantization formats:** FP16, Q8_0, Q4_0, Q4_1, Q4_K, Q4_K_M
+
+**OpenVINO version required:** 2026.0.0 or later (earlier versions may lack NPU support)
+
+This gives a LLM acceleration path beyond CPU-only Ollama — the iGPU and NPU are reachable
+via llama.cpp without changing the GGUF model format.
+
+### OCR/ASR: NPU path via OpenVINO ONNX
+
+```bash
+# OpenVINO NPU for OCR ONNX models
+export OV_DEVICE=NPU
+python run_benchmark.py --model rapidocr-intel-openvino --target intel-win-x86
+```
+
+`GGML_OPENVINO_DEVICE=NPU` (llama.cpp) and `OV_DEVICE=NPU` (ONNX Runtime) use the same
+OpenVINO NPU plugin — both routes are available once OpenVINO 2026.0.0 is installed.
+
+**Current status:** LLM via llama.cpp+OpenVINO and NPU OCR are **not yet benchmarked** on this
+specific Intel Windows test device. The paths above are the expected configuration.
 
 ---
 
 ## 中文摘要
 
-**硬件：** Intel Core Ultra 集成显卡，OpenVINO + DirectML  
+**硬件：** Intel Core Ultra 集成显卡 + Intel AI Boost NPU，OpenVINO + DirectML  
 **最后校准：** 2026-06-19
 
 ### iGPU 路径覆盖范围
@@ -93,10 +137,16 @@ for Intel NPU acceleration of OCR/ASR ONNX models.
 | OCR | OpenVINO | **PASS**（p50 797 ms） |
 | OCR | DirectML | **FAIL**（CER 202%，不可用） |
 | ASR | DirectML | **PASS**（RTF 0.341） |
-| LLM / Embedding | 未配置 iGPU | — |
+| LLM（CPU） | Ollama CPU | 见 cpu 文档 |
+| **LLM（iGPU/NPU via llama.cpp+OpenVINO）** | `GGML_OPENVINO_DEVICE=GPU\|NPU` | **未测试，路径已记录** |
+
+### OpenVINO llama.cpp LLM 路径（未测试，已记录配置）
+
+OpenVINO 2026.0.0 已集成进 llama.cpp，通过 `-DGGML_OPENVINO=ON` 编译后可选择 Intel CPU/iGPU/NPU 执行 GGUF 模型推理。设备选择：`export GGML_OPENVINO_DEVICE=GPU`（iGPU）或 `=NPU`（AI Boost）。支持 FP16/Q8_0/Q4_0/Q4_1/Q4_K/Q4_K_M 量化格式。
 
 ### 关键数据
 
 - `rapidocr-intel-openvino`：CER 7.04%，p50 797 ms，结构化 p50 868 ms — **推荐 OCR 路径**
 - `rapidocr-intel-directml`：CER 202.35% — **不可用，驱动精度问题**
 - `sensevoice-small-intel-win`：CER 7.69%，RTF 0.341 — **ASR PASS**
+- Intel iGPU LLM（llama.cpp+OpenVINO）：未测试，待校准
