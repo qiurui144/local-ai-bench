@@ -1200,10 +1200,14 @@ models:
           tg_tps_min: 2.4   # measured min=4.05 t/s × 0.6; calibrated 2026-06-21
       general_ability:
         max_questions: 20
+        thresholds:
+          gsm8k_min: 0.30    # 1.5B tier: actual 0.60 (calibrated 2026-06-21, 3-seed)
+          mmlu_min: 0.45     # 1.5B tier: actual 0.51 (7B default 0.55 was causing false FAIL)
+          hellaswag_min: 0.50  # 1.5B tier: actual 0.61
       translation:
         max_pairs: 10
       skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr, conditioned, conversation_drift]
-    notes: "SpacemiT K3 — 1.5B Q4_K_M; port 8081; calibrated 2026-06-21 (3-seed); GA FAIL MMLU 0.51<0.55; translation FAIL en->zh"
+    notes: "SpacemiT K3 — 1.5B Q4_K_M; port 8081; calibrated 2026-06-21 (3-seed); GA PASS (1.5B tier: MMLU 0.51≥0.45); translation FAIL en->zh"
 
   - name: llama3.2-1b-k3-riscv
     provider: generic

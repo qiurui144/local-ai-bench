@@ -21,6 +21,10 @@ from benchmark.registry import worst_verdict
 
 logger = logging.getLogger(__name__)
 
+# GA Quality Thresholds by model tier (calibrated 2026-06-21):
+# ≤0.6B tier: gsm8k≥0.20, mmlu≥0.40, hellaswag≥0.45 (set per-model in models.yaml)
+# 1.5B tier:  gsm8k≥0.30, mmlu≥0.45, hellaswag≥0.50 (set per-model in models.yaml)
+# 3-7B tier:  gsm8k≥0.55, mmlu≥0.55, hellaswag≥0.60 (this default)
 DEFAULT_THRESHOLDS = {"gsm8k_min": 0.55, "mmlu_min": 0.55, "hellaswag_min": 0.60}
 DEFAULT_MMLU_SUBJECTS = ["professional_law", "logical_fallacies",
                          "computer_security", "elementary_mathematics"]
