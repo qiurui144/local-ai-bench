@@ -36,6 +36,10 @@ models.yaml ──► run_benchmark.py (orchestrator) ──► benchmark/<dim> 
 
 For each model, `run_all_for_model` loops the `DIMENSIONS` registry (13 entries; registration order = dispatch order = report-section order): skip if the dimension is in `--skip` or its `gate(model_cfg)` is closed → call `spec.run(model_cfg, dim_cfg, ctx)` → store the returned block under `results["benchmarks"][<dim>]`. Gates come from `ModelConfig.capabilities`, a typed positive set derived by `load_models` from the `models.yaml` `*_capable` hints (hints kept as alias for one minor); `general_ability` / `conditioned` / `scenarios` gate on chat-capable, and scenarios additionally resolves an LLM judge that must differ from the model under test. `QUALITY_DIMS` is derived from the registry (`quality=True` entries), never hand-written.
 
+**Scenarios judge auto-selection (`select_judge_model`):** When no explicit `judge_model` is configured in `models.yaml`, `_resolve_judge` builds a pool of all non-DUT chat-capable models with reachable endpoints and calls `benchmark/scenarios/judge.py::select_judge_model(pool)`. Priority order: `["7b", "14b", "3b", "1.5b", "0.6b"]` — matched by substring against `model.name` (case-insensitive); within a tier, the highest `vram_estimate_gb` wins; falls back to `pool[0]` if no tier pattern matches. A `RuntimeError` (empty pool) returns `None` and disables L2 judging.
+
+**Scenarios and conditioned independence:** `scenarios` does NOT require `conditioned` to have run first. Both gate on `chat_capable`; if `conditioned` is skipped, `scenarios` still dispatches independently.
+
 ### Verdict and exit-code semantics
 
 - Per-dimension verdict: `PASS` / `WARN` / `FAIL` / `BLOCKED` (BLOCKED = prerequisites missing, counted as WARN — never a fake PASS). Synthetic-provenance data caps a dimension at WARN.
@@ -223,6 +227,31 @@ The auto-generated `output/reports/<model>_<ts>.html` opens in any browser:
 - **Scenarios bar chart**: L1 primary metric per S1–S8.
 - **Conversation drift line**: quality at 0/5/10/20 prior turns — a flat line is ideal; a steep drop indicates the model can't maintain quality in long sessions.
 - **Compare HTML** (`compare_*.html`): two radar overlays. Green badge = REPLACEABLE. Yellow = INCONCLUSIVE. Red = NOT_REPLACEABLE.
+
+### GA quality thresholds by model tier
+
+`general_ability` uses `DEFAULT_THRESHOLDS = {gsm8k_min: 0.55, mmlu_min: 0.55, hellaswag_min: 0.60}` for 3-7B models. Smaller models need lower floors set per-model in `models.yaml`:
+
+| Tier | gsm8k_min | mmlu_min | hellaswag_min | Where to set |
+|------|-----------|----------|---------------|-------------|
+| ≤0.6B | 0.20 | 0.40 | 0.45 | `models.yaml::benchmarks.general_ability.thresholds` |
+| 1.5B | 0.30 | 0.45 | 0.50 | `models.yaml::benchmarks.general_ability.thresholds` |
+| 3-7B | 0.55 | 0.55 | 0.60 | DEFAULT_THRESHOLDS (no override needed) |
+
+Per-model thresholds in `models.yaml` merge with and override `DEFAULT_THRESHOLDS`. Only set the keys you want to override.
+
+### VLM accuracy fixtures (`benchmark/accuracy/vlm_fixtures/`)
+
+The VLM accuracy golden set lives at `benchmark/accuracy/vlm_fixtures/cases.json`. Schema per case:
+- `id` — unique slug
+- `type` — `ocr_in_image` / `basic_visual` / `counting` / `color_recognition` / `scene_description`
+- `image_url` — HTTPS URL or `__LOCAL__:relative/path` for repo-bundled assets
+- `prompt` — question to ask the VLM
+- `expected_keywords` — list; any match counts (keyword_any mode)
+- `match_mode` — always `keyword_any` for now
+- `provenance` — `wikipedia_commons` or `synthetic_local`; >60% `synthetic_local` caps the dimension at WARN
+
+Local image assets (simple synthetic test images) live in `benchmark/accuracy/vlm_fixtures/assets/`. Add new assets with `scripts/gen_vlm_test_images.py`.
 
 ### Reporting a false FAIL
 
