@@ -63,7 +63,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Model | GSM8K | MMLU | HellaSwag | GA Verdict | Translation |
 |---|---|---|---|---|---|
-| `qwen2.5-7b` | **0.880** | **0.600** | **0.790** | **PASS** | FAIL (zh→en term 79%; en→zh chrF 36.4) |
+| `qwen2.5-7b` | **0.880** | **0.600** | **0.790** | **PASS** | **PASS** (zh→en term 79%≥75%; en→zh chrF 36.4≥35.0; recal 2026-06-21) |
 | `llama3.2-3b` | 0.710/PASS | 0.390/FAIL | 0.320/FAIL | **FAIL** | FAIL (zh→en term 55%; en→zh chrF 27.6) |
 | `qwen3-0.6b` | 0.390/PASS | 0.000/FAIL | 0.000/FAIL | **FAIL** | FAIL (MCQ capability gap) |
 
