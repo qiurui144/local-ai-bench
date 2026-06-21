@@ -1206,8 +1206,13 @@ models:
           hellaswag_min: 0.50  # 1.5B tier: actual 0.61
       translation:
         max_pairs: 10
-      skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr, conditioned, conversation_drift]
-    notes: "SpacemiT K3 — 1.5B Q4_K_M; port 8081; calibrated 2026-06-21 (3-seed); GA PASS (1.5B tier: MMLU 0.51≥0.45); translation FAIL en->zh"
+      concurrency:
+        thresholds:
+          concurrent_users: 2
+          min_tps_per_user: 3.0    # 1.5B single-user ~10 t/s; expect ~3/user under N=2 concurrency
+          max_latency_p95_ms: 60000  # 60s P95 under 2-user concurrency (llama.cpp sequential)
+      skip: [stability, scenarios, embedding, rerank, asr, ocr, conditioned, conversation_drift]
+    notes: "SpacemiT K3 — 1.5B Q4_K_M; port 8081; calibrated 2026-06-21 (3-seed); GA PASS (1.5B tier: MMLU 0.51≥0.45); translation FAIL en->zh; concurrency N=2 enabled (config-only, run on target machine)"
 
   - name: llama3.2-1b-k3-riscv
     provider: generic
