@@ -45,6 +45,15 @@ None. `--target local` (default) preserves v0.3 behavior; remote targets are opt
 
 ## Unreleased
 
+- **K3 RISC-V (SpacemiT) platform upgrade + 3B calibration (2026-06-21)** — New llama-server v8355 (replaces broken b1-17ce6aa), IP updated to 192.168.100.215, Q4_K_M quantization now works cleanly (previous build had Q4_0 SIGSEGV + Q4_K_M garbled output; v8355 resolves both). Multi-port serving: port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B. Qwen2.5-3B-Instruct Q4_K_M calibrated with clean single-process run (2026-06-21):
+  - TTFT: warm P50=184ms (177/178/184/197ms) → threshold p50_max=300ms (1.6×), cold=1031ms → p95_max=1200ms
+  - Prefill (PP): mean 572 t/s (545/571/602) → threshold pp_tps_min=300 t/s
+  - Decode (TG): mean 7.1 t/s (7.0/7.2/7.0) → threshold tg_tps_min=4 t/s
+  - Translation: zh→en BLEU=26.6/chrF=57.5/term=74% PASS; en→zh BLEU=38.3/chrF=33.6/term=57% PASS
+  - General ability: GSM8K=0.550/MMLU=0.500/HellaSwag=0.750 → **PASS** (3-seed)
+  - Previous contaminated measurements (PP~361 t/s, TG~4.4 t/s) from duplicate background process now superseded
+  - Prior Known Limitation "K3 Q4_0 segfault + Q4_K_M garbled output" **RESOLVED** by llama-server v8355
+
 - **Docs: Windows CPU/iGPU/NPU mode breakdown + attune-bench cleanup (2026-06-20)** — Each Windows platform report now documents all three hardware execution paths separately:
   - AMD Windows: new sub-docs `amd-windows-igpu.en.md` (Ollama Vulkan + ONNX DirectML), `amd-windows-npu.en.md` (VitisAI + DirectML ASR), `amd-windows-cpu.en.md` (ONNX CPU baseline + Reranker). Main report `amd-windows.en.md` gains hardware overview table and measured execution-mode comparison across all three paths.
   - Intel Windows: new sub-docs `intel-windows-igpu.en.md` (OpenVINO OCR PASS + DirectML OCR FAIL root cause + DirectML ASR), `intel-windows-cpu.en.md` (Ollama CPU LLM / Embedding, ONNX Reranker, TTFT comparison vs AMD iGPU). Main report `intel-windows.en.md` gains same structure.

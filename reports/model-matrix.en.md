@@ -59,12 +59,12 @@
 | llava-7b-intel-win | intel-win-x86 | ollama | vlm_intel_win_baseline | vlm | FAIL | accuracy:FAIL | PP/TG 1073.89/10.56 tok/s; TPS 10.02; TTFT p50/p95 703.0/703.0 ms | output/reports/intel-win-x86/reports/llava-7b-intel-win_20260618_174001.json |
 | bge-reranker-base-intel-win | intel-win-x86 | local_reranker | reranker_intel_win_cross_encoder | rerank | PASS | rerank:PASS | rerank nDCG 1.000, MRR 1.000, p50 148.5 ms | output/reports/intel-win-x86/reports/bge-reranker-base-intel-win_20260619_191441.json |
 | bge-reranker-v2-m3-intel-win | intel-win-x86 | local_reranker | reranker_intel_win_cross_encoder_stronger | rerank | PASS | rerank:PASS | rerank nDCG 1.000, MRR 1.000, p50 546.5 ms | output/reports/intel-win-x86/reports/bge-reranker-v2-m3-intel-win_20260619_191544.json |
-| llama3.2-3b-intel-linux | intel-linux | ollama | llm_intel_linux_baseline | translation | REGISTERED | - | - | - |
-| qwen2.5-7b-intel-linux | intel-linux | ollama | llm_intel_linux_primary | translation | REGISTERED | - | - | - |
-| qwen3-embedding-0.6b-intel-linux | intel-linux | ollama | embedding_intel_linux | embedding | REGISTERED | - | - | - |
+| llama3.2-3b-intel-linux | intel-linux | ollama | llm_intel_linux_baseline | translation | REGISTERED | - | No Intel Linux machine assigned; requires INTEL_LINUX_HOST env var; target defined in targets.yaml but no device in fleet | - |
+| qwen2.5-7b-intel-linux | intel-linux | ollama | llm_intel_linux_primary | translation | REGISTERED | - | No Intel Linux machine assigned; requires INTEL_LINUX_HOST env var; target defined in targets.yaml but no device in fleet | - |
+| qwen3-embedding-0.6b-intel-linux | intel-linux | ollama | embedding_intel_linux | embedding | REGISTERED | - | No Intel Linux machine assigned; requires INTEL_LINUX_HOST env var; target defined in targets.yaml but no device in fleet | - |
 | qwen2.5-7b-k3-riscv | k3-riscv | generic | llm_k3_recommended | translation | PENDING-VERIFY | - | 7B Q4_K_M loaded on port 11435 (2026-06-21); server confirmed running; benchmark in progress | reports/k3-riscv.en.md |
 | qwen2.5-3b-k3-riscv | k3-riscv | generic | llm_k3_primary | translation | PASS | general_ability:PASS, translation:PASS | TTFT p50/p95 184/864 ms; PP 572 t/s; TG 7.0 t/s; GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4, term 74%/57%) | output/reports/qwen2.5-3b-k3-riscv_20260621_025208.md |
-| qwen2.5-1.5b-k3-riscv | k3-riscv | generic | llm_k3_fallback | translation | PENDING-VERIFY | - | 1.5B Q4_K_M on port 8081; TTFT warm P50~540ms, cold 3159ms; PP mean~195 t/s; TG mean~2.6 t/s (noisy, under load); benchmark running 2026-06-21 | reports/k3-riscv.en.md |
+| qwen2.5-1.5b-k3-riscv | k3-riscv | generic | llm_k3_fallback | translation | PENDING-VERIFY | - | 1.5B Q4_K_M on port 8081; benchmark running 2026-06-21 (GA phase ~14:40 est.); prior TTFT/PP/TG data discarded (process contamination); clean re-run pending after GA | reports/k3-riscv.en.md |
 | qwen2.5-0.5b-k3-riscv | k3-riscv | generic | - | - | BLOCKED | - | Model file not present in /root/models/ on K3 device (2026-06-21); historical calibration data in reports/k3-riscv.en.md | reports/k3-riscv.en.md |
 | llama3.2-1b-k3-riscv | k3-riscv | generic |  | - | REGISTERED | - | - | - |
 

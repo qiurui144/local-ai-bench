@@ -1206,12 +1206,8 @@ models:
         max_pairs: 10
         thresholds:
           bleu_min: 15.0
-      conditioned:
-        max_cases: 5
-        thresholds:
-          min_pass_rate: 0.55
-      skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr]
-    notes: "SpacemiT K3 — 1.5B 含 conditioned 维度；PENDING-VERIFY 首跑校准阈值"
+      skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr, conditioned, conversation_drift]
+    notes: "SpacemiT K3 — 1.5B; conditioned/conversation_drift skipped (server context -c 4096 too small for conditioned rungs ≥4k; conversation_drift would be 3×160 requests unaffordable); PENDING-VERIFY 首跑校准阈值"
 
   - name: llama3.2-1b-k3-riscv
     provider: generic

@@ -1,7 +1,7 @@
 # K3 RISC-V Platform — Model Selection & Benchmark Report
 
 **Platform:** k3-riscv | SpacemiT K3, 8×X100 RISC-V RVV, A100 NPU + IME2, 16 GB LPDDR5
-**Primary framework:** llama.cpp with IME2 acceleration (llama-server v8355; port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B [downloading])
+**Primary framework:** llama.cpp with IME2 acceleration (llama-server v8355; port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B)
 **Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)
 **SSH:** root@192.168.100.215 (pass: bianbu)
 **Last calibrated:** 2026-06-21. This file is updated in place.
@@ -49,8 +49,9 @@ All four bottom models run as local ONNX via ORT/sherpa-onnx on the K3 X100 CPU.
 
 | Candidate | q4 RAM | Suitability | Status |
 |---|---|---|---|
-| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (K3 t/s) |
-| Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | Reference: IME2 llama.cpp 1.5B = 27.73 t/s (SpacemiT modelzoo) |
+| **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (benchmark queued 2026-06-21) |
+| Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | **PASS** (2026-06-21): PP 572 t/s / TG 7.1 t/s / TTFT P50 184ms; GA PASS; translation PASS |
+| Qwen2.5-1.5B-Instruct q4 | ~1.1 GB | Minimal-footprint option | **PENDING-VERIFY** (benchmark running 2026-06-21, ~14:40 est.) |
 | Qwen3-30B-A3B q4 (MoE) | ~16–18 GB | ❌ **Exceeds 16 GB** — reserved for 32 GB device | 32 GB: measured TG 13.3 t/s (SpacemiT modelzoo) |
 
 - **Acceleration:** X100 RVV + IME2 (INT8/INT4); A100 NPU offload under evaluation.
@@ -130,11 +131,16 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 ## PENDING-VERIFY (must run on K3, per §1.6)
 
-1. **Qwen2.5-7B-Instruct q4** t/s + peak RAM on K3 X100+IME2 (confirm 16 GB fits + usable speed)
-2. Peak RAM with 4 bottom models + 7B LLM resident simultaneously (16 GB swap=0 OOM boundary)
-3. Multi-user concurrent chat with thread partitioning + cgroup MemoryMax
-4. A100 NPU offload benefit for LLM/embedding
-5. translation dimension for qwen2.5-0.5b (and future 7B)
+**Benchmarks in progress (2026-06-21):**
+- `qwen2.5-1.5b-k3-riscv` — benchmark running on port 8081; GA phase in progress (~14:40 est. completion)
+- `qwen2.5-7b-k3-riscv` — server running on port 11435 (confirmed 2026-06-21); benchmark queued after 1.5B completes
+
+**Remaining verification items:**
+1. **Qwen2.5-1.5B-Instruct q4** — TTFT/PP/TG/GA/translation thresholds (benchmark running; clean re-run for perf dims needed after GA completes)
+2. **Qwen2.5-7B-Instruct q4** t/s + peak RAM on K3 X100+IME2 (confirm 16 GB fits + usable speed)
+3. Peak RAM with 4 bottom models + 7B LLM resident simultaneously (16 GB swap=0 OOM boundary)
+4. Multi-user concurrent chat with thread partitioning + cgroup MemoryMax
+5. A100 NPU offload benefit for LLM/embedding
 
 ---
 
@@ -155,6 +161,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 | 2026-06-20 | Initial calibration: TTFT, throughput, general_ability (gsm8k) measured; thresholds set from E2E device runs (qwen2.5-0.5b) |
 | 2026-06-20 | Expanded: K3 model selection from attune-k3 reference (bottom models verified, 7B LLM dual-framework decision, memory budget analysis) |
 | 2026-06-21 | Added qwen2.5-3b-k3-riscv: new llama-server port 11434 (IP 215); clean single-process run: PP≈572 t/s (545/571/602), TG≈7.1 t/s (7.0/7.2/7.0), TTFT warm P50≈184ms (cold 1031ms); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750) |
+| 2026-06-21 | Added qwen2.5-1.5b-k3-riscv (port 8081) and qwen2.5-7b-k3-riscv (port 11435); 7B server confirmed running; 1.5B benchmark in progress (GA phase, ~14:40 est.); 7B benchmark queued after 1.5B completes |
 
 ---
 
@@ -188,8 +195,9 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 | 候选 | q4 内存 | 状态 |
 |---|---|---|
-| **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（待 K3 实测 t/s）|
+| **Qwen2.5-7B-Instruct q4**（主推） | ~4.5 GB | **PENDING-VERIFY**（benchmark 排队中，2026-06-21）|
 | Qwen2.5-3B-Instruct q4（兜底） | ~2.2 GB | **已验证 2026-06-21**：TTFT warm P50≈184ms，PP≈572 t/s，TG≈7.1 t/s；翻译 PASS；GA PASS（GSM8K 0.55/MMLU 0.50/HellaSwag 0.75） |
+| Qwen2.5-1.5B-Instruct q4（极简） | ~1.1 GB | **PENDING-VERIFY**（benchmark 运行中，2026-06-21 约 14:40 完成）|
 | Qwen3-30B-A3B q4（MoE） | ~16–18 GB | ❌ 超 16 GB，留 32G 设备 |
 
 **本地框架**：llama.cpp + IME2（最优，RVV + INT8/INT4 加速）。**云端**：deepseek-v4（默认关闭，隐私优先）。
