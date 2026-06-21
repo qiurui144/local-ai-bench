@@ -4,7 +4,7 @@
 
 **Hardware:** AMD Ryzen 8845H + Radeon 780M (RDNA3), 17.9 GiB shared VRAM  
 **Backends:** Ollama Vulkan (LLM / Embedding) · ONNX DirectML (OCR)  
-**Last calibrated:** 2026-06-19
+**Last calibrated:** 2026-06-21
 
 ---
 
@@ -41,7 +41,7 @@ No additional environment variables required; DirectML auto-selects the 780M.
 | Model | TPS | TTFT p50 | TTFT p95 | PP t/s | TG t/s | Max ctx | Status |
 |---|---|---|---|---|---|---|---|
 | `qwen2.5-7b-amd-win` | 13.33 | 953 ms | 6241 ms | 116 | 16 | 16k | FAIL (quality) |
-| `qwen2.5-14b-amd-win` | 7.67 | 8274 ms | 14792 ms | 94 | 9 | 16k | MEASURED |
+| `qwen2.5-14b-amd-win` | 8.6 | 7718 ms | 14395 ms | 94.25 | 9.14 | 16k | MEASURED |
 | `llama3.2-3b-amd-win` | 28.99 | 890 ms | 5207 ms | 124 | 39 | 32k | FAIL (quality) |
 | `qwen3-0.6b-amd` | 91.09 | 1781 ms | 1781 ms | — | — | — | FAIL (quality) |
 | `llava-7b-amd-win` | 16.84 | 890 ms | 891 ms | 835 | 19 | — | FAIL (accuracy) |
@@ -85,7 +85,7 @@ than VitisAI NPU.
 ## 中文摘要
 
 **硬件：** Radeon 780M（RDNA3），Vulkan + DirectML 后端  
-**最后校准：** 2026-06-19
+**最后校准：** 2026-06-21
 
 ### 配置方式
 

@@ -4,7 +4,7 @@
 
 **Hardware:** Intel laptop CPU (Core Ultra series)  
 **Backend:** Ollama CPU-only (LLM / Embedding) · ONNX Runtime CPU EP (Reranker)  
-**Last calibrated:** 2026-06-19
+**Last calibrated:** 2026-06-21
 
 ---
 
@@ -100,7 +100,7 @@ consistent with the Intel platform being at a lower CPU frequency tier.
 ## 中文摘要
 
 **硬件：** Intel 笔电 CPU，纯 CPU 推理（无 GPU 卸载）  
-**最后校准：** 2026-06-19
+**最后校准：** 2026-06-21
 
 ### 关键数据
 

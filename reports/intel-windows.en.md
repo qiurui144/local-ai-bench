@@ -98,7 +98,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 ## 中文摘要
 
 **平台：** intel-win-x86 | Intel Core Ultra 笔电，Windows 11  
-**最后校准：** 2026-06-19。本文件原地更新。
+**最后校准：** 2026-06-21。本文件原地更新。
 
 ### 硬件概述
 
