@@ -1187,27 +1187,23 @@ models:
       ttft:
         prompt_tokens: 64
         thresholds:
-          p50_ttft_ms_max: 20000
-          p95_ttft_ms_max: 40000
+          p50_ttft_ms_max: 194   # warm P50=122ms × 1.6; calibrated 2026-06-21
+          p95_ttft_ms_max: 436   # max(p95=128ms, cold=380ms) × 1.15; calibrated 2026-06-21
       throughput:
         output_tokens: 32
         thresholds:
-          tps_min: 1
+          tps_min: 4   # aggregate 10.0 t/s × 0.5; calibrated 2026-06-21
       prefill_decode:
         samples: 3
         thresholds:
-          pp_tps_min: 2
-          tg_tps_min: 1
+          pp_tps_min: 108   # measured min=217 t/s × 0.5; calibrated 2026-06-21
+          tg_tps_min: 2.4   # measured min=4.05 t/s × 0.6; calibrated 2026-06-21
       general_ability:
         max_questions: 20
-        thresholds:
-          min_accuracy: 0.50
       translation:
         max_pairs: 10
-        thresholds:
-          bleu_min: 15.0
       skip: [stability, concurrency, scenarios, embedding, rerank, asr, ocr, conditioned, conversation_drift]
-    notes: "SpacemiT K3 — 1.5B; conditioned/conversation_drift skipped (server context -c 4096 too small for conditioned rungs ≥4k; conversation_drift would be 3×160 requests unaffordable); PENDING-VERIFY 首跑校准阈值"
+    notes: "SpacemiT K3 — 1.5B Q4_K_M; port 8081; calibrated 2026-06-21 (3-seed); GA FAIL MMLU 0.51<0.55; translation FAIL en->zh"
 
   - name: llama3.2-1b-k3-riscv
     provider: generic

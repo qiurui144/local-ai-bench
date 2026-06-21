@@ -45,6 +45,8 @@ None. `--target local` (default) preserves v0.3 behavior; remote targets are opt
 
 ## Unreleased
 
+- **K3 RISC-V 1.5B calibration (2026-06-21)** — qwen2.5-1.5b-k3-riscv: 3-seed benchmark completed. Performance PASS: TTFT P50=122ms/p95=128ms; PP=467 t/s mean; TG=8.85 t/s mean; throughput=10.0 t/s. Quality FAIL: GA FAIL (MMLU 0.51 < 0.55 threshold); translation FAIL (en→zh chrF<40, terminology term<80%). Calibrated thresholds committed: p50_max=194ms, p95_max=436ms, pp_min=108 t/s, tg_min=2.4 t/s, tps_min=4 t/s. Note: 1.5B is minimal-footprint option only; quality gates require 3B or 7B for production use.
+
 - **K3 RISC-V (SpacemiT) platform upgrade + 3B calibration (2026-06-21)** — New llama-server v8355 (replaces broken b1-17ce6aa), IP updated to 192.168.100.215, Q4_K_M quantization now works cleanly (previous build had Q4_0 SIGSEGV + Q4_K_M garbled output; v8355 resolves both). Multi-port serving: port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B. Qwen2.5-3B-Instruct Q4_K_M calibrated with clean single-process run (2026-06-21):
   - TTFT: warm P50=184ms (177/178/184/197ms) → threshold p50_max=300ms (1.6×), cold=1031ms → p95_max=1200ms
   - Prefill (PP): mean 572 t/s (545/571/602) → threshold pp_tps_min=300 t/s

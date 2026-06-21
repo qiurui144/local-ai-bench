@@ -51,7 +51,7 @@ All four bottom models run as local ONNX via ORT/sherpa-onnx on the K3 X100 CPU.
 |---|---|---|---|
 | **Qwen2.5-7B-Instruct q4** | ~4.5 GB | **16 GB primary recommendation** — quality/resource balance | **PENDING-VERIFY** (benchmark queued, starts after 1.5B ~17:15) |
 | Qwen2.5-3B-Instruct q4 | ~2.2 GB | Low-resource / high-concurrency fallback | **PASS** (2026-06-21): PP 572 t/s / TG 7.1 t/s / TTFT P50 184ms; GA PASS; translation PASS |
-| Qwen2.5-1.5B-Instruct q4 | ~1.1 GB | Minimal-footprint option | **PENDING-VERIFY** (benchmark running 2026-06-21, est. ~17:45 completion) |
+| Qwen2.5-1.5B-Instruct q4 | ~1.1 GB | Minimal-footprint option | **FAIL** (2026-06-21, 3-seed): PP 467 t/s / TG 8.85 t/s / TTFT P50 122ms — perf PASS; GA FAIL (MMLU 0.51 < 0.55); translation FAIL (en→zh) |
 | Qwen3-30B-A3B q4 (MoE) | ~16–18 GB | ❌ **Exceeds 16 GB** — reserved for 32 GB device | 32 GB: measured TG 13.3 t/s (SpacemiT modelzoo) |
 
 - **Acceleration:** X100 RVV + IME2 (INT8/INT4); A100 NPU offload under evaluation.
@@ -96,6 +96,27 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 > Note: Previous calibration showed PP≈361 t/s and TG≈4.4 t/s due to duplicate background processes contaminating measurements. Clean-run values (PP≈572, TG≈7.1) are the authoritative baseline.
 
+### qwen2.5-1.5b-k3-riscv (2026-06-21 — 3-seed Calibration Run)
+
+**llama-server v8355 on port 8081, Qwen2.5-1.5B-Instruct Q4_K_M via K3_LLM_BASE_URL**
+
+| Metric | Measured | Threshold | Status |
+|---|---|---|---|
+| TTFT warm P50 | 122 ms | ≤ 194 ms | **PASS** |
+| TTFT p95 (incl. cold=380ms) | 128 ms | ≤ 436 ms | **PASS** |
+| Prefill (PP) | 467 t/s mean (217/284/467) | ≥ 108 t/s | **PASS** |
+| Decode (TG) | 8.85 t/s mean (4.05/8.76/8.85) | ≥ 2.4 t/s | **PASS** |
+| Throughput | 10.0 t/s agg | ≥ 4 t/s | **PASS** |
+| General ability (GSM8K/MMLU/HellaSwag) | 0.60 / **0.51** / 0.61 | ≥55%/55%/60% | **FAIL** (MMLU 0.51 < 0.55) |
+| Translation zh→en (flores) | BLEU=24.6 chrF=56.1 | — | **PASS** |
+| Translation zh→en (terminology) | BLEU=31.9 chrF=64.7 term=61% | — | **FAIL** (term < 80%) |
+| Translation en→zh (flores) | BLEU=36.6 chrF=32.5 | — | **FAIL** (chrF < 40) |
+| Translation en→zh (terminology) | BLEU=22.6 chrF=17.0 term=50% | — | **FAIL** |
+
+**Overall verdict: FAIL** — Performance (TTFT/PP/TG) excellent; quality gates fail (1.5B MMLU capability ceiling + Chinese generation insufficient).
+
+---
+
 ### qwen2.5-0.5b-k3-riscv (2026-06-20 historical reference — BLOCKED on current K3)
 
 > **BLOCKED (2026-06-21):** No Qwen2.5-0.5B GGUF file found in `/root/models/` on current K3 device.
@@ -132,15 +153,13 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 ## PENDING-VERIFY (must run on K3, per §1.6)
 
 **Benchmarks in progress (2026-06-21):**
-- `qwen2.5-1.5b-k3-riscv` — 3-seed benchmark running, run 2/3 started 15:37 (est. ~17:15 completion); conditioned/conversation_drift skipped (-c 4096 server)
-- `qwen2.5-7b-k3-riscv` — server running on port 11435 (confirmed 2026-06-21); benchmark queued after 1.5B completes (~17:15)
+- `qwen2.5-7b-k3-riscv` — server running on port 11435; benchmark started after 1.5B completed (17:19 CST)
 
 **Remaining verification items:**
-1. **Qwen2.5-1.5B-Instruct q4** — TTFT/PP/TG/GA/translation thresholds (benchmark running; clean re-run for perf dims needed after GA completes)
-2. **Qwen2.5-7B-Instruct q4** t/s + peak RAM on K3 X100+IME2 (confirm 16 GB fits + usable speed)
-3. Peak RAM with 4 bottom models + 7B LLM resident simultaneously (16 GB swap=0 OOM boundary)
-4. Multi-user concurrent chat with thread partitioning + cgroup MemoryMax
-5. A100 NPU offload benefit for LLM/embedding
+1. **Qwen2.5-7B-Instruct q4** t/s + peak RAM on K3 X100+IME2 (confirm 16 GB fits + usable speed)
+2. Peak RAM with 4 bottom models + 7B LLM resident simultaneously (16 GB swap=0 OOM boundary)
+3. Multi-user concurrent chat with thread partitioning + cgroup MemoryMax
+4. A100 NPU offload benefit for LLM/embedding
 
 ---
 

@@ -5,13 +5,15 @@
 
 ---
 
-## Hardware Overview
+## Hardware Profile
 
-| Compute Unit | Specs | Role |
-|---|---|---|
-| **CPU** | Ryzen 8845H (4× Zen4 P-core + 4× Zen4c E-core) | ONNX Runtime CPU — OCR baseline, Reranker |
-| **iGPU** | Radeon 780M (RDNA3, 12 CU, 17.9 GiB shared VRAM) | Ollama Vulkan — LLM + Embedding; ONNX DirectML — OCR |
-| **NPU** | AMD XDNA (AI 300 Series, 16 TOPS) | ONNX VitisAI — OCR (batch); ASR |
+| Compute Unit | Chip | Specs | TDP | Role |
+|---|---|---|---|---|
+| **CPU** | AMD Ryzen 8845H | 4× Zen4 P-core + 4× Zen4c E-core, 16 threads, 3.8–5.1 GHz | 35 W (base) / 54 W (max) | ONNX Runtime CPU — OCR baseline, Reranker |
+| **iGPU** | AMD Radeon 780M | RDNA3, 12 CU, 2800 MHz, 17.9 GiB shared VRAM | part of SoC TDP | Ollama Vulkan — LLM + Embedding; ONNX DirectML — OCR |
+| **NPU** | AMD XDNA | AI 300 Series, 16 TOPS INT8 | ~2–5 W (dedicated) | ONNX VitisAI — OCR (batch); ASR; PENDING: LLM via Lemonade |
+| **RAM** | LPDDR5x | 32 GB | — | — |
+| **Runtime** | Ollama (Vulkan) | Vulkan backend, iGPU offload | — | LLM inference (primary path) |
 
 ---
 
