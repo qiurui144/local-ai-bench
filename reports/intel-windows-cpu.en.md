@@ -36,7 +36,7 @@ ollama ps
 |---|---|---|---|---|---|---|---|
 | `qwen2.5-7b-intel-win` | 8.25 | 4820 ms | 8441 ms | 112 | 9 | 16k | FAIL (translation); GA PASS |
 | `qwen2.5-3b-intel-win` | 19.47 | 781 ms | 3495 ms | 124 | 26 | 16k | FAIL (translation); GA PASS |
-| `llama3.2-1b-intel-win` | 25.26 | 875 ms | 3308 ms | 130 | 35 | 32k | FAIL (quality) |
+| `llama3.2-1b-intel-win` | 25.26 | 875 ms | 3308 ms | 130 | 35 | 32k | FAIL (GA/translation SKIPPED) |
 | `llava-7b-intel-win` | 10.02 | 703 ms | 703 ms | 1074 | 11 | — | FAIL (accuracy) |
 
 **MEASURED** = latency and throughput collected; quality dimensions not fully qualified.  

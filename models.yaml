@@ -467,7 +467,7 @@ models:
       prefill_decode:
         samples: 2
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
-    notes: "AMD Windows 参数提升覆盖：qwen2.5:14b via Ollama Vulkan；用于验证 7B 以上模型可运行与性能边界"
+    notes: "AMD Windows 参数提升覆盖：qwen2.5:14b via Ollama Vulkan；TPS 8.6，TTFT p50/p95 7718/14395 ms，PP/TG 94.25/9.14 tok/s，max-ctx 16k (2026-06-21 E2E)；GA/translation 显式 skip（纯性能边界验证）"
 
   # ═══ AMD Windows — XDNA NPU LLM（via Lemonade Server）═══
   # AMD Lemonade: https://github.com/amd/lemonade — OpenAI-compat LLM server for XDNA NPU

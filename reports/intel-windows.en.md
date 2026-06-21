@@ -60,7 +60,7 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 |---|---|---|---|---|
 | `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **FAIL** (translation) | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) |
 | `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **FAIL** (translation) | TPS 19.47; TTFT p50/p95 781/3495 ms; GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); translation FAIL (en→zh chrF 33/34.8 < 40) |
-| `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max ctx 32k |
+| `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max ctx 32k; GA/translation SKIPPED (1B model not GA-tested by design) |
 | `llava-7b-intel-win` | CPU (Ollama) | vlm_baseline | **FAIL** | TPS 10.02; TTFT p50 703 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | embedding | **PASS** | hit@1 1.000; nDCG 1.000; p50 617.5 ms |
 | `bge-reranker-base-intel-win` | CPU ONNX | reranker_default | **PASS** | nDCG 1.000; MRR 1.000; p50 148.5 ms |

@@ -1,7 +1,7 @@
 # AMD Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA NPU, Windows 11  
-**Last calibrated:** 2026-06-20. This file is updated in place.
+**Last calibrated:** 2026-06-21. This file is updated in place.
 
 ---
 
@@ -67,7 +67,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | Model | Execution | Role | Status | Key Metrics |
 |---|---|---|---|---|
 | `qwen2.5-7b-amd-win` | iGPU Vulkan | llm_primary | **FAIL** | TPS 13.33; TTFT p50/p95 953/6241 ms; PP/TG 116/16 t/s; general_ability PASS (gsm8k=0.880/mmlu=0.600/hellaswag=0.790, 3-seed); translation FAIL (zh→en term=79%<80%; en→zh chrF=36.4<40.0) |
-| `qwen2.5-14b-amd-win` | iGPU Vulkan | llm_parameter_uplift | **MEASURED** | TPS 7.67; TTFT p50/p95 8274/14792 ms; max-ctx 16k |
+| `qwen2.5-14b-amd-win` | iGPU Vulkan | llm_parameter_uplift | **MEASURED** | TPS 8.6; TTFT p50/p95 7718/14395 ms; PP/TG 94.25/9.14 t/s; max-ctx 16k; GA/translation not measured (skipped by design) |
 | `llama3.2-3b-amd-win` | iGPU Vulkan | llm_baseline | **FAIL** | TPS 28.99; TTFT p50/p95 890/5207 ms; PP/TG 124/39 t/s; max ctx 32k; general_ability FAIL (gsm8k=0.710/PASS, mmlu=0.390/FAIL, hellaswag=0.320/FAIL, 3-seed); translation FAIL (zh→en term=55%<80%; en→zh chrF=27.6<40.0) |
 | `qwen3-0.6b-amd` | iGPU Vulkan | llm_nano | **FAIL** | TPS 91.09; TTFT p50 1781 ms; general_ability FAIL (gsm8k=0.390/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL — 0.6B MCQ capability gap, confirmed post parser-fix 2026-06-20) |
 | `llava-7b-amd-win` | iGPU Vulkan | vlm_baseline | **FAIL** | TPS 16.84; TTFT p50 890 ms; accuracy FAIL |
@@ -104,6 +104,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 |---|---|
 | 2026-06-19 | Initial full calibration: all 14 models measured across CPU/iGPU/NPU paths; thresholds set from E2E runs |
 | 2026-06-20 | Added quality dims: qwen2.5-7b general_ability PASS (3-seed, gsm8k=0.880/mmlu=0.600/hellaswag=0.790); all 3 LLM models translation FAIL formally documented; llama3.2-3b general_ability FAIL (3-seed); qwen3-0.6b general_ability FAIL — re-run with parser fix confirms mmlu/hellaswag=0.000 is real 0.6B MCQ capability gap |
+| 2026-06-21 | qwen2.5-14b recalibrated: TPS 8.6, TTFT p50/p95 7718/14395 ms (2-sample TTFT + 3-sample throughput from fresh run); GA and translation explicitly skipped by model config (14B is for parameter-uplift perf validation only) |
 
 ---
 
