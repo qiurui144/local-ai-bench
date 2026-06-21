@@ -58,7 +58,7 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 
 | Model | GSM8K | MMLU | HellaSwag | GA Verdict | Translation zh→en | Translation en→zh |
 |---|---|---|---|---|---|---|
-| `qwen2.5-7b-intel-win` | **0.833** (n=30) | **0.719** (n=32) | **0.767** (n=30) | **PASS** | **PASS** (term 79%≥75%; recal) | **PASS** (chrF 36.9≥35.0; recal) |
+| `qwen2.5-7b-intel-win` | **0.833** (n=30) | **0.719** (n=32) | **0.767** (n=30) | **PASS** | **PASS** (term 79.0%≥75%; 3-seed) | **PASS** (chrF 36.95±0.06≥35.0; 3-seed) |
 | `qwen2.5-3b-intel-win` | **0.740** (n=100) | **0.530** (n=100) | **0.760** (n=100) | **PASS** | PASS (chrF 57.0) | FAIL (chrF 33.0<40) |
 | `llama3.2-1b-intel-win` | — | — | — | SKIPPED | SKIPPED | SKIPPED |
 
@@ -131,7 +131,7 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 
 | Model | Execution | Role | Status | Key Metrics |
 |---|---|---|---|---|
-| `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **PASS** | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation PASS (zh→en term 79%≥75%; en→zh chrF 36.9≥35.0; thresholds recal 2026-06-21) |
+| `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **PASS** | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation PASS (zh→en term 79.0%≥75%; en→zh chrF 36.95±0.06≥35.0; 3-seed confirmed 2026-06-21/22) |
 | `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **PASS** | TPS 19.47; TTFT p50/p95 781/3495 ms; GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); translation PASS (en→zh chrF 33.4±0.08≥30.0; term 64.3%≥60%; zh→en term 71.1%≥60%; 3-seed 2026-06-21/22) |
 | `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max ctx 32k; GA/translation SKIPPED (1B model not GA-tested by design) |
 | `llava-7b-intel-win` | CPU (Ollama) | vlm_baseline | **FAIL** | TPS 10.02; TTFT p50 703 ms; accuracy FAIL |
@@ -166,7 +166,8 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 | 2026-06-19 | Initial full calibration: all 10 models measured; CPU LLM, OpenVINO OCR, DirectML ASR calibrated; general_ability/conditioned BLOCKED pending datasets install |
 | 2026-06-21 | general_ability unblocked (HTTP inference from controller + local HF cache); qwen2.5-3b: GSM8K 0.74/MMLU 0.53/HellaSwag 0.76 PASS; translation FAIL (en→zh chrF 33-34.8 < 40); qwen2.5-7b: GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) |
 | 2026-06-21 | Translation threshold recalibration: 7B chrf_min 40→35 + term 0.80→0.75 → PASS; 3B chrf_min 40→30 + term 0.80→0.60 → PASS (1-seed); Intel 1B/3B/7B perf thresholds added (ttft/throughput/prefill_decode) |
-| 2026-06-21/22 | 3B translation 3-seed confirmed: en→zh chrF=33.44±0.08 (≥30.0 ✓), zh→en term=71.1% (≥60% ✓) — PASS; 7B 3-seed in progress |
+| 2026-06-21/22 | 3B translation 3-seed confirmed: en→zh chrF=33.44±0.08 (≥30.0 ✓), zh→en term=71.1% (≥60% ✓) — PASS |
+| 2026-06-21/22 | 7B translation 3-seed confirmed: en→zh chrF=36.95±0.06 (CI95 [36.79, 37.10], ≥35.0 ✓), zh→en term=79.0% (≥75% ✓), en→zh term=85.7% (≥75% ✓) — PASS |
 
 ---
 
