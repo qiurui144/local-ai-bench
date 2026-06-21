@@ -79,6 +79,7 @@ from benchmark.registry import (
 from benchmark.report import sections
 from benchmark.rigor.multi_seed_runner import SeedRun, aggregate as aggregate_seed_runs
 from benchmark.scenarios.runner import run_scenarios
+from benchmark.scenarios.judge import select_judge_model as _select_judge_model
 from benchmark.conversation_drift.runner import run_conversation_drift
 
 logging.basicConfig(
@@ -315,7 +316,7 @@ DIMENSIONS: dict[str, DimensionSpec] = {
                                  render=sections.render_conditioned),
     "scenarios": DimensionSpec(
         "scenarios", quality=True, run=_run_scenarios_dim, gate=_is_chat_capable,
-        render=sections.render_scenarios, requires=("conditioned",)),
+        render=sections.render_scenarios),
     "conversation_drift": DimensionSpec(
         "conversation_drift", quality=True, run=_run_conversation_drift_dim,
         gate=_is_chat_capable, render=sections.render_conversation_drift),
@@ -409,8 +410,11 @@ def _resolve_judge(judge_name: str | None, model_cfg: ModelConfig):
         ]
         if not pool:
             return None
-        # spec: 自动取被测之外最大的 text 模型;tie → 先声明者
-        judge = max(pool, key=lambda m: m.vram_estimate_gb or 0)
+        # Use priority-based selection: 7B→14B→3B→1.5B→0.6B→first-available
+        try:
+            judge = _select_judge_model(pool)
+        except RuntimeError:
+            return None
     if not wait_model_ready(judge, timeout_s=10.0):
         logger.warning(
             "scenarios judge %s (port %s) not ready — L2 disabled",

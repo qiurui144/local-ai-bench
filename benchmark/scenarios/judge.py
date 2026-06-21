@@ -19,6 +19,26 @@ JUDGE_TIMEOUT_S = 60.0
 _ABORT_AFTER_CONSECUTIVE_NONE = 3
 _GOLDEN = Path(__file__).resolve().parents[2] / "golden" / "scenarios.json"
 
+# Priority list for auto-selecting a judge model from the available pool.
+# Matched by substring against model.name (case-insensitive).
+_JUDGE_PRIORITY = ["7b", "14b", "3b", "1.5b", "0.6b"]
+
+
+def select_judge_model(available):
+    """Select the best judge from a list of model-like objects.
+
+    Tries each priority tier in order; within a tier picks the highest vram_estimate_gb.
+    Falls back to the first available model if none match a priority pattern.
+    Raises RuntimeError when the pool is empty.
+    """
+    if not available:
+        raise RuntimeError("No judge model available; set judge_model in models.yaml")
+    for pattern in _JUDGE_PRIORITY:
+        candidates = [m for m in available if pattern in m.name.lower()]
+        if candidates:
+            return max(candidates, key=lambda m: m.vram_estimate_gb or 0)
+    return available[0]
+
 
 def _validate(parsed) -> Optional[str]:
     """返回 None = 合法;否则返回喂给 LLM 的错误说明。"""
