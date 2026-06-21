@@ -62,8 +62,10 @@
 | llama3.2-3b-intel-linux | intel-linux | ollama | llm_intel_linux_baseline | translation | REGISTERED | - | - | - |
 | qwen2.5-7b-intel-linux | intel-linux | ollama | llm_intel_linux_primary | translation | REGISTERED | - | - | - |
 | qwen3-embedding-0.6b-intel-linux | intel-linux | ollama | embedding_intel_linux | embedding | REGISTERED | - | - | - |
+| qwen2.5-7b-k3-riscv | k3-riscv | generic | llm_k3_recommended | translation | PENDING-VERIFY | - | 7B Q4_K_M loaded on port 11435 (2026-06-21); server confirmed running; benchmark in progress | reports/k3-riscv.en.md |
 | qwen2.5-3b-k3-riscv | k3-riscv | generic | llm_k3_primary | translation | PASS | general_ability:PASS, translation:PASS | TTFT p50/p95 184/864 ms; PP 572 t/s; TG 7.0 t/s; GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4, term 74%/57%) | output/reports/qwen2.5-3b-k3-riscv_20260621_025208.md |
-| qwen2.5-0.5b-k3-riscv | k3-riscv | generic |  | - | REGISTERED | - | - | - |
+| qwen2.5-1.5b-k3-riscv | k3-riscv | generic | llm_k3_fallback | translation | PENDING-VERIFY | - | 1.5B Q4_K_M on port 8081; TTFT warm P50~540ms, cold 3159ms; PP mean~195 t/s; TG mean~2.6 t/s (noisy, under load); benchmark running 2026-06-21 | reports/k3-riscv.en.md |
+| qwen2.5-0.5b-k3-riscv | k3-riscv | generic | - | - | BLOCKED | - | Model file not present in /root/models/ on K3 device (2026-06-21); historical calibration data in reports/k3-riscv.en.md | reports/k3-riscv.en.md |
 | llama3.2-1b-k3-riscv | k3-riscv | generic |  | - | REGISTERED | - | - | - |
 
 ## Evidence Rule

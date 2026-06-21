@@ -1,8 +1,9 @@
 # K3 RISC-V Platform — Model Selection & Benchmark Report
 
 **Platform:** k3-riscv | SpacemiT K3, 8×X100 RISC-V RVV, A100 NPU + IME2, 16 GB LPDDR5
-**Primary framework:** llama.cpp with IME2 acceleration (llama-server port 8080)
+**Primary framework:** llama.cpp with IME2 acceleration (llama-server v8355; port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B [downloading])
 **Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)
+**SSH:** root@192.168.100.215 (pass: bianbu)
 **Last calibrated:** 2026-06-21. This file is updated in place.
 
 ---
@@ -94,16 +95,17 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 > Note: Previous calibration showed PP≈361 t/s and TG≈4.4 t/s due to duplicate background processes contaminating measurements. Clean-run values (PP≈572, TG≈7.1) are the authoritative baseline.
 
-### qwen2.5-0.5b-k3-riscv (2026-06-20 — Reference)
+### qwen2.5-0.5b-k3-riscv (2026-06-20 historical reference — BLOCKED on current K3)
 
-> Note: 0.5B is the smaller variant. The 3B model is now the primary calibrated choice.
+> **BLOCKED (2026-06-21):** No Qwen2.5-0.5B GGUF file found in `/root/models/` on current K3 device.
+> Historical calibration data below preserved for reference; translation was PENDING-VERIFY and never completed.
 
 | Metric | Measured | Threshold | Status |
 |---|---|---|---|
-| TTFT p50 | ~640 ms | ≤ 800 ms | PASS |
-| TTFT p95 | — | ≤ 1200 ms | PASS |
-| Throughput | ~1.4 t/s | ≥ 1.0 t/s | PASS |
-| general_ability (gsm8k) | 66% | — | PASS |
+| TTFT p50 | ~640 ms | ≤ 800 ms | *(historical)* |
+| TTFT p95 | — | ≤ 1200 ms | *(historical)* |
+| Throughput | ~1.4 t/s | ≥ 1.0 t/s | *(historical)* |
+| general_ability (gsm8k) | 66% | — | *(historical)* |
 | translation | — | — | **PENDING-VERIFY** |
 
 ### Calibrated Thresholds (qwen2.5-3b-k3-riscv) — 2026-06-21
@@ -159,8 +161,9 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 ## 中文摘要
 
 **平台：** k3-riscv | SpacemiT K3，8×X100 RISC-V RVV，A100 NPU + IME2，16 GB LPDDR5
-**主框架：** llama.cpp（IME2 加速，llama-server 端口 8080）
-**参考：** attune-k3/docs/k3-16g-model-selection.md（2026-06-20 端到端验证）
+**主框架：** llama.cpp（IME2 加速，llama-server v8355；端口 11434=3B，8081=1.5B，11435=7B，8080=nginx NAS 禁用）
+**参考：** attune-k3/docs/k3-16g-model-selection.md（2026-06-20 端到端验证）  
+**SSH：** root@192.168.100.215（密码：bianbu）
 
 ### 内存预算（16 GB）
 

@@ -1137,9 +1137,9 @@ models:
   - name: qwen2.5-0.5b-k3-riscv
     provider: generic
     target: k3-riscv
-    base_url_env: K3_LLM_BASE_URL
-    port: 8080
-    model_id: qwen2.5-0.5b-instruct           # GGUF Q4_0 ~0.4GB（q4_0.gguf 实测）
+    base_url_env: K3_0P5B_BASE_URL        # http://192.168.100.215:8082/v1（0.5B 独立端口，需手动启动）
+    port: 8082                            # port 8080=nginx(禁用)，port 8081=1.5B，port 11434=3B，port 11435=7B
+    model_id: qwen2.5-0.5b-instruct-q4_0.gguf  # GGUF Q4_0 ~0.4GB（需下载；K3 device 上当前无此文件）
     capabilities: [chat]
     task_type: text_only
     translation_capable: true
@@ -1170,14 +1170,14 @@ models:
           bleu_min: 12.0
       # conversation_drift 跳过：ctx_size=512 时多轮对话超 context → 400 错误导致 DRIFT 判定无效
       skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
-    notes: "SpacemiT K3 RISC-V Qwen2.5-0.5B Q4_0，4 big cores（X100），SPACEMIT_DISABLE_TCM=1；2026-06-20 E2E 校准"
+    notes: "SpacemiT K3 RISC-V Qwen2.5-0.5B Q4_0；BLOCKED: 2026-06-21 检查 K3 /root/models/ 无 0.5B GGUF 文件；历史校准数据（2026-06-20 E2E）保留供参考（PP=1322 t/s, TG=49.2 t/s, TTFT P50=63.5ms）；translation PENDING-VERIFY"
 
   - name: qwen2.5-1.5b-k3-riscv
     provider: generic
     target: k3-riscv
     base_url_env: K3_LLM_BASE_URL
-    port: 8080
-    model_id: qwen2.5-1.5b-instruct           # GGUF Q4_K_M ~1.0GB
+    port: 8081
+    model_id: qwen2.5-1.5b-instruct-q4_k_m.gguf  # actual llama-server model ID; port 8081 (8080=nginx)
     capabilities: [chat]
     task_type: text_only
     translation_capable: true
@@ -1244,6 +1244,47 @@ models:
           min_accuracy: 0.45
       skip: [stability, concurrency, conditioned, scenarios, translation, embedding, rerank, asr, ocr]
     notes: "SpacemiT K3 — Llama3.2-1B 英文基线；与 ARM RK3588 和 AMD Vulkan 性能对比"
+
+  - name: qwen2.5-7b-k3-riscv
+    provider: generic
+    target: k3-riscv
+    base_url_env: K3_7B_BASE_URL        # http://192.168.100.215:11435/v1（7B 独立端口）
+    port: 11435
+    model_id: qwen2.5-7b-instruct-q4_k_m.gguf  # actual llama-server model ID
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    benchmarks:
+      ttft:
+        prompt_tokens: 64
+        thresholds:
+          p50_ttft_ms_max: 60000         # PENDING-VERIFY: 7B cold start ~10-30s on RISC-V
+          p95_ttft_ms_max: 120000
+      throughput:
+        output_tokens: 32
+        thresholds:
+          tps_min: 1                     # PENDING-VERIFY: expected ~2-4 t/s for 7B Q4_K_M
+      prefill_decode:
+        samples: 3
+        thresholds:
+          pp_tps_min: 50                 # PENDING-VERIFY: PP slower than 3B on 7B
+          tg_tps_min: 1                  # PENDING-VERIFY: ~2-4 t/s
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.50
+          hellaswag_min: 0.60
+      translation:
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
+    notes: "SpacemiT K3 RISC-V — Qwen2.5-7B Q4_K_M via llama-server port 11435; model downloaded 2026-06-21; PENDING-VERIFY"
 
   # ═══ SpacemiT K1 RISC-V（llama.cpp RVV，riscv64，同 K3 机架）═══
   # 硬件：bianbu@192.168.100.140（K1_HOST），SpacemiT K1（BPI-F3/Muse-Pi，8核 RVV 0.7.1）

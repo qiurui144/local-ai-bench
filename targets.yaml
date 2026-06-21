@@ -58,15 +58,15 @@ targets:
     platform: linux
     arch: riscv64
     connection: ssh
-    ip_env: K3_HOST                  # 192.168.100.140
-    ssh_user_env: K3_USER            # bianbu
+    ip_env: K3_HOST                  # 192.168.100.215
+    ssh_user_env: K3_USER            # root
     ssh_pass_env: K3_PASS            # bianbu
     runtime: llama_cpp
-    runtime_port: 8080
+    runtime_port: 11434
     accelerator: cpu
-    remote_workdir: "/home/bianbu/vlm-llm-benchmark"
+    remote_workdir: "/root/vlm-llm-benchmark"
     python_cmd: "python3"
-    notes: "进迭时空 SpacemiT K3（X60，8核 RISC-V RVV 0.7.1，16GB）；Bianbu Linux；llama.cpp RVV 编译"
+    notes: "进迭时空 SpacemiT K3（X100+A100 异构，8核 RISC-V RVV 0.7.1 + IME2 NPU，16GB）；Bianbu Linux；llama-server v8355（/usr/bin/llama-server）RVV+IME2 编译；port 11434 = llama-server 3B，port 8081 = llama-server 1.5B，port 8080 = nginx NAS（禁用）"
 
   k1-riscv:
     platform: linux
