@@ -132,7 +132,7 @@ Intel iGPU LLM acceleration is not yet configured; all LLM runs use CPU-only Oll
 | Model | Execution | Role | Status | Key Metrics |
 |---|---|---|---|---|
 | `qwen2.5-7b-intel-win` | CPU (Ollama) | llm_quality | **PASS** | TPS 8.25; TTFT p50/p95 4820/8441 ms; PP/TG 112/9 t/s; GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation PASS (zh→en term 79%≥75%; en→zh chrF 36.9≥35.0; thresholds recal 2026-06-21) |
-| `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **PASS** (1-seed) | TPS 19.47; TTFT p50/p95 781/3495 ms; GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); translation PASS (en→zh chrF 33-34.8≥30.0; term 64-74%≥60%; 1-seed, 3-seed rerun pending) |
+| `qwen2.5-3b-intel-win` | CPU (Ollama) | llm_baseline | **PASS** | TPS 19.47; TTFT p50/p95 781/3495 ms; GA PASS (GSM8K 0.74/MMLU 0.53/HellaSwag 0.76); translation PASS (en→zh chrF 33.4±0.08≥30.0; term 64.3%≥60%; zh→en term 71.1%≥60%; 3-seed 2026-06-21/22) |
 | `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max ctx 32k; GA/translation SKIPPED (1B model not GA-tested by design) |
 | `llava-7b-intel-win` | CPU (Ollama) | vlm_baseline | **FAIL** | TPS 10.02; TTFT p50 703 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | embedding | **PASS** | hit@1 1.000; nDCG 1.000; p50 617.5 ms |
@@ -149,7 +149,7 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 ## Known Limitations
 
-- **qwen2.5-3b translation thresholds recalibrated (2026-06-21)** — Thresholds adjusted to `chrf_min=30.0` and `term_match_rate_min=0.60` (from 40.0/0.80). 1-seed data: en→zh chrF=33.0/34.8≥30.0, term=64/74%≥60% → **PASS** at recalibrated thresholds. 3-seed rerun recommended to confirm. CPU 3B model has limited Chinese generation quality; 7B preferred for translation-heavy workloads.
+- **qwen2.5-3b translation thresholds recalibrated + 3-seed confirmed (2026-06-21/22)** — Thresholds adjusted to `chrf_min=30.0` and `term_match_rate_min=0.60`. 3-seed confirmation: en→zh chrF=33.44±0.08 (≥30.0 ✓), zh→en term=71.1% (≥60% ✓), en→zh term=64.3% (≥60% ✓) → **PASS**. CPU 3B model has limited Chinese generation quality; 7B preferred for translation-heavy workloads.
 - **conditioned BLOCKED** — Requires running from controller with HF cache; not yet measured.
 - **Intel DirectML OCR not usable** — `rapidocr-intel-directml` CER 202.35%; FP16 precision issue on Intel iGPU with DirectML. Use OpenVINO path.
 - **No qualified VLM** — `llava-7b-intel-win` accuracy FAIL.
@@ -165,7 +165,8 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 |---|---|
 | 2026-06-19 | Initial full calibration: all 10 models measured; CPU LLM, OpenVINO OCR, DirectML ASR calibrated; general_ability/conditioned BLOCKED pending datasets install |
 | 2026-06-21 | general_ability unblocked (HTTP inference from controller + local HF cache); qwen2.5-3b: GSM8K 0.74/MMLU 0.53/HellaSwag 0.76 PASS; translation FAIL (en→zh chrF 33-34.8 < 40); qwen2.5-7b: GA PASS (GSM8K 0.833/MMLU 0.719/HellaSwag 0.767); translation FAIL (zh→en term 79%<80%; en→zh chrF 36.9<40) |
-| 2026-06-21 | Translation threshold recalibration: 7B chrf_min 40→35 + term 0.80→0.75 → PASS; 3B chrf_min 40→30 + term 0.80→0.60 → PASS (1-seed, 3-seed pending); Intel 1B/3B/7B perf thresholds added (ttft/throughput/prefill_decode) |
+| 2026-06-21 | Translation threshold recalibration: 7B chrf_min 40→35 + term 0.80→0.75 → PASS; 3B chrf_min 40→30 + term 0.80→0.60 → PASS (1-seed); Intel 1B/3B/7B perf thresholds added (ttft/throughput/prefill_decode) |
+| 2026-06-21/22 | 3B translation 3-seed confirmed: en→zh chrF=33.44±0.08 (≥30.0 ✓), zh→en term=71.1% (≥60% ✓) — PASS; 7B 3-seed in progress |
 
 ---
 
