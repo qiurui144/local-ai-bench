@@ -72,6 +72,51 @@ async def test_infer_async_bad_json_returns_err():
     assert "json" in res.error.lower()
 
 
+class _OkResp:
+    status_code = 200
+
+    def __init__(self, content: str):
+        self._content = content
+
+    def json(self):
+        return {
+            "choices": [{"message": {"content": self._content}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 10},
+        }
+
+
+def test_strip_think_tags_basic():
+    assert common._strip_think_tags("<think>reasoning</think>answer") == "answer"
+
+
+def test_strip_think_tags_multiline():
+    text = "<think>\nstep 1\nstep 2\n</think>\n\n你好，世界"
+    assert common._strip_think_tags(text) == "你好，世界"
+
+
+def test_strip_think_tags_empty_after_strip():
+    text = "<think>only thinking, no answer</think>"
+    assert common._strip_think_tags(text) == ""
+
+
+def test_strip_think_tags_passthrough():
+    assert common._strip_think_tags("no think tags here") == "no think tags here"
+
+
+def test_infer_sync_strips_think_from_content(monkeypatch):
+    """infer_sync must strip <think>...</think> before returning content."""
+    raw = "<think>I should translate this</think>\n\n你好，世界"
+
+    def fake_post(url, json=None, **kw):
+        return _OkResp(raw)
+
+    monkeypatch.setattr(common.httpx, "post", fake_post)
+    res = common.infer_sync(_Model(), prompt="translate: Hello world")
+    assert res.ok
+    assert res.content == "你好，世界"
+    assert "<think>" not in res.content
+
+
 def test_infer_sync_passes_seed_into_payload(monkeypatch):
     """seed 显式给定时进 payload(OpenAI 兼容字段);缺省不带 seed 键。"""
     captured = {}

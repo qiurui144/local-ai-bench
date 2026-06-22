@@ -226,3 +226,41 @@ def test_comet_skips_without_gpu():
 def test_comet_empty_input():
     out = compute_comet([], [], [])
     assert out["available"] is False
+
+
+# --------------------------------------------------------------------------- #
+# max_pairs cap (dimension-level)
+# --------------------------------------------------------------------------- #
+def test_max_pairs_caps_flores_samples(monkeypatch, tmp_path):
+    """max_pairs in tr_cfg must cap the number of flores pairs used."""
+    from benchmark.translation.dimension import run_translation_dimension
+    from unittest.mock import MagicMock
+
+    calls = []
+
+    def fake_run_translation(model_cfg, pairs, **kw):
+        calls.append(len(pairs))
+        return {"verdict": "PASS", "verdict_reasons": [], "aggregate": {}}
+
+    def fake_load_flores(src_lang, tgt_lang, split=None, num_samples=100):
+        return [
+            TranslationPair(src=f"src{i}", ref=f"ref{i}", src_lang=src_lang, tgt_lang=tgt_lang)
+            for i in range(num_samples)
+        ]
+
+    monkeypatch.setattr("benchmark.translation.dimension.run_translation", fake_run_translation)
+    monkeypatch.setattr("benchmark.translation.dimension.load_flores", fake_load_flores)
+    monkeypatch.setattr("benchmark.translation.dimension.load_custom_jsonl", lambda p: [])
+    monkeypatch.setattr("benchmark.translation.dimension.run_translation_performance", lambda *a, **kw: {})
+
+    model_cfg = MagicMock()
+    model_cfg.name = "test-model"
+    tr_cfg = {
+        "flores": {"num_samples": 100, "split": "devtest"},
+        "directions": ["zh->en"],
+        "max_pairs": 7,
+    }
+    run_translation_dimension(model_cfg, tr_cfg, tmp_path)
+    # All calls to run_translation must receive at most max_pairs pairs
+    assert all(n <= 7 for n in calls), f"Some calls exceeded max_pairs=7: {calls}"
+    assert calls, "No translation calls were made"

@@ -12,6 +12,10 @@ def run_translation_dimension(model_cfg, tr_cfg: dict, root: Path) -> dict:
     """对单模型跑翻译质量（每方向 × L1/L2/L3）+ 每方向延迟。"""
     flores = tr_cfg.get("flores", {})
     num_samples = flores.get("num_samples", 100)
+    # max_pairs (model-level override) caps both flores num_samples and L3 custom pairs.
+    max_pairs = tr_cfg.get("max_pairs")
+    if max_pairs is not None:
+        num_samples = min(num_samples, int(max_pairs))
     split = flores.get("split", "devtest")
     thresholds = tr_cfg.get("thresholds", {})
     run_comet = tr_cfg.get("run_comet", True)
@@ -48,6 +52,8 @@ def run_translation_dimension(model_cfg, tr_cfg: dict, root: Path) -> dict:
         try:
             custom = [p for p in load_custom_jsonl(custom_path)
                       if p.src_lang == src_lang and p.tgt_lang == tgt_lang and p.glossary]
+            if max_pairs is not None:
+                custom = custom[:int(max_pairs)]
         except Exception:
             custom = []
         if custom:

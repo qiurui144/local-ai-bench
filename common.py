@@ -326,6 +326,18 @@ class InferResult:
         )
 
 
+def _strip_think_tags(text: str) -> str:
+    """Remove <think>...</think> blocks from model output (vLLM Qwen3 thinking mode).
+
+    Strips the entire block including the tags and trims surrounding whitespace.
+    If the text is entirely a think block with nothing after, returns empty string
+    so empty_rate correctly counts it as empty rather than masking the failure.
+    """
+    import re
+    stripped = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+    return stripped.strip()
+
+
 def infer_sync(
     model_cfg: ModelConfig,
     *,
@@ -399,7 +411,10 @@ def infer_sync(
             latency_ms=elapsed,
         )
     choice = data.get("choices", [{}])[0]
-    content = choice.get("message", {}).get("content", "")
+    content = choice.get("message", {}).get("content", "") or ""
+    # vLLM Qwen3 thinking mode puts <think>...</think> blocks in content.
+    # Strip them so BLEU/accuracy evaluation sees only the actual answer.
+    content = _strip_think_tags(content)
     usage = data.get("usage", {}) or {}
     input_tokens = int(usage.get("prompt_tokens", 0))
     output_tokens = int(usage.get("completion_tokens", 0))
@@ -530,7 +545,7 @@ def infer_stream(
             latency_ms=(time.monotonic() - t0) * 1000,
         )
 
-    content = "".join(content_parts)
+    content = _strip_think_tags("".join(content_parts))
     # 解析 JSON（同 sync）
     parsed = None
     try:

@@ -121,7 +121,9 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             timeout=120,
         )
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        import re
+        content = resp.json()["choices"][0]["message"]["content"] or ""
+        return re.sub(r"<think>[\s\S]*?</think>", "", content, flags=re.IGNORECASE).strip()
 
     def generate_with_stats(
         self,
@@ -169,7 +171,9 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "tokens_per_second": round(tps, 2),
             "total_latency_ms": round(elapsed_ms, 2),
         }
-        text = data["choices"][0]["message"]["content"]
+        import re
+        raw = data["choices"][0]["message"]["content"] or ""
+        text = re.sub(r"<think>[\s\S]*?</think>", "", raw, flags=re.IGNORECASE).strip()
         return text, stats
 
     def generate_with_logprobs(
