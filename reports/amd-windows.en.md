@@ -1,7 +1,7 @@
 # AMD Windows Platform — Model Selection & Benchmark Report
 
-**Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA NPU, Windows 11  
-**Last calibrated:** 2026-06-21. This file is updated in place.
+**Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU (Hawk Point), Windows 11  
+**Last calibrated:** 2026-06-22. This file is updated in place.
 
 ---
 
@@ -11,7 +11,7 @@
 |---|---|---|---|---|
 | **CPU** | AMD Ryzen 8845H | 4× Zen4 P-core + 4× Zen4c E-core, 16 threads, 3.8–5.1 GHz | 35 W (base) / 54 W (max) | ONNX Runtime CPU — OCR baseline, Reranker |
 | **iGPU** | AMD Radeon 780M | RDNA3, 12 CU, 2800 MHz, 17.9 GiB shared VRAM | part of SoC TDP | Ollama Vulkan — LLM + Embedding; ONNX DirectML — OCR |
-| **NPU** | AMD XDNA | AI 300 Series, 16 TOPS INT8 | ~2–5 W (dedicated) | ONNX VitisAI — OCR (batch); ASR; PENDING: LLM via Lemonade |
+| **NPU** | AMD XDNA 1 (Hawk Point) | 16 TOPS INT8; **NOT the "AI 300 Series"** (= XDNA 2, Ryzen AI 300 only) | ~2–5 W (dedicated) | ONNX VitisAI — OCR batch (CNN/non-generative); **LLM via NPU NOT SUPPORTED** (XDNA 2 only) |
 | **RAM** | LPDDR5x | 32 GB | — | — |
 | **Runtime** | Ollama (Vulkan) | Vulkan backend, iGPU offload | — | LLM inference (primary path) |
 
@@ -26,10 +26,8 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 | **LLM 7B** | ~3–5 TPS (est.) | **13.33 TPS** ✓ | — |
 | **LLM 3B** | ~8–12 TPS (est.) | **28.99 TPS** ✓ | — |
 | **LLM 0.6B** | — | **91.09 TPS** ✓ | — |
-| **LLM NPU pure (1B, Lemonade)** | — | — | **~80–100 TPS** PENDING-VERIFY |
-| **LLM NPU pure (1.5B, Lemonade)** | — | — | **~60–80 TPS** PENDING-VERIFY |
-| **LLM NPU pure (3.8B, Lemonade)** | — | — | **~30–50 TPS** PENDING-VERIFY |
-| **LLM Hybrid (7B, iGPU+NPU)** | — | — | **PENDING-VERIFY** ⚠️ Ryzen AI 300 preferred |
+| **LLM NPU pure (Lemonade FLM)** | — | — | **NOT SUPPORTED** on 8845H (XDNA 1). Requires Ryzen AI 300 / XDNA 2 |
+| **LLM Hybrid iGPU+NPU (Lemonade)** | — | — | **NOT SUPPORTED** on 8845H (XDNA 1). Requires Ryzen AI 300 / XDNA 2 |
 | **Embedding 0.6B** | — | 875 ms p50 ✓ | — |
 | **OCR text (p50)** | 1593 ms | **469 ms** ✓ fastest | 2031 ms |
 | **OCR structured (p50)** | 859 ms | **477 ms** ✓ | 1868 ms |
@@ -39,11 +37,13 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 
 CPU-only LLM is not independently benchmarked; Ollama defaults to Vulkan iGPU.
 OCR quality (CER 7.04%) is identical across all three paths.
-**Three LLM modes**: (1) Ollama Vulkan iGPU (calibrated); (2) Lemonade hybrid — iGPU prefill + NPU decode, PENDING-VERIFY, ⚠️ Ryzen AI 300 preferred for full support; (3) Lemonade/FastFlowLM pure NPU ≤3.8B, PENDING-VERIFY.
+**LLM inference paths on 8845H**: (1) **Ollama Vulkan iGPU** (Radeon 780M, calibrated — only practical LLM path); (2) Lemonade FLM / OGA NPU path = **NOT SUPPORTED** on 8845H XDNA 1 — requires Ryzen AI 300 (XDNA 2).
+
+> **Official AMD docs (2026-06):** Ryzen 8845H = XDNA 1 (Hawk Point). XDNA 1 supports VitisAI EP for CNN/INT8 and non-generative Transformers only. LLM inference via NPU (Lemonade FLM, OGA) requires XDNA 2 (Ryzen AI 300 series). Ollama on Windows 780M uses **Vulkan backend** (`OLLAMA_VULKAN=1`), not DirectML and not ROCm (gfx1103 unsupported on Windows ROCm — AMD GitHub #12071).
 
 **→ Mode details:**
 - [iGPU (Vulkan + DirectML) — LLM, Embedding, OCR fastest path](./amd-windows-igpu.en.md)
-- [NPU (VitisAI + DirectML) — OCR batch, ASR](./amd-windows-npu.en.md)
+- [NPU (VitisAI) — OCR batch (CNN/non-generative only)](./amd-windows-npu.en.md)
 - [CPU ONNX — OCR baseline, Reranker](./amd-windows-cpu.en.md)
 
 ---
@@ -146,7 +146,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | Reranker (quality) | `bge-reranker-v2-m3-amd-win` | CPU ONNX | Equal nDCG/MRR but 3.7× latency — use when ranking quality critical |
 | OCR (interactive) | `rapidocr-amd-directml` | iGPU DirectML | Fastest: p50 468 ms |
 | **OCR (batch / background)** | `rapidocr-amd-npu` | **NPU VitisAI** | p50 2031 ms — **frees iGPU for concurrent LLM**; use when indexing docs while serving LLM chat |
-| **ASR (always-on)** | `sensevoice-small-amd-win` | **NPU DirectML** | RTF 0.073; **NPU ~2 W — ideal for background transcription alongside LLM** |
+| **ASR (always-on)** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073; runs on Radeon 780M via DirectML EP (not VitisAI NPU); **frees CPU for concurrent tasks** |
 | **Vector DB construction** | `qwen3-embedding-0.6b-amd` | iGPU (Vulkan) | 875 ms/chunk; run during off-peak or schedule around LLM load |
 | VLM | *(not recommended)* | — | `llava-7b-amd-win` accuracy FAIL; no qualified VLM yet |
 
@@ -171,7 +171,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | `paddleocr-cpu` | CPU ONNX | ocr_cpu_paddle | **PASS** | CER 7.04%; p50 1829.5 ms |
 | `bge-reranker-base-amd-win` | CPU ONNX | reranker_default | **PASS** | nDCG 1.000; MRR 1.000; p50 78 ms |
 | `bge-reranker-v2-m3-amd-win` | CPU ONNX | reranker_stronger | **PASS** | nDCG 1.000; MRR 1.000; p50 289 ms |
-| `sensevoice-small-amd-win` | NPU DirectML | asr | **PASS** | CER 7.69%; RTF 0.073 |
+| `sensevoice-small-amd-win` | iGPU DirectML | asr | **PASS** | CER 7.69%; RTF 0.073 |
 
 **Status legend:** PASS = all thresholds met. FAIL = one or more quality/perf thresholds missed.
 MEASURED = latency/throughput collected; quality dims not fully qualified.
@@ -186,28 +186,36 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 - **`qwen3-1.7b`, `qwen3-4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT measured 2026-06-22); quality benchmarks not yet run. Run: `python run_benchmark.py --model qwen3-4b-amd --skip stability,concurrency,conditioned,scenarios,prefill_decode`.
 - **LLM conditioned/scenarios FAIL** — Long-context conditioning fails across all tested models.
 - **No qualified VLM** — `llava-7b-amd-win` accuracy FAIL; no VLM workloads recommended.
-- **NPU LLM PENDING-VERIFY** — AMD XDNA NPU LLM via Lemonade Server supports Llama-3.2-1B, Phi-3.5-mini, Qwen2.5-1.5B (W4A8). Performance estimates unverified.
+- **NPU LLM NOT SUPPORTED on 8845H** — AMD Ryzen 8845H has XDNA 1 (Hawk Point). Lemonade FLM / OGA NPU inference requires **XDNA 2 (Ryzen AI 300 series, e.g. Ryzen AI 9 HX 370)**. The 8845H iGPU (Radeon 780M) is the only GPU inference path via Ollama Vulkan.
+- **Ollama backend is Vulkan, not DirectML or ROCm** — On Windows with Radeon 780M (gfx1103), AMD officially endorses Ollama with `OLLAMA_VULKAN=1`. ROCm on Windows does not support gfx1103 (AMD GitHub issue #12071 open). DirectML is not used for LLM.
+- **ASR runs on iGPU (DirectML), not NPU** — SenseVoice ONNX uses OnnxRuntime DirectML EP on the Radeon 780M, not the XDNA 1 VitisAI EP. Power draw for ASR is therefore included in iGPU TDP, not NPU TDP.
 
 ---
 
 ## NPU Batch Processing Guidance
 
-AMD XDNA NPU excels at **background batch workloads** that would otherwise compete with iGPU LLM inference.
+> **Critical clarification (per official AMD docs):** Ryzen 8845H has **XDNA 1** (Hawk Point NPU). XDNA 1 supports VitisAI EP for CNN/INT8 and non-generative Transformer models only. **LLM inference on NPU is NOT possible on this hardware** — that requires XDNA 2 (Ryzen AI 300 series). ASR (SenseVoice ONNX) runs on the **iGPU (780M) via DirectML EP**, not the NPU.
 
-| Workload | NPU path | p50 latency | vs iGPU | Recommendation |
+AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) that would otherwise compete with iGPU LLM inference.
+
+| Workload | Execution path | p50 latency | vs iGPU | Recommendation |
 |---|---|---|---|---|
-| OCR (single doc) | VitisAI ONNX | 2031 ms | 4.3× slower (iGPU: 469 ms) | **Not recommended** for interactive |
-| OCR (batch / background) | VitisAI ONNX | 2031 ms/doc | Frees iGPU for LLM | **Recommended** when LLM is concurrently active |
-| ASR transcription | DirectML | RTF 0.073 | N/A (NPU-only path) | **Recommended** — dedicated path |
-| Vector DB construction | (via embedding model on iGPU) | 875 ms/chunk | — | Embedding runs on iGPU; NPU path not tested |
-| LLM (Lemonade) | NPU W4A8 | PENDING | — | PENDING-VERIFY |
+| OCR (single doc) | NPU VitisAI ONNX | 2031 ms | 4.3× slower (iGPU: 469 ms) | **Not recommended** for interactive |
+| OCR (batch / background) | NPU VitisAI ONNX | 2031 ms/doc | Frees iGPU for LLM | **Recommended** when LLM is concurrently active |
+| ASR transcription | iGPU DirectML | RTF 0.073 | — | **Recommended** — low-latency, frees CPU |
+| Vector DB construction | iGPU Vulkan (embedding) | 875 ms/chunk | — | Embedding runs on iGPU; no NPU embedding path |
+| LLM inference | **NOT POSSIBLE on NPU** | — | — | XDNA 2 (Ryzen AI 300) required for Lemonade FLM |
 
-**Key insight:** NPU (2 W typical) offloads compute from iGPU (part of 35-54 W SoC TDP), allowing simultaneous LLM inference on iGPU while OCR or ASR runs on NPU. For bulk OCR pipelines (e.g., indexing 100 documents), NPU batch achieves similar throughput to iGPU while keeping iGPU available for interactive chat. Latency per document is ~4× higher on NPU, but total system throughput is higher due to parallelism.
+**Key insight:** XDNA 1 NPU (~2 W) offloads CNN-based OCR from the iGPU, allowing simultaneous LLM inference on the Radeon 780M while batch OCR runs on NPU. For bulk OCR pipelines (e.g., indexing 100 documents), NPU batch achieves similar throughput to iGPU while keeping iGPU available for interactive chat. Latency per document is ~4× higher on NPU, but total system throughput is higher due to parallelism.
 
-**When to use NPU over iGPU:**
-- Background document ingestion while serving LLM queries
-- Always-on ASR transcription alongside LLM agent tasks
-- Low-power sustained inference where battery life matters
+**When to use NPU (VitisAI) vs iGPU:**
+- Background document ingestion while serving LLM queries → NPU VitisAI for OCR
+- Always-on ASR → iGPU DirectML (SenseVoice ONNX)
+- LLM inference → iGPU Vulkan (Ollama) — **NPU path not available on 8845H**
+
+**Official AMD model repositories (for reference):**
+- `amd/ryzen-ai-171-*` on HuggingFace: AWQ UINT4+BF16 models for XDNA 2 NPU (Ryzen AI 300 only, not applicable to 8845H)
+- For iGPU (780M) with Ollama Vulkan: standard GGUF Q4 from Ollama Hub / HuggingFace
 
 ---
 
@@ -218,40 +226,41 @@ AMD XDNA NPU excels at **background batch workloads** that would otherwise compe
 | 2026-06-19 | Initial full calibration: all 14 models measured across CPU/iGPU/NPU paths; thresholds set from E2E runs |
 | 2026-06-20 | Added quality dims: qwen2.5-7b general_ability PASS (3-seed); llama3.2-3b general_ability FAIL (3-seed — model-level); qwen3-0.6b FAIL (MCQ gap confirmed post parser-fix) |
 | 2026-06-21 | qwen2.5-14b perf recalibrated (TPS 8.6); AMD 7B translation threshold recalibrated (chrF 40→35, term 80%→75%); translation PASS confirmed 3-seed |
-| 2026-06-22 | Added qwen3:1.7b (TPS 63.5, TTFT P50 497ms) and qwen3:4b (TPS 30.7, TTFT P50 867ms); perf thresholds calibrated; GA/translation PENDING-VERIFY; llama3.2-3b documented as model-level GA FAIL |
+| 2026-06-22 | Added qwen3:1.7b (TPS 63.5, TTFT P50 497ms) and qwen3:4b (TPS 30.7, TTFT P50 867ms); perf thresholds calibrated; GA/translation PENDING-VERIFY; llama3.2-3b documented as model-level GA FAIL; corrected XDNA 1 vs XDNA 2 hardware description (per official AMD docs); clarified NPU LLM NOT supported on 8845H; ASR moved from NPU to iGPU DirectML |
 
 ---
 
 ## 中文摘要
 
-**平台：** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA NPU，Windows 11  
-**最后校准：** 2026-06-21。本文件原地更新。
+**平台：** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU（Hawk Point），Windows 11  
+**最后校准：** 2026-06-22。本文件原地更新。
 
 ### 硬件画像
 
 | 计算单元 | 芯片 | 规格 | TDP | 角色 |
 |---|---|---|---|---|
 | **CPU** | AMD Ryzen 8845H | 4P+4E Zen4 核，16 线程，3.8–5.1 GHz | 35 W（基础）/ 54 W（最大） | ONNX CPU — OCR 基线、Reranker |
-| **iGPU** | Radeon 780M | RDNA3，12 CU，2800 MHz，17.9 GiB 共享显存 | SoC TDP 内 | Ollama Vulkan — LLM/Embedding；ONNX DirectML — OCR |
-| **NPU** | AMD XDNA | AI 300 Series，16 TOPS INT8，~2–5 W 专用 | ~2–5 W | ONNX VitisAI — OCR 批处理；ASR；PENDING: Lemonade LLM |
+| **iGPU** | Radeon 780M | RDNA3，12 CU，2800 MHz，17.9 GiB 共享显存 | SoC TDP 内 | Ollama Vulkan — LLM/Embedding；ONNX DirectML — OCR/ASR |
+| **NPU** | AMD XDNA 1（Hawk Point） | 16 TOPS INT8；**非 "AI 300 Series"（XDNA 2）** | ~2–5 W | ONNX VitisAI — OCR 批处理（CNN/非生成式）；**LLM 不支持**（需 XDNA 2） |
 | **RAM** | LPDDR5x | 32 GB | ~3–5 W | — |
+
+> ⚠️ **重要澄清（官方文档）：** Ryzen 8845H 为 XDNA 1（Hawk Point），**不是** Ryzen AI 300 的 XDNA 2。LLM 推理不支持 XDNA 1 NPU，只能用 iGPU（Radeon 780M，Ollama Vulkan）。ASR 走 iGPU DirectML，不走 NPU VitisAI。
 
 ### 执行模式对比
 
 | 任务 | CPU 路径 | iGPU 路径（Vulkan/DirectML） | NPU 路径（VitisAI） |
 |---|---|---|---|
-| LLM 7B | ~3–5 TPS（估算） | **13.33 TPS** ✓ | — |
-| LLM 3B | ~8–12 TPS（估算） | **28.99 TPS** ✓ | — |
-| **LLM NPU（Lemonade）** | — | — | **~80–100 TPS**（PENDING-VERIFY） |
-| OCR 文字 p50 | 1593 ms | **469 ms** ✓ 最快 | 2031 ms |
-| ASR RTF | — | — | **0.073** ✓ |
+| LLM 7B | ~3–5 TPS（估算） | **13.33 TPS** ✓ | **不支持**（XDNA 2 才可） |
+| LLM 3B | ~8–12 TPS（估算） | **28.99 TPS** ✓ | **不支持** |
+| OCR 文字 p50 | 1593 ms | **469 ms** ✓ 最快 | 2031 ms（CNN 模型，VitisAI） |
+| ASR RTF | — | **0.073** ✓（DirectML） | — |
 | Reranker base p50 | **78 ms** ✓ | — | — |
 
-**AMD LLM 三模式：** (1) Ollama Vulkan iGPU（已校准，13.33–91 TPS）；(2) Lemonade Hybrid（iGPU prefill + NPU decode，PENDING-VERIFY，⚠️ Ryzen AI 300 最佳）；(3) Lemonade/FastFlowLM 纯 NPU ≤3.8B（PENDING-VERIFY）。新增支持 DeepSeek-R1-Distill-7B-Hybrid/NPU、Gemma-4-26B-A4B（MoE）。详见 [NPU 文档](./amd-windows-npu.en.md)。
+**AMD 8845H LLM 推理路径（唯一实用路径）：** Ollama Vulkan iGPU（Radeon 780M），已校准 13.33–91 TPS。Lemonade FLM/OGA NPU 路径在 8845H 上**不可用**，需 Ryzen AI 300（XDNA 2）。
 
 **→ 详细模式文档：**
 - [iGPU（Vulkan + DirectML）— LLM、Embedding、OCR 最快路径](./amd-windows-igpu.en.md)
-- [NPU（VitisAI + DirectML）— OCR 批处理、ASR](./amd-windows-npu.en.md)
+- [NPU（VitisAI）— OCR 批处理（CNN/非生成式）](./amd-windows-npu.en.md)
 - [CPU ONNX — OCR 基线、Reranker](./amd-windows-cpu.en.md)
 
 ### 综合性能 + 模型效果
@@ -299,5 +308,5 @@ AMD XDNA NPU excels at **background batch workloads** that would otherwise compe
 | Reranker（默认） | `bge-reranker-base-amd-win` | CPU ONNX | 78 ms 最快 |
 | OCR（交互首选） | `rapidocr-amd-directml` | iGPU DirectML | 469 ms 最快 |
 | **OCR（后台批处理）** | `rapidocr-amd-npu` | **NPU VitisAI** | 2031 ms；**释放 iGPU 供 LLM 并发使用**；适合文档索引批量任务 |
-| **ASR（常驻后台）** | `sensevoice-small-amd-win` | **NPU DirectML** | RTF 0.073；**NPU ~2 W，适合与 LLM 并行的后台语音转写** |
+| **ASR（常驻后台）** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073；iGPU DirectML 路径（不是 NPU VitisAI），适合与 LLM 并行的后台语音转写 |
 | **向量库构建** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms/chunk；建议错峰或与 LLM 负载协调调度 |
