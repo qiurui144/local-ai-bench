@@ -416,6 +416,65 @@ models:
           hellaswag_min: 0.35      # 实测 0.000（parser-fix 后仍为 0.0 — 0.6B MCQ 能力不足）；FAIL
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank]
 
+  - name: qwen3-1.7b-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen3:1.7b
+    port: 11434
+    role: llm_nano_plus
+    task_type: text_only
+    translation_capable: false
+    notes: "AMD 780M Vulkan — Qwen3-1.7B；TTFT P50=497ms(warm)/P95=3034ms(cold)，TPS=64 tok/s；GA PENDING-VERIFY (1.5B tier thresholds: gsm8k≥0.30, mmlu≥0.45, hellaswag≥0.50)；translation skipped (1.7B insufficient)；prefill_decode PENDING-VERIFY (Ollama qwen3 usage 不返回) (2026-06-22 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 1000    # 实测 warm P50=497ms (2026-06-22)；含余量
+          p95_ttft_ms_max: 4500    # 实测 cold P95=3034ms (2026-06-22)；含余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 45              # 实测 ~64 TPS (2026-06-22)；45 为下限含余量
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.30          # PENDING-VERIFY: 1.5B tier (calibrated 2026-06-21 for 1.5B models)
+          mmlu_min: 0.45           # PENDING-VERIFY: 1.5B tier
+          hellaswag_min: 0.50      # PENDING-VERIFY: 1.5B tier
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-4b-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen3:4b
+    port: 11434
+    role: llm_lightweight
+    task_type: text_only
+    translation_capable: true
+    notes: "AMD 780M Vulkan — Qwen3-4B；TTFT P50=867ms(warm)/P95=4287ms(cold)，TPS=30.7 tok/s；GA PENDING-VERIFY (3-7B tier thresholds)；translation PENDING-VERIFY；prefill_decode PENDING-VERIFY (Ollama qwen3 usage 不返回) (2026-06-22 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 1500    # 实测 warm P50=867ms (2026-06-22)；含余量
+          p95_ttft_ms_max: 6000    # 实测 cold P95=4287ms (2026-06-22)；含余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 20              # 实测 ~30.7 TPS (2026-06-22)；20 为下限含余量
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.55          # PENDING-VERIFY: 3-7B tier
+          mmlu_min: 0.55           # PENDING-VERIFY: 3-7B tier
+          hellaswag_min: 0.60      # PENDING-VERIFY: 3-7B tier
+      translation:
+        max_pairs: 10
+        thresholds:
+          chrf_min: 35.0           # PENDING-VERIFY: 3-7B 翻译阈值（参考 qwen2.5-7b 实测）
+          term_match_rate_min: 0.75 # PENDING-VERIFY
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
+
   - name: bge-reranker-base-amd-win
     provider: local_reranker
     target: amd-win-x86
@@ -958,6 +1017,92 @@ models:
           term_match_rate_min: 0.60 # 实测 term 64%/74%（2026-06-21，1-seed）；需 3-seed 复核
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank]
     notes: "Intel CPU Ollama — qwen2.5:3b Q4 ~2GB; TPS 19.47; TTFT p50/p95 781/3495 ms; PP/TG 124/26 t/s; GA(2026-06-21,100q): GSM8K 0.74 PASS MMLU 0.53 PASS HellaSwag 0.76 PASS; translation(1-seed 2026-06-21): en->zh chrF 33.0/34.8, zh->en PASS(chrF 57.0), term 64/74%"
+
+  - name: qwen3-0.6b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen3:0.6b
+    port: 11434
+    role: llm_nano
+    task_type: text_only
+    translation_capable: false
+    notes: "Intel CPU Ollama — Qwen3-0.6B；TPS=85 tok/s；TTFT warm=437ms/cold=1508ms；GA PENDING-VERIFY (0.6B tier: MCQ 能力不足预期，类 AMD 0.6B)；translation skip (2026-06-22 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 800     # 实测 warm P50=437ms (2026-06-22)；含余量
+          p95_ttft_ms_max: 3000    # 实测 cold=1508ms (2026-06-22)；含余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 60              # 实测 ~85 TPS (2026-06-22)；60 为下限
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.20          # PENDING-VERIFY: 0.6B tier
+          mmlu_min: 0.30           # PENDING-VERIFY: 0.6B tier (预期 MCQ 能力不足)
+          hellaswag_min: 0.35      # PENDING-VERIFY: 0.6B tier
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-1.7b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen3:1.7b
+    port: 11434
+    role: llm_nano_plus
+    task_type: text_only
+    translation_capable: false
+    notes: "Intel CPU Ollama — Qwen3-1.7B；TPS=33 tok/s；TTFT warm=833ms/cold=3249ms；GA PENDING-VERIFY (1.5B tier)；translation skip (2026-06-22 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 1500    # 实测 warm P50=833ms (2026-06-22)；含余量
+          p95_ttft_ms_max: 5000    # 实测 cold=3249ms (2026-06-22)；含余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 22              # 实测 ~33 TPS (2026-06-22)；22 为下限
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.30          # PENDING-VERIFY: 1.5B tier
+          mmlu_min: 0.45           # PENDING-VERIFY: 1.5B tier
+          hellaswag_min: 0.50      # PENDING-VERIFY: 1.5B tier
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, translation, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-4b-intel-win
+    provider: ollama
+    target: intel-win-x86
+    base_url_env: OLLAMA_INTEL_WIN_BASE_URL
+    model_id: qwen3:4b
+    port: 11434
+    role: llm_lightweight
+    task_type: text_only
+    translation_capable: true
+    notes: "Intel CPU Ollama — Qwen3-4B；TPS=15.7 tok/s；TTFT warm=1539ms/cold=3714ms；GA PENDING-VERIFY (3-7B tier)；translation PENDING-VERIFY (2026-06-22 E2E)"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 2500    # 实测 warm P50=1539ms (2026-06-22)；含余量
+          p95_ttft_ms_max: 6000    # 实测 cold=3714ms (2026-06-22)；含余量
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 10              # 实测 ~15.7 TPS (2026-06-22)；10 为下限
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.55          # PENDING-VERIFY: 3-7B tier
+          mmlu_min: 0.55           # PENDING-VERIFY: 3-7B tier
+          hellaswag_min: 0.60      # PENDING-VERIFY: 3-7B tier
+      translation:
+        max_pairs: 10
+        thresholds:
+          chrf_min: 35.0           # PENDING-VERIFY: 参考 qwen2.5 3B/7B
+          term_match_rate_min: 0.70 # PENDING-VERIFY
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
 
   - name: qwen2.5-7b-intel-win
     provider: ollama
