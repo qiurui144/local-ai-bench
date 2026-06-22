@@ -234,9 +234,15 @@ models:
 
   # ═══ Windows AMD（Ryzen 7 8845H + Radeon 780M，Ollama Vulkan GPU 模式）═══
   #
+  # 硬件澄清（官方文档 2026-06）：
+  #   Ryzen 8845H = XDNA 1（Hawk Point），非 "AI 300 Series"（XDNA 2）
+  #   ⚠ LLM via NPU 在 8845H 上不支持 — Lemonade FLM/OGA 需要 XDNA 2（Ryzen AI 300）
+  #   iGPU（Radeon 780M/gfx1103）LLM 路径：Ollama Vulkan（不走 DirectML，不走 ROCm）
+  #   官方 AMD 模型仓库：amd/ryzen-ai-171-* 为 XDNA 2 NPU 专用（本机不适用）
+  #
   # 软件栈：Ollama v0.30.8 / Vulkan 后端（更新 AMD Adrenalin 驱动后解锁，2026-06-16）
   # GPU：AMD Radeon 780M iGPU，17.9 GiB 共享显存池（Vulkan，全层卸载）
-  # NPU：XDNA（重启后驱动生效）；Ollama 不支持 NPU，NPU 路径见 asr 维度
+  # NPU：XDNA 1（重启后驱动生效）；仅支持 VitisAI CNN/非生成模型（OCR 批处理），不支持 LLM
   # 启动命令：set OLLAMA_HOST=0.0.0.0 && set OLLAMA_IGPU_ENABLE=1 && ollama.exe serve
   # 防火墙：TCP 11434 需放行（LAN 内访问）
   #
@@ -945,11 +951,18 @@ models:
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, embedding, rerank, ocr, stability, concurrency]
     notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 CER=4.73%/RTF_mean=0.084（5语言：zh/en/ja/ko/yue，2026-06-20）；zh CER 高因繁简字集差异；en/ko/yue=0% CER；阈值已校准"
 
-  # ═══ Intel Windows（Ollama CPU 模式，x86_64）═══
-  # 硬件：Intel CPU（无独显），通过 Ollama CPU 推理
-  # 激活：export INTEL_WIN_HOST=<IP> INTEL_WIN_SSH_USER=<user> INTEL_WIN_SSH_PASS=<pass>
-  #        export OLLAMA_INTEL_WIN_BASE_URL=http://<INTEL_WIN_HOST>:11434/v1
-  # 注：CPU 推理速度慢于 GPU，建议只跑小模型（≤3B）+ 跳过 stability 维度
+  # ═══ Intel Windows（Ollama CPU + OpenVINO-GenAI iGPU，x86_64）═══
+  # 硬件：Core Ultra 7 155H + Intel Arc iGPU（8 Xe-核，1GB 独显+32GB 共享）+ AI Boost NPU
+  # 激活：export INTEL_WIN_HOST=<IP> && export OLLAMA_INTEL_WIN_BASE_URL=http://<INTEL_WIN_HOST>:11434/v1
+  #
+  # 双推理路径（2026-06-22 官方文档澄清）：
+  #   (1) Ollama CPU — 适合 GGUF Q4 系列（Qwen2.5/Qwen3 通过 HF/Ollama Hub 下载）
+  #   (2) OpenVINO-GenAI iGPU GPU path — 适合 INT4 OV 模型，TTFT 192ms（6.7× vs CPU）
+  #       官方 OV 模型仓库：huggingface.co/OpenVINO（384 模型）
+  #         Qwen3: 0.6B/4B/8B-int4-ov（需 OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0）
+  #         Qwen2.5: 1.5B/7B-Instruct-int4-ov（当前可用）
+  #   (3) OVMS（OpenVINO Model Server）— 官方生产推理路径，OpenAI 兼容 REST API
+  # 注：LLM 走 CPU Ollama 时速度慢，建议 ≤4B 模型 + 跳过 stability 维度
 
   - name: llama3.2-1b-intel-win
     provider: ollama
