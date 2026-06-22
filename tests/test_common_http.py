@@ -117,6 +117,40 @@ def test_infer_sync_strips_think_from_content(monkeypatch):
     assert "<think>" not in res.content
 
 
+def test_openai_backend_generate_with_logprobs_passes_think_false(monkeypatch):
+    """generate_with_logprobs must pass options.think=False when ollama_think=False."""
+    import httpx
+    from benchmark.llama_benchmark.backends.openai_compatible_backend import OpenAICompatibleBackend
+    from benchmark.llama_benchmark.core.config import ModelConfig as LBModelConfig
+
+    captured = {}
+
+    class _LogprobResp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"logprobs": {"content": []}, "finish_reason": "stop"}]}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _LogprobResp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    cfg = LBModelConfig(
+        name="test", type="llm", backend="openai_compatible",
+        openai_base_url="http://localhost:11434/v1",
+        extra={"ollama_think": False},
+    )
+    backend = OpenAICompatibleBackend(cfg)
+    backend.generate_with_logprobs("What is 2+2?", ["A", "B", "C", "D"])
+
+    assert captured.get("options", {}).get("think") is False
+
+
 def test_infer_sync_passes_seed_into_payload(monkeypatch):
     """seed 显式给定时进 payload(OpenAI 兼容字段);缺省不带 seed 键。"""
     captured = {}

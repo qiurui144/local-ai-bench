@@ -198,6 +198,8 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "top_logprobs": 20,  # 拿足够多以覆盖 A/B/C/D
             "stream": False,
         }
+        if not self.config.extra.get("ollama_think", True):
+            payload["options"] = {"think": False}
         resp = httpx.post(
             f"{self._base_url}/chat/completions",
             headers=self._headers,
