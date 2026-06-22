@@ -63,6 +63,65 @@ def _http_transcriber(base_url: str) -> Transcriber:
     return _transcribe
 
 
+def _try_whisper_ov_transcriber(
+    model_dir: Path | str | None,
+    *,
+    prefer_npu: bool = True,
+) -> Optional[Transcriber]:
+    """Whisper OV: encoder on NPU (or GPU fallback), decoder on CPU.
+
+    Confirmed architecture (Intel AI Boost, 2026-06-22):
+      encoder device=NPU  → 115 ms static [1,80,3000]
+      decoder device=CPU  → autoregressive, dynamic shapes
+
+    optimum-intel ≥ 1.18 supports per-sub-model device dict; encoder compiles
+    with static shape on NPU while decoder runs CPU.  Falls back gracefully to
+    GPU encoder if NPU is unavailable.
+    """
+    if not model_dir:
+        return None
+    model_dir = Path(model_dir)
+    if not (model_dir / "config.json").exists():
+        return None
+    try:
+        import openvino as ov
+        from optimum.intel.openvino import OVModelForSpeechSeq2Seq  # type: ignore
+        from transformers import AutoProcessor
+
+        core = ov.Core()
+        available = core.available_devices
+
+        if prefer_npu and "NPU" in available:
+            enc_device = "NPU"
+        elif "GPU" in available:
+            enc_device = "GPU"
+        else:
+            enc_device = "CPU"
+
+        device_map = {
+            "encoder_model": enc_device,
+            "decoder_model": "CPU",
+            "decoder_with_past_model": "CPU",
+        }
+
+        processor = AutoProcessor.from_pretrained(str(model_dir))
+        model = OVModelForSpeechSeq2Seq.from_pretrained(str(model_dir), device=device_map)
+        logger.info("Whisper OV transcriber loaded: encoder=%s decoder=CPU", enc_device)
+    except Exception as e:
+        logger.info("Whisper OV transcriber init failed: %s", e)
+        return None
+
+    def _transcribe(path: Path) -> str:  # pragma: no cover - needs model + OV
+        import soundfile as sf  # type: ignore
+        audio, sr = sf.read(str(path), dtype="float32")
+        inputs = processor(audio, sampling_rate=16000, return_tensors="pt")
+        ids = model.generate(inputs.input_features)
+        texts = processor.batch_decode(ids, skip_special_tokens=True)
+        return texts[0] if texts else ""
+
+    return _transcribe
+
+
 def _try_sherpa_transcriber(model_dir: Path | str | None) -> Optional[Transcriber]:
     """Build a sherpa-onnx SenseVoice transcriber if the dep + model exist."""
     if not model_dir:
@@ -119,6 +178,12 @@ def run_asr(
 
     # HTTP backend: if base_url is configured, use remote HTTP transcription
     http_base = getattr(model_cfg, "base_url", None)
+    # Whisper OV backend: asr_backend=whisper_ov + ov_model_dir in model config
+    whisper_ov_dir = (
+        getattr(model_cfg, "ov_model_dir", None)
+        if getattr(model_cfg, "asr_backend", "") == "whisper_ov"
+        else None
+    )
     transcriber = (
         transcribe_fn
         or (
@@ -129,11 +194,12 @@ def run_asr(
             ))
             else None
         )
+        or _try_whisper_ov_transcriber(whisper_ov_dir)
         or _try_sherpa_transcriber(asr_model_dir)
     )
     if transcriber is None:
         return {"benchmark": "asr", "model": model_cfg.name, "status": "blocked",
-                "reason": "no asr backend (set base_url_env for HTTP or provide sherpa-onnx model)",
+                "reason": "no asr backend (set base_url_env for HTTP, or asr_backend: whisper_ov + ov_model_dir, or provide sherpa-onnx model)",
                 "num_samples": len(samples), "verdict": "SKIP"}
 
     refs: list[str] = []

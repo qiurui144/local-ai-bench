@@ -232,6 +232,23 @@ models:
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, ocr]
     notes: "Intel Windows ASR：SenseVoice sherpa-onnx 本地 ONNX；CPU baseline，OpenVINO/NPU ASR 可作为后续专用 backend"
 
+  - name: whisper-base-npu-intel-win
+    provider: local_whisper_ov
+    target: intel-win-x86
+    ov_model_dir: "C:\\ov_models\\asr\\whisper-base-int8-ov"
+    asr_backend: whisper_ov
+    port: 0
+    role: asr_intel_win_npu
+    task_type: text_only
+    asr_capable: true
+    benchmarks:
+      asr:
+        thresholds:
+          cer_max: 0.12
+          rtf_max: 0.5
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, ocr]
+    notes: "Intel Windows ASR NPU：Whisper-base INT8 OV，encoder=NPU(AI Boost) / decoder=CPU；encoder 115ms confirmed (2026-06-22)；model dir: C:\\ov_models\\asr\\whisper-base-int8-ov"
+
   # ═══ Windows AMD（Ryzen 7 8845H + Radeon 780M，Ollama Vulkan GPU 模式）═══
   #
   # 硬件澄清（官方文档 2026-06）：
@@ -1187,6 +1204,23 @@ models:
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr]
     notes: "Intel CPU Ollama — embedding 基线对比 AMD"
 
+  - name: bge-base-en-v1.5-igpu-intel-win
+    provider: local_embedding_ov
+    target: intel-win-x86
+    ov_model_dir: "C:\\ov_models\\embedding\\bge-base-en-v1.5-int8-ov"
+    ov_device: GPU
+    port: 0
+    role: embedding_intel_win_igpu
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      embedding:
+        thresholds:
+          recall_at_10_min: 0.75
+          latency_ms_p95_max: 100
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, rerank]
+    notes: "Intel Windows iGPU embedding：BGE-base-en-v1.5 INT8 OVModelForFeatureExtraction device=GPU；~25ms warm confirmed (2026-06-22)；model dir: C:\\ov_models\\embedding\\bge-base-en-v1.5-int8-ov；需 scripts/serve_ov_intel.py 或 local_embedding_ov provider"
+
   - name: llava-7b-intel-win
     provider: ollama
     target: intel-win-x86
@@ -1223,7 +1257,28 @@ models:
       rerank:
         num_samples: 6
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
-    notes: "Intel Windows 专用 reranker：BAAI/bge-reranker-base CrossEncoder，本地进程内专用重排；替代 LLM yes/no 代理"
+    notes: "Intel Windows 专用 reranker：BAAI/bge-reranker-base CrossEncoder CPU，本地进程内专用重排；替代 LLM yes/no 代理"
+
+  - name: bge-reranker-base-igpu-intel-win
+    provider: local_reranker
+    target: intel-win-x86
+    model_id: BAAI/bge-reranker-base
+    ov_model_dir: "C:\\ov_models\\reranker\\bge-reranker-base-int8-ov"
+    ov_device: GPU
+    rerank_backend: openvino_gpu
+    port: 0
+    role: reranker_intel_win_igpu
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+        thresholds:
+          ndcg_at_5_min: 0.65
+          latency_ms_p95_max: 100
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "Intel Windows iGPU reranker：bge-reranker-base INT8 OV + OVModelForSequenceClassification device=GPU；36.4ms avg confirmed (2026-06-22)；model dir: C:\\ov_models\\reranker\\bge-reranker-base-int8-ov"
 
   - name: bge-reranker-v2-m3-intel-win
     provider: local_reranker
