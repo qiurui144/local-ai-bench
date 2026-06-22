@@ -1,152 +1,120 @@
 > [← Intel Windows overview](./intel-windows.en.md)
 
-# Intel Windows — iGPU / OpenVINO / DirectML Paths
+# Intel Windows — iGPU / OpenVINO / NPU Paths
 
-**Hardware:** Intel Core Ultra (integrated graphics)  
-**Backends:** OpenVINO EP (OCR — PASS) · ONNX DirectML (OCR — FAIL, ASR — PASS)  
-**Last calibrated:** 2026-06-19
-
----
-
-## iGPU Scope on Intel Windows
-
-| Workload | Path | Backend | Status |
-|---|---|---|---|
-| OCR text | `rapidocr-intel-openvino` | OpenVINO | **PASS** |
-| OCR structured | `rapidocr-intel-openvino` | OpenVINO | **PASS** |
-| OCR text | `rapidocr-intel-directml` | DirectML | **FAIL** |
-| OCR structured | `rapidocr-intel-directml` | DirectML | **FAIL** |
-| ASR | `sensevoice-small-intel-win` | DirectML | **PASS** |
-| LLM | Not configured for iGPU | — | Not tested |
-| Embedding | Not configured for iGPU | — | Not tested |
-
-LLM inference on Intel Windows currently runs CPU-only via Ollama (see
-[cpu mode](./intel-windows-cpu.en.md)). Intel iGPU LLM acceleration would require
-configuring the OpenVINO backend in the serving stack — not yet tested.
+**Hardware:** Intel Core Ultra 7 155H · Intel Arc iGPU (8 Xe-cores) · Intel AI Boost NPU  
+**Software stack:** OpenVINO 2026.2.1 · optimum-intel 2.0.0 · onnxruntime-directml 1.24.4  
+**Last calibrated:** 2026-06-22
 
 ---
 
-## OCR Results
+## Version Constraints & Known Issues
 
-### OpenVINO (PASS)
+| Package | Installed | Status |
+|---|---|---|
+| `openvino` | **2026.2.1** | OK — devices: CPU + GPU (Arc) + NPU ✓ |
+| `openvino-genai` | 2026.2.1 (upgraded) | **BROKEN** — DLL load failed (system DLL conflict, not version mismatch) |
+| `optimum-intel` | 2.0.0 | OK — `OVModelForCausalLM` / `OVModelForFeatureExtraction` device=GPU ✓ |
+| `rapidocr-openvino` | 1.4.4 | OK — works with OV 2026.2.1 ✓ |
 
-| Model | CER | NED | p50 OCR | Structured field acc | Structured p50 | Status |
-|---|---|---|---|---|---|---|
-| `rapidocr-intel-openvino` | 7.04% | 6.18% | 797 ms | 92.86% | 867.5 ms | **PASS** |
+**`openvino-genai` DLL issue:** `ImportError: DLL load failed while importing py_openvino_genai: 找不到指定的程序`. Not a version mismatch — `os.add_dll_directory()` + upgrading to 2026.2.1.0 both fail. Root cause: system DLL export conflict. Workaround: use `optimum-intel OVModelForCausalLM` (slower but functional). **Upstream plan**: contribute rapidocr OV 2026 compatibility PR; revisit genai once resolved.
 
-OpenVINO auto-selects the compute device (CPU / iGPU / NPU) based on availability.
-The 797 ms result is from the default device selection on this platform.
-
-### DirectML (FAIL)
-
-| Model | CER | NED | p50 | Status | Root cause |
-|---|---|---|---|---|---|
-| `rapidocr-intel-directml` | 202.35% | 97.77% | 945.5 ms | **FAIL** | Driver precision issue — output is garbled text |
-
-Intel DirectML OCR is **not usable** (CER 202% means the output is worse than empty).
-Root cause: likely FP16 precision mismatch in the DirectML execution path for
-the PP-OCRv4 model on Intel hardware. Use the OpenVINO path instead.
+**Key insight (2026-06-22):** Intel Ollama runs **100% CPU** for all models (Intel Arc iGPU not supported in standard Ollama). AMD Ollama runs **100% GPU** (Radeon 780M). iGPU LLM on Intel requires OpenVINO path.
 
 ---
 
-## ASR Results (DirectML)
+## Confirmed iGPU Paths (optimum-intel, device='GPU')
 
-| Model | CER | RTF | Status |
-|---|---|---|---|
-| `sensevoice-small-intel-win` | 7.69% | 0.341 | **PASS** |
+| Workload | Model | Cold load | Warm latency / TPS | Status |
+|---|---|---|---|---|
+| **LLM 7B** | `qwen2.5-7b-int4-ov` (OVModelForCausalLM) | **115 s** (GPU kernel compile) | **8.1 TPS** | ✓ CONFIRMED |
+| **LLM 1.5B** | `qwen2.5-1.5b-int4-ov` (OVModelForCausalLM) | **54 s** (GPU kernel compile) | **10.6 TPS** | ✓ CONFIRMED |
+| **Embedding INT8** | `bge-base-en-v1.5-int8-ov` (OVModelForFeatureExtraction) | ~1.7 s | **~25 ms warm** | ✓ CONFIRMED |
+| **Reranker INT8** | `bge-reranker-base-int8-ov` (OVModelForSequenceClassification) | 4.9 s | **36.4 ms avg** | ✓ CONFIRMED |
+| OCR (text/structured) | `rapidocr-openvino` (OpenVINO EP, auto-device) | — | p50 **797 ms** / 867 ms | ✓ CONFIRMED |
 
-**RTF 0.341** means 1 second of audio processes in 341 ms — 2.9× faster than real-time.
-Intel ASR RTF (0.341) is 4.7× slower than AMD (0.073), driven by DirectML throughput
-differences between Radeon 780M RDNA3 and Intel integrated graphics.
+> Note: `OVModelForCausalLM` GPU is 3× slower than `openvino_genai.LLMPipeline` GPU (1.5B: 10.6 vs 34 TPS) due to missing KV-cache optimization in the transformers generation loop. LLMPipeline is the preferred path once DLL issue is resolved.
+
+**Model files on machine** (`C:\ov_models\`):
+```
+qwen2.5-1.5b-int4-ov/    ← from OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov
+qwen2.5-7b-int4-ov/       ← from OpenVINO/Qwen2.5-7B-Instruct-int4-ov
+embedding/bge-base-en-v1.5-int8-ov/
+reranker/bge-reranker-base-int8-ov/
+asr/whisper-base-int8-ov/
+```
+
+**Still to download** (Qwen3 series, requires HF access):
+```
+qwen3-0.6b-int4-ov/    ← OpenVINO/Qwen3-0.6B-int4-ov
+qwen3-4b-int4-ov/       ← OpenVINO/Qwen3-4B-int4-ov
+qwen3-8b-int4-ov/       ← OpenVINO/Qwen3-8B-int4-ov (optional, large)
+```
 
 ---
 
-## OCR Path Comparison (Intel platform)
+## NPU Results (Intel AI Boost, 11 TOPS INT8)
+
+| Task | Model | Result | Latency | Status |
+|---|---|---|---|---|
+| **OCR det** | ch_PP-OCRv4_det (static [1,3,640,640]) | compile 4.6s; inference avg | **33 ms** | ✓ PASS |
+| **OCR rec** | ch_PP-OCRv4_rec (static [1,3,**48**,320]; H=48 required) | compile 2.9s | **11 ms** | ✓ PASS |
+| **OCR cls** | ch_PP-OCRv4_cls (static [1,3,48,192]) | compile 2.0s | **3 ms** | ✓ PASS |
+| **ASR encoder** | whisper-base-int8-ov encoder (static [1,80,3000]) | compile ~15s cold / ~0.5s cached | **115 ms** | ✓ PASS |
+| ASR decoder | whisper-base-int8-ov decoder | compile 1.0s | — | CPU (dynamic autoregressive) |
+| Embedding | bge-base-en-v1.5-int8-ov | — | — | **FAIL** (dynamic shapes: upper bounds unspecified) |
+| Reranker | bge-reranker-base-int8-ov | — | — | **FAIL** (dynamic shapes) |
+| SenseVoice ASR | model.int8.onnx | — | — | **FAIL** (dynamic self-attn mask; needs re-export) |
+
+**NPU OCR note:** rec model requires `H=48` (not the default H=32). This is due to an `AvgPool` kernel constraint in PP-OCRv4 rec. Static reshape to [1,3,48,320] is mandatory for NPU VPUX.
+
+---
+
+## OCR Paths Comparison
 
 | Path | Backend | p50 OCR | p50 Structured | Status |
 |---|---|---|---|---|
-| Intel DirectML | ONNX DirectML | 946 ms | 985 ms | **FAIL** — do not use |
-| **Intel OpenVINO** | **ONNX OpenVINO** | **797 ms** | **868 ms** | **PASS — recommended** |
-| CPU ONNX (reference) | ONNX CPU | 1593 ms | 859 ms | PASS (from reference) |
+| **Intel OpenVINO** | OpenVINO EP (iGPU auto-select) | **797 ms** | **867 ms** | ✓ **PASS — recommended** |
+| Intel DirectML | ONNX DirectML | 946 ms | 985 ms | **FAIL** — CER 202%, not usable |
+| CPU reference | ONNX CPU | 1593 ms | 859 ms | PASS (reference only) |
+| NPU (PP-OCRv4 det+rec+cls) | NPU VPUX static | 33+11+3 = **47 ms** | same | ✓ PASS (pipeline mode; production-ready) |
 
 ---
 
-## Intel NPU / OpenVINO LLM Path (Not Yet Tested)
+## ASR Paths Comparison
 
-Intel Core Ultra processors include an Intel NPU (AI Boost) accessible via OpenVINO.
-OpenVINO has also landed in llama.cpp as a first-class compute backend (OpenVINO 2026.0.0),
-enabling LLM inference on Intel CPU / iGPU / NPU via the same GGUF model files used by Ollama.
+| Path | Backend | Latency | CER | Status |
+|---|---|---|---|---|
+| **SenseVoice** | DirectML (sherpa-onnx) | RTF 0.341 | 7.69% | ✓ **PASS — primary** |
+| Whisper-base INT8 | iGPU OpenVINO GPU | 567 ms full (58s first-run compile) | — | ✓ PASS — alternative |
+| Whisper-base encoder | NPU VPUX | 115 ms encoder | — | ✓ PASS encoder; decoder on CPU |
 
-### OpenVINO llama.cpp Integration (Reference — not benchmarked on this platform)
+---
 
-OpenVINO became a supported backend in llama.cpp, replacing the older SYCL approach:
+## LLM iGPU Path: Roadmap
 
-**Build:**
-```bash
-cmake -B build -DGGML_OPENVINO=ON
-cmake --build build --config Release -j $(nproc)
-```
-
-**Runtime device selection via env:**
-```bash
-# Use Intel iGPU (Arc/Xe)
-export GGML_OPENVINO_DEVICE=GPU
-./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
-
-# Use Intel NPU (AI Boost)
-export GGML_OPENVINO_DEVICE=NPU
-./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
-
-# Use Intel CPU via OpenVINO (optimized path)
-export GGML_OPENVINO_DEVICE=CPU
-./build/bin/llama-cli -m model.gguf -p "Hello" -n 128
-```
-
-**Supported quantization formats:** FP16, Q8_0, Q4_0, Q4_1, Q4_K, Q4_K_M
-
-**OpenVINO version required:** 2026.0.0 or later (earlier versions may lack NPU support)
-
-This gives a LLM acceleration path beyond CPU-only Ollama — the iGPU and NPU are reachable
-via llama.cpp without changing the GGUF model format.
-
-### OCR/ASR: NPU path via OpenVINO ONNX
-
-```bash
-# OpenVINO NPU for OCR ONNX models
-export OV_DEVICE=NPU
-python run_benchmark.py --model rapidocr-intel-openvino --target intel-win-x86
-```
-
-`GGML_OPENVINO_DEVICE=NPU` (llama.cpp) and `OV_DEVICE=NPU` (ONNX Runtime) use the same
-OpenVINO NPU plugin — both routes are available once OpenVINO 2026.0.0 is installed.
-
-**Current status:** LLM via llama.cpp+OpenVINO and NPU OCR are **not yet benchmarked** on this
-specific Intel Windows test device. The paths above are the expected configuration.
+| Step | Status | Action |
+|---|---|---|
+| OV model downloaded (1.5B, 7B) | ✓ Done | — |
+| iGPU inference verified (optimum-intel) | ✓ Done | 7B: 8.1 TPS; 1.5B: 10.6 TPS |
+| openvino_genai LLMPipeline | ❌ DLL broken | Diagnose DLL export conflict; or use OVMS |
+| Qwen3 INT4 OV download | ⏳ Pending | `huggingface-cli download OpenVINO/Qwen3-4B-int4-ov` |
+| HTTP serving layer for benchmark | ⏳ Pending | OVMS Docker (needs Docker install) or thin FastAPI wrapper around OVModelForCausalLM |
+| models.yaml iGPU entries | ⏳ Pending | Add after serving layer confirmed |
 
 ---
 
 ## 中文摘要
 
-**硬件：** Intel Core Ultra 集成显卡 + Intel AI Boost NPU，OpenVINO + DirectML  
-**最后校准：** 2026-06-19
+**已确认可用（2026-06-22）：**
+- iGPU 嵌入（BGE-base INT8）：`OVModelForFeatureExtraction` device=GPU → ~25ms warm ✓
+- iGPU 重排序（BGE-reranker-base INT8）：device=GPU → 36.4ms avg ✓
+- iGPU LLM 推理（optimum-intel）：Qwen2.5-7B → 8.1 TPS；1.5B → 10.6 TPS ✓（速度慢于 LLMPipeline，需 HTTP 包装层）
+- OCR：OpenVINO EP → p50 797ms ✓；NPU PP-OCRv4 → det 33ms/rec 11ms/cls 3ms ✓
+- ASR：SenseVoice DirectML RTF 0.341 ✓；Whisper NPU encoder 115ms ✓
 
-### iGPU 路径覆盖范围
-
-| 任务 | 路径 | 状态 |
-|---|---|---|
-| OCR | OpenVINO | **PASS**（p50 797 ms） |
-| OCR | DirectML | **FAIL**（CER 202%，不可用） |
-| ASR | DirectML | **PASS**（RTF 0.341） |
-| LLM（CPU） | Ollama CPU | 见 cpu 文档 |
-| **LLM（iGPU/NPU via llama.cpp+OpenVINO）** | `GGML_OPENVINO_DEVICE=GPU\|NPU` | **未测试，路径已记录** |
-
-### OpenVINO llama.cpp LLM 路径（未测试，已记录配置）
-
-OpenVINO 2026.0.0 已集成进 llama.cpp，通过 `-DGGML_OPENVINO=ON` 编译后可选择 Intel CPU/iGPU/NPU 执行 GGUF 模型推理。设备选择：`export GGML_OPENVINO_DEVICE=GPU`（iGPU）或 `=NPU`（AI Boost）。支持 FP16/Q8_0/Q4_0/Q4_1/Q4_K/Q4_K_M 量化格式。
-
-### 关键数据
-
-- `rapidocr-intel-openvino`：CER 7.04%，p50 797 ms，结构化 p50 868 ms — **推荐 OCR 路径**
-- `rapidocr-intel-directml`：CER 202.35% — **不可用，驱动精度问题**
-- `sensevoice-small-intel-win`：CER 7.69%，RTF 0.341 — **ASR PASS**
-- Intel iGPU LLM（llama.cpp+OpenVINO）：未测试，待校准
+**待解决：**
+- `openvino_genai` DLL 冲突（系统级）→ 建议尝试 OVMS；上游 rapidocr PR 计划
+- Qwen3 INT4 OV 模型下载（0.6B/4B/8B）→ `drivers/intel-win/ov_models/llm/`
+- iGPU LLM 的 HTTP 服务层（benchmark harness 需要）
+- 所有模型文件统一存放 `drivers/intel-win/ov_models/`（见 CLAUDE.md）

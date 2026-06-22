@@ -10,48 +10,51 @@
 
 | Compute Unit | Chip | Specs | TDP | Role |
 |---|---|---|---|---|
-| **CPU** | Intel Core Ultra 7 155H | 6 P-core + 8 E-core + 2 LP E-core, 22 threads, 1.4–4.8 GHz | 28 W (base) / 115 W (PL2) | Ollama CPU — LLM + Embedding; ONNX CPU — Reranker |
-| **iGPU** | Intel Arc (Meteor Lake) | 8 Xe-cores, 1 GB dedicated + shared system memory (32 GB) | part of SoC TDP | OpenVINO-GenAI GPU — LLM CONFIRMED (34 TPS / 192ms TTFT for 1.5B INT4); OpenVINO — OCR (PASS); DirectML — ASR (PASS), OCR (FAIL) |
-| **NPU** | Intel AI Boost | 11 TOPS INT8 | ~1 W (dedicated) | **OCR PP-OCRv4 PASS** (det 33ms/rec 11ms/cls 3ms with static reshape); **Whisper encoder PASS** (115ms; decoder on CPU); Embedding/Reranker FAIL (dynamic transformer shapes); SenseVoice FAIL (dynamic self-attn mask) |
+| **CPU** | Intel Core Ultra 7 155H | 6 P-core + 8 E-core + 2 LP E-core, 22 threads, 1.4–4.8 GHz | 28 W (base) / 115 W (PL2) | Ollama CPU — LLM (100% CPU — Intel Arc not supported in std Ollama); ONNX CPU — Reranker |
+| **iGPU** | Intel Arc (Meteor Lake) | 8 Xe-cores, 1 GB dedicated + shared system memory (32 GB) | part of SoC TDP | OpenVINO iGPU — LLM CONFIRMED via optimum-intel (7B: 8.1 TPS/115s load; 1.5B: 10.6 TPS/54s load); OCR PASS (797ms); Embedding 25ms warm; Reranker 36.4ms; DirectML ASR PASS, DirectML OCR FAIL |
+| **NPU** | Intel AI Boost | 11 TOPS INT8 | ~1 W (dedicated) | **OCR PP-OCRv4 PASS** (det 33ms/rec 11ms/cls 3ms; H=48 static reshape required); **Whisper encoder PASS** (115ms; decoder on CPU); Embedding/Reranker FAIL (dynamic shapes); SenseVoice FAIL (needs re-export) |
 | **RAM** | LPDDR5 | 32 GB | — | — |
-| **Runtime** | Ollama 0.30.6 + OpenVINO-GenAI 2025.4.1 | CPU (Ollama) for Qwen series; iGPU (OpenVINO-GenAI) for INT4 OV models | — | Dual path: CPU LLM (Ollama) + iGPU LLM (OpenVINO-GenAI) |
+| **Runtime** | Ollama 0.30.8 (CPU only) + OpenVINO 2026.2.1 + optimum-intel 2.0.0 | CPU (Ollama) for all GGUF LLMs; iGPU (OpenVINO/optimum-intel) for OV INT4 models; openvino-genai 2026.2.1 (DLL broken — system conflict) | — | ⚠️ openvino_genai LLMPipeline broken; workaround: OVModelForCausalLM (3× slower); target: OVMS or genai DLL fix |
 
 ---
 
 ## Execution Mode Comparison
 
-| Workload | CPU path (Ollama) | iGPU / OpenVINO-GenAI | NPU |
+| Workload | CPU path (Ollama 100% CPU) | iGPU / OpenVINO (optimum-intel) | NPU |
 |---|---|---|---|
-| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.4 TPS; TTFT 472 ms** ✓ (2026-06-22, GPU INT4) — 10.2× TTFT speedup | not tested |
-| **LLM 4B (qwen3-4b)** | 15.7 TPS; TTFT 1539 ms | **TBD** | not tested |
-| **LLM 3B** | 19.47 TPS; TTFT 781 ms | **No 3B in OpenVINO model hub** (1.5B or 7B available) | not tested |
-| **LLM 1.7B** | 33 TPS; TTFT 833 ms | **TBD** | not tested |
-| **LLM 1.5B (OV)** | — | **34 TPS; TTFT 192 ms** ✓ (2026-06-22) | not tested |
-| **LLM 1B** | 25.26 TPS; TTFT 875 ms | not tested | not tested |
-| **LLM 0.6B** | 85 TPS; TTFT 437 ms | not tested | not tested |
-| **Embedding 0.6B** | 617.5 ms p50 | not configured | — |
-| **Embedding INT8 (BGE-base)** | — | **22–27 ms warm** (OpenVINO GPU) ✓ | FAIL (dynamic shapes) |
-| **Reranker base INT8 (BGE-base)** | 148.5 ms ✓ | **37.7 ms avg** (OpenVINO GPU) ✓ | FAIL (dynamic shapes) |
-| **OCR text (p50)** | 1593 ms (reference) | 797 ms OpenVINO ✓; 946 ms DirectML ✗ | **PASS** det 33ms + rec 11ms + cls 3ms (static reshape; H=48 for rec) |
+| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.1 TPS** (OVModelForCausalLM GPU, 115s load) ✓ — *8.4 TPS via LLMPipeline when fixed* | not tested |
+| **LLM 4B (qwen3-4b INT4 OV)** | 15.7 TPS (GGUF CPU) | **TBD** — need to download Qwen3-4B-int4-ov | not tested |
+| **LLM 1.7B** | 33 TPS (GGUF CPU) | **No OV 1.7B in hub** (gap: 1.5B or jump to 4B) | not tested |
+| **LLM 1.5B (OV)** | — | **10.6 TPS** (OVModelForCausalLM GPU, 54s load) ✓; *34 TPS via LLMPipeline when fixed* | not tested |
+| **LLM 1B** | 25.26 TPS (GGUF CPU) | No OV 1B in hub | not tested |
+| **LLM 0.6B (qwen3-0.6b INT4 OV)** | 85 TPS (GGUF CPU) | **TBD** — need to download Qwen3-0.6B-int4-ov | not tested |
+| **LLM 3B** | 19.47 TPS (GGUF CPU) | **No 3B in OV hub** (use 1.5B or 4B OV) | not tested |
+| **Embedding 0.6B** | 617.5 ms p50 | not tested via OV | — |
+| **Embedding INT8 (BGE-base)** | — | **~25 ms warm** (OVModelForFeatureExtraction GPU) ✓ | FAIL (dynamic shapes) |
+| **Reranker base INT8 (BGE-base)** | 148.5 ms ✓ | **36.4 ms avg** (OVModelForSequenceClassification GPU) ✓ | FAIL (dynamic shapes) |
+| **OCR text (p50)** | 1593 ms (reference) | 797 ms OpenVINO ✓; 946 ms DirectML ✗ | **PASS** det 33ms + rec 11ms + cls 3ms (static; H=48 for rec) |
 | **OCR structured (p50)** | 859 ms (reference) | 868 ms OpenVINO ✓; 985 ms DirectML ✗ | **PASS** (same NPU path) |
-| **ASR encoder (Whisper)** | 1329 ms encoder only | 567 ms full (OpenVINO GPU) ✓ | **PASS** encoder 115ms; decoder on CPU (dynamic → CPU/GPU) |
-| **ASR (SenseVoice)** | — | 0.341 RTF (DirectML) ✓ | **FAIL** (dynamic self-attn mask; needs model re-export) |
+| **ASR encoder (Whisper)** | 1329 ms encoder only | 567 ms full (OpenVINO GPU) ✓ | **PASS** encoder 115ms; decoder on CPU |
+| **ASR (SenseVoice)** | — | 0.341 RTF (DirectML) ✓ | **FAIL** (dynamic self-attn mask; needs re-export) |
 | **Reranker v2-m3 (p50)** | 546.5 ms ✓ | — | — |
 
-Intel DirectML OCR is **not usable** (CER 202%). Use OpenVINO instead.  
-**Intel Arc iGPU LLM via OpenVINO-GenAI: CONFIRMED WORKING** — `openvino-genai 2025.4.1` installed; `core.available_devices` = ['CPU', 'GPU', 'NPU']. Tested with `OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov`: **GPU TPS=34, TTFT=192ms** vs CPU TPS=6, TTFT=1283ms (2026-06-22). GPU gives 6.7× better TTFT and similar TPS vs Ollama CPU for same model size.
+**Intel vs AMD critical difference:** Intel Ollama = **100% CPU**. AMD Ollama = **100% GPU** (Radeon 780M). Intel iGPU requires the OpenVINO path (OV INT4 models), which is separate from Ollama.
 
-**Intel Arc iGPU 7B result (2026-06-22, OpenVINO/Qwen2.5-7B-Instruct-int4-ov):**  
-GPU: **TTFT=472ms, TPS=8.4** | CPU (Ollama): TTFT=4820ms, TPS=8.25  
-→ **TTFT: 10.2× faster on GPU** | TPS: ~1.0× (identical — memory-bandwidth-bound decoding equalizes GPU/CPU at 7B scale)  
-→ Load time: 53.7s (first-run GPU kernel compilation; cached on subsequent runs)  
-→ Implication for attune: **Use GPU for interactive chat** (10× response latency improvement); batch generation shows no GPU advantage at 7B INT4.  
-→ Stored in `drivers/intel-win/ov_models/llm/qwen2.5-7b-int4-ov/`
+**iGPU LLM status (2026-06-22):**
+- `OVModelForCausalLM` device=GPU: WORKS (8.1 TPS / 7B; 10.6 TPS / 1.5B) — **3× slower** than openvino_genai LLMPipeline due to missing KV-cache optimization
+- `openvino_genai.LLMPipeline` device=GPU: **BROKEN** — DLL system conflict (not version mismatch); openvino 2026.2.1 installed, openvino-genai 2026.2.1 upgraded but same error
+- Previous measurement (34 TPS / 1.5B) was via LLMPipeline before OV core upgrade
 
-**Official Intel OpenVINO model hub (huggingface.co/OpenVINO, 384 models):** Vendor-optimized INT4_ASYM quantization via NNCF+AWQ (calibrated on wikitext2/c4). Available:
-- `OpenVINO/Qwen3-0.6B-int4-ov`, `Qwen3-4B-int4-ov`, `Qwen3-8B-int4-ov`, `Qwen3-30B-A3B-int4-ov` (requires OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0)
-- `OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov`, `Qwen2.5-7B-Instruct-int4-ov`, `Qwen2.5-VL-7B-Instruct-int4-ov`
-- **Recommendation:** Use OpenVINO official models for iGPU — they outperform generic GGUF on the Arc iGPU due to vendor calibration
+**Intel Arc iGPU 7B (optimum-intel, 2026-06-22):**  
+GPU: **8.1 TPS** (115s cold load, warm inference) | CPU (Ollama): 8.25 TPS / TTFT 4820ms  
+→ **TTFT: ~10× faster on GPU** (472ms vs 4820ms, from LLMPipeline measurement) | TPS: same (bandwidth-bound)  
+→ Recommendation: Use GPU for interactive chat; cold start penalty needs server pre-loading
+
+**Official Intel OpenVINO model hub (huggingface.co/OpenVINO, 384 models):**  
+Vendor INT4_ASYM via NNCF+AWQ. Available and compatible with OV 2026.2.1:
+- `OpenVINO/Qwen3-0.6B-int4-ov`, `Qwen3-4B-int4-ov`, `Qwen3-8B-int4-ov` ← **need to download**
+- `OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov`, `Qwen2.5-7B-Instruct-int4-ov` ← **on machine** (`C:\ov_models\`)
+- All models stored in `drivers/intel-win/ov_models/llm/` (see CLAUDE.md)
 
 **Official serving path — OpenVINO Model Server (OVMS):** Intel's officially recommended production LLM serving solution. Docker-based, OpenAI-compatible REST at `/v3/chat/completions`, auto-downloads OpenVINO models from HF on first run, supports continuous batching + paged attention.
 ```bash

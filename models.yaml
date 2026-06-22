@@ -952,18 +952,33 @@ models:
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, embedding, rerank, ocr, stability, concurrency]
     notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 CER=4.73%/RTF_mean=0.084（5语言：zh/en/ja/ko/yue，2026-06-20）；zh CER 高因繁简字集差异；en/ko/yue=0% CER；阈值已校准"
 
-  # ═══ Intel Windows（Ollama CPU + OpenVINO-GenAI iGPU，x86_64）═══
+  # ═══ Intel Windows（Ollama CPU + OpenVINO iGPU/NPU，x86_64）═══
   # 硬件：Core Ultra 7 155H + Intel Arc iGPU（8 Xe-核，1GB 独显+32GB 共享）+ AI Boost NPU
   # 激活：export INTEL_WIN_HOST=<IP> && export OLLAMA_INTEL_WIN_BASE_URL=http://<INTEL_WIN_HOST>:11434/v1
   #
-  # 双推理路径（2026-06-22 官方文档澄清）：
-  #   (1) Ollama CPU — 适合 GGUF Q4 系列（Qwen2.5/Qwen3 通过 HF/Ollama Hub 下载）
-  #   (2) OpenVINO-GenAI iGPU GPU path — 适合 INT4 OV 模型，TTFT 192ms（6.7× vs CPU）
-  #       官方 OV 模型仓库：huggingface.co/OpenVINO（384 模型）
-  #         Qwen3: 0.6B/4B/8B-int4-ov（需 OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0）
-  #         Qwen2.5: 1.5B/7B-Instruct-int4-ov（当前可用）
-  #   (3) OVMS（OpenVINO Model Server）— 官方生产推理路径，OpenAI 兼容 REST API
-  # 注：LLM 走 CPU Ollama 时速度慢，建议 ≤4B 模型 + 跳过 stability 维度
+  # ⚠️ 重要说明（2026-06-22 实测）：
+  #   Intel Ollama 仅用 CPU（100% CPU），不支持 Intel Arc iGPU 加速 GGUF 模型。
+  #   对比：AMD Ollama 已 100% GPU（Radeon 780M）。
+  #
+  # 推理路径（按优先级）：
+  #   (1) Ollama CPU — 当前 LLM baseline（全部 GGUF Q4 模型走此路）
+  #   (2) OpenVINO INT4 OV + iGPU — 目标路径（已验证：optimum-intel OVModelForCausalLM device=GPU）
+  #       机器已有模型：C:\ov_models\qwen2.5-1.5b-int4-ov\, C:\ov_models\qwen2.5-7b-int4-ov\
+  #       实测：Qwen2.5-7B GPU 8.1 TPS / 115s冷启动；Qwen2.5-1.5B GPU 10.6 TPS / 54s冷启动
+  #       待下载：OpenVINO/Qwen3-0.6B-int4-ov, Qwen3-4B-int4-ov（from HF hub）→ drivers/intel-win/ov_models/llm/
+  #   (3) OpenVINO-GenAI LLMPipeline — 高性能路径（broken: DLL load failed，genai 2026.2.1 与系统 DLL 冲突）
+  #   (4) OVMS（OpenVINO Model Server）— 生产 OpenAI 兼容 REST（需 Docker，机器未安装）
+  #
+  # ⚠️ rapidocr / openvino 版本锁定原因（2026-06-22）：
+  #   openvino-genai 锁定 2025.4.1 是因为当时 rapidocr-openvino 与更新版 genai 的 DLL 冲突。
+  #   openvino core 已升级到 2026.2.1（rapidocr 正常工作）；openvino-genai 仍 broken。
+  #   上游 PR 计划：为 rapidocr 提供 OV 2026 兼容 PR（待安排）。
+  #
+  # NPU 状态（Intel AI Boost，11 TOPS INT8）：
+  #   PASS：PP-OCRv4 det(33ms)/rec(11ms)/cls(3ms)；Whisper encoder(115ms，decoder on CPU)
+  #   FAIL：Embedding/Reranker（dynamic shapes不支持 NPU VPUX）；SenseVoice（需 re-export）
+  #
+  # 所有 OV 模型文件统一存放：drivers/intel-win/ov_models/（已 gitignore，见 CLAUDE.md）
 
   - name: llama3.2-1b-intel-win
     provider: ollama
