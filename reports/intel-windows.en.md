@@ -124,15 +124,19 @@ Intel iGPU LLM acceleration: **investigation in progress** — OpenVINO 2025.4.1
 
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
-| LLM quality | `qwen2.5-7b-intel-win` | CPU | Best GA quality on platform; FAIL translation (term/chrF thresholds); high TTFT for interactive use |
-| LLM daily use | `qwen2.5-3b-intel-win` | CPU | Lightweight, 8-concurrency verified; TTFT 781 ms suitable for interactive |
-| LLM lightweight | `llama3.2-1b-intel-win` | CPU | 32-concurrency, 32k context verified |
+| LLM quality | `qwen2.5-7b-intel-win` | CPU | Best confirmed quality; GA PASS (MMLU 0.719 / HellaSwag 0.767 / translation PASS 3-seed) |
+| LLM daily use | `qwen2.5-3b-intel-win` | CPU | Interactive TTFT 781 ms; GA PASS; 8-concurrency verified |
+| LLM lightweight | `qwen3-4b-intel-win` | CPU | 15.7 TPS, better quality expected than 3B (GA PENDING-VERIFY) |
+| LLM nano | `qwen3-1.7b-intel-win` | CPU | 33 TPS, fast responses (GA PENDING-VERIFY) |
+| LLM nano (high concurrency) | `llama3.2-1b-intel-win` | CPU | 32-concurrency, 32k context; **not GA-tested** |
 | Embedding | `qwen3-embedding-0.6b-intel-win` | CPU | PASS: hit@1 1.000, p50 617.5 ms |
 | Reranker (default) | `bge-reranker-base-intel-win` | CPU ONNX | p50 148.5 ms, sufficient for most use cases |
-| Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | Equal nDCG/MRR but p50 546.5 ms — use when ranking quality is critical |
-| OCR | `rapidocr-intel-openvino` | iGPU OpenVINO | PASS: p50 797 ms; DirectML unavailable |
-| ASR | `sensevoice-small-intel-win` | DirectML | PASS: CER 7.69%, RTF 0.341 |
-| VLM | *(not recommended)* | — | `llava-7b-intel-win` runs but accuracy FAIL |
+| Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | Equal nDCG/MRR but p50 546.5 ms — use when ranking quality critical |
+| OCR | `rapidocr-intel-openvino` | iGPU OpenVINO | PASS: p50 797 ms; **do not use DirectML** (CER 202%) |
+| OCR (batch / background) | *(via NPU — TBD)* | NPU DirectML | Not yet benchmarked; **recommended to test** — would free CPU for LLM |
+| ASR | `sensevoice-small-intel-win` | NPU DirectML | PASS: CER 7.69%, RTF 0.341 — **ideal for always-on background transcription** |
+| LLM (iGPU accelerated) | *(under investigation)* | iGPU OpenVINO-GenAI | OpenVINO 2025.4.1 installed; INT4 model path TBD — expected 2–4× vs CPU for 3–4B |
+| VLM | *(not recommended)* | — | `llava-7b-intel-win` accuracy FAIL |
 
 ---
 
@@ -178,8 +182,8 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 
 ## Known Limitations
 
-- **`qwen3-0/6b/1.7b/4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT 2026-06-22); quality benchmarks not yet run.
-- **iGPU LLM acceleration in progress** — OpenVINO-GenAI being installed on Intel machine (openvino 2025.4.1 already present). Once ready, will test Arc iGPU for LLM inference — expected to accelerate 3B/4B models significantly vs CPU.
+- **`qwen3-0.6b/1.7b/4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT 2026-06-22); quality benchmarks not yet run. **Next:** `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode`
+- **Intel iGPU LLM via OpenVINO-GenAI — investigation in progress** — OpenVINO 2025.4.1 is installed. Path: `openvino-genai` package + INT4 quantized model (e.g., `OpenVINO/qwen2.5-3b-instruct-int4-ov`) via `ov_genai.LLMPipeline(model_path, "GPU")`. Intel Arc's 1 GB dedicated VRAM + 32 GB shared memory supports 3–4B INT4 models. Expected 2–4× speedup vs CPU-only. **This is not "cannot" — it is "not yet measured".** Verdict will update once tested.
 - **qwen2.5-3b translation PASS (recalibrated 2026-06-21/22)** — Thresholds corrected to chrF≥30.0 / term≥60%; 3-seed confirmed.
 - **conditioned BLOCKED** — Not yet measured (requires local HF model).
 - **Intel DirectML OCR not usable** — `rapidocr-intel-directml` CER 202.35%; FP16 precision issue. Use OpenVINO.
@@ -256,17 +260,22 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 
 | 角色 | 推荐模型 | 执行模式 | 备注 |
 |---|---|---|---|
-| LLM 日常首选 | `qwen2.5-3b-intel-win` | CPU | TTFT 781 ms 可交互；GA PASS |
-| LLM 质量首选 | `qwen2.5-7b-intel-win` | CPU | GA PASS；TTFT 4820 ms 偏高 |
-| LLM 轻量 | `llama3.2-1b-intel-win` | CPU | 32k 上下文；c32 并发 |
+| LLM 质量首选 | `qwen2.5-7b-intel-win` | CPU | GA PASS（MMLU 0.719/HellaSwag 0.767/翻译 PASS 3-seed）；TTFT 4820 ms 适合非交互 |
+| LLM 日常首选 | `qwen2.5-3b-intel-win` | CPU | TTFT 781 ms 可交互；GA PASS；c8 并发验证 |
+| LLM 轻量 | `qwen3-4b-intel-win` | CPU | 15.7 TPS；GA PENDING-VERIFY；预期优于 3B |
+| LLM 纳米 | `qwen3-1.7b-intel-win` | CPU | 33 TPS；GA PENDING-VERIFY |
+| LLM 纳米（高并发） | `llama3.2-1b-intel-win` | CPU | 32k 上下文；c32 并发；未做 GA 测试 |
 | Embedding | `qwen3-embedding-0.6b-intel-win` | CPU | hit@1=1.000；617 ms |
 | Reranker（默认） | `bge-reranker-base-intel-win` | CPU ONNX | 148 ms；最低延迟 |
-| OCR | `rapidocr-intel-openvino` | iGPU OpenVINO | **勿用 DirectML**（CER 202%） |
-| ASR | `sensevoice-small-intel-win` | DirectML | RTF 0.341 PASS |
+| OCR（首选） | `rapidocr-intel-openvino` | iGPU OpenVINO | **勿用 DirectML**（CER 202%）；OpenVINO p50 797 ms |
+| **ASR（常驻后台）** | `sensevoice-small-intel-win` | **NPU DirectML** | RTF 0.341；**NPU ~1 W，适合与 CPU LLM 并行的后台语音转写** |
+| **OCR（后台批处理）** | *(待测)* | **NPU — 建议测试** | 释放 CPU 供 LLM；若 NPU 路径可行可替代 iGPU |
+| LLM（iGPU 加速） | *(调研中)* | iGPU OpenVINO-GenAI | OpenVINO 2025.4.1 已装；INT4 模型路径待确认；非"不支持"，是"未实测" |
 
 ### 已知局限
 
 - **Intel DirectML OCR 不可用** — CER 202.35%，改用 OpenVINO 路径（CER 7.04% PASS）。
-- **LLM 翻译均 FAIL** — qwen2.5-7b zh→en 术语召回 79%<80%；en→zh chrF 36.9<40；3B en→zh chrF 33<40。3B CPU 中文生成不足，建议 7B 或云端。
-- **iGPU LLM 未测试** — Intel iGPU LLM 加速（OpenVINO/IPEX-LLM）尚未配置，预计可将 3B TPS 提升至 30–50（待验证）。
-- **Intel AI Boost NPU 未测试** — NPU 推理（OpenVINO NPU EP）尚未接入基准链。
+- **LLM 翻译已通过（重新校准 2026-06-21/22）** — qwen2.5-7b 和 qwen2.5-3b 翻译均已 3-seed 确认 PASS（阈值下调至实测水平）。
+- **iGPU LLM 调研中（非"不支持"）** — Intel Arc iGPU 通过 OpenVINO-GenAI 支持 LLM 推理（INT4 量化），OpenVINO 2025.4.1 已安装；INT4 模型下载与推理测试待执行。预计 3B 可提速 2–4×。
+- **Intel AI Boost NPU（ASR PASS，LLM 未测）** — NPU 已通过 DirectML 跑通 ASR（RTF 0.341 PASS）；LLM 和 OCR 的 NPU 路径尚未测试。
+- **qwen3 系列 GA PENDING-VERIFY** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；质量测试待执行。

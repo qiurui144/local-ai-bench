@@ -135,18 +135,19 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
-| LLM primary | `qwen2.5-7b-amd-win` | iGPU (Vulkan) | Best confirmed quality; GA PASS |
-| LLM lightweight (**recommended**) | `qwen3-4b-amd` | iGPU (Vulkan) | 30.7 TPS, same speed as llama3.2-3b; better quality expected (PENDING) |
-| LLM lightweight (legacy) | `llama3.2-3b-amd-win` | iGPU (Vulkan) | 29 TPS, 32k context; GA FAIL (model-level weakness — MMLU/HellaSwag low); keep for 32k-context or tool-use only |
-| LLM nano | `qwen3-1.7b-amd` | iGPU (Vulkan) | 63.5 TPS, TTFT warm 497 ms; GA PENDING |
-| LLM nano-micro | `qwen3-0.6b-amd` | iGPU (Vulkan) | 91 TPS; best for fast responses where quality is secondary |
+| LLM primary | `qwen2.5-7b-amd-win` | iGPU (Vulkan) | Best confirmed quality; GA PASS (MMLU 0.60 / HellaSwag 0.79 / translation PASS 3-seed) |
+| LLM lightweight (**recommended**) | `qwen3-4b-amd` | iGPU (Vulkan) | 30.7 TPS, same speed as llama3.2-3b; expected better quality (GA PENDING-VERIFY) |
+| LLM lightweight (legacy) | `llama3.2-3b-amd-win` | iGPU (Vulkan) | 29 TPS, 32k context; **GA FAIL — model-family weakness** (LLaMA 3.2-3B MMLU=0.39/HellaSwag=0.32 inherent gap, not platform issue); keep only for 32k-context or tool-use |
+| LLM nano | `qwen3-1.7b-amd` | iGPU (Vulkan) | 63.5 TPS, TTFT warm 497 ms; GA PENDING-VERIFY |
+| LLM nano-micro | `qwen3-0.6b-amd` | iGPU (Vulkan) | 91 TPS; MCQ ability insufficient (MMLU=0.000); **not for GA use** |
 | Embedding (primary) | `qwen3-embedding-0.6b-amd` | iGPU (Vulkan) | Best retrieval quality, lower latency |
 | Embedding (multilingual) | `bge-m3-amd` | iGPU (Vulkan) | Drop-in multilingual alternative |
 | Reranker (default) | `bge-reranker-base-amd-win` | CPU ONNX | p50 78 ms, sufficient quality |
 | Reranker (quality) | `bge-reranker-v2-m3-amd-win` | CPU ONNX | Equal nDCG/MRR but 3.7× latency — use when ranking quality critical |
-| OCR (primary) | `rapidocr-amd-directml` | iGPU DirectML | Fastest: p50 468 ms |
-| OCR (batch / background) | `rapidocr-amd-npu` | NPU VitisAI | p50 2031 ms — frees iGPU for LLM; ideal for bulk doc processing |
-| ASR | `sensevoice-small-amd-win` | NPU DirectML | PASS: CER 7.69%, RTF 0.073 |
+| OCR (interactive) | `rapidocr-amd-directml` | iGPU DirectML | Fastest: p50 468 ms |
+| **OCR (batch / background)** | `rapidocr-amd-npu` | **NPU VitisAI** | p50 2031 ms — **frees iGPU for concurrent LLM**; use when indexing docs while serving LLM chat |
+| **ASR (always-on)** | `sensevoice-small-amd-win` | **NPU DirectML** | RTF 0.073; **NPU ~2 W — ideal for background transcription alongside LLM** |
+| **Vector DB construction** | `qwen3-embedding-0.6b-amd` | iGPU (Vulkan) | 875 ms/chunk; run during off-peak or schedule around LLM load |
 | VLM | *(not recommended)* | — | `llava-7b-amd-win` accuracy FAIL; no qualified VLM yet |
 
 ---
@@ -288,12 +289,15 @@ AMD XDNA NPU excels at **background batch workloads** that would otherwise compe
 
 | 角色 | 推荐模型 | 执行模式 | 备注 |
 |---|---|---|---|
-| LLM 质量首选 | `qwen2.5-7b-amd-win` | iGPU Vulkan | **唯一 GA PASS**；TTFT 953ms 可交互 |
-| LLM 轻量/高并发 | `llama3.2-3b-amd-win` | iGPU Vulkan | 32k ctx；29 TPS；GA FAIL |
+| LLM 质量首选 | `qwen2.5-7b-amd-win` | iGPU Vulkan | **GA PASS**；TTFT 953ms 可交互 |
+| LLM 轻量（推荐） | `qwen3-4b-amd` | iGPU Vulkan | 30.7 TPS；GA PENDING-VERIFY；预期优于 llama3.2-3b |
+| LLM 轻量（旧版） | `llama3.2-3b-amd-win` | iGPU Vulkan | 29 TPS；**GA FAIL（模型固有局限，非平台问题**：MMLU=0.39/HellaSwag=0.32）；仅 32k 上下文或工具调用场景保留 |
+| LLM 纳米 | `qwen3-1.7b-amd` | iGPU Vulkan | 63.5 TPS；GA PENDING-VERIFY |
 | LLM 极速纳米 | `qwen3-0.6b-amd` | iGPU Vulkan | 91 TPS；MCQ 能力不足，不推荐 GA 场景 |
 | Embedding（首选） | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | hit@1=1.000；875 ms |
 | Embedding（多语言） | `bge-m3-amd` | iGPU Vulkan | 同质量，914 ms |
 | Reranker（默认） | `bge-reranker-base-amd-win` | CPU ONNX | 78 ms 最快 |
-| OCR（首选） | `rapidocr-amd-directml` | iGPU DirectML | 469 ms 最快 |
-| OCR（批处理省 iGPU） | `rapidocr-amd-npu` | NPU VitisAI | 2031 ms，同等 CER |
-| ASR | `sensevoice-small-amd-win` | NPU DirectML | RTF 0.073 PASS |
+| OCR（交互首选） | `rapidocr-amd-directml` | iGPU DirectML | 469 ms 最快 |
+| **OCR（后台批处理）** | `rapidocr-amd-npu` | **NPU VitisAI** | 2031 ms；**释放 iGPU 供 LLM 并发使用**；适合文档索引批量任务 |
+| **ASR（常驻后台）** | `sensevoice-small-amd-win` | **NPU DirectML** | RTF 0.073；**NPU ~2 W，适合与 LLM 并行的后台语音转写** |
+| **向量库构建** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms/chunk；建议错峰或与 LLM 负载协调调度 |
