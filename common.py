@@ -129,6 +129,9 @@ class ModelConfig:
                                        # *_capable hint 派生(hint 留一个 minor 作 alias)
     target: Optional[str] = None       # targets.yaml 中的 key（None = "local"）
     benchmarks: dict = field(default_factory=dict)  # per-model benchmark overrides
+    # Ollama qwen3 thinking mode: set False to inject options.think=false, disabling chain-of-thought
+    # tokens that otherwise fill max_tokens before any content is emitted (empty hyp/answer bug).
+    ollama_think: bool = True
 
     @property
     def base_url(self) -> str:
@@ -355,6 +358,8 @@ def infer_sync(
     }
     if seed is not None:
         payload["seed"] = seed   # OpenAI 兼容采样种子(vLLM 支持);judge 多 seed 用
+    if not getattr(model_cfg, "ollama_think", True):
+        payload["options"] = {"think": False}
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -465,6 +470,8 @@ def infer_stream(
     }
     if seed is not None:
         payload["seed"] = seed   # 缓存 A/B 一致性校验需确定性采样(spec §11)
+    if not getattr(model_cfg, "ollama_think", True):
+        payload["options"] = {"think": False}
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()

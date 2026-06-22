@@ -112,6 +112,8 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "temperature": temperature,
             "stream": False,
         }
+        if not self.config.extra.get("ollama_think", True):
+            payload["options"] = {"think": False}
         resp = httpx.post(
             f"{self._base_url}/chat/completions",
             headers=self._headers,

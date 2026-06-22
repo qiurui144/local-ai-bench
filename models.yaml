@@ -458,6 +458,7 @@ models:
     role: llm_lightweight
     task_type: text_only
     translation_capable: true
+    ollama_think: false   # qwen3 默认 thinking mode 导致 content 为空；think=false 直出答案
     notes: "AMD 780M Vulkan — Qwen3-4B；TTFT P50=867ms(warm)/P95=4287ms(cold)，TPS=30.7 tok/s；GA PENDING-VERIFY (3-7B tier thresholds)；translation PENDING-VERIFY；prefill_decode PENDING-VERIFY (Ollama qwen3 usage 不返回) (2026-06-22 E2E)"
     benchmarks:
       ttft:
@@ -1094,6 +1095,7 @@ models:
     role: llm_lightweight
     task_type: text_only
     translation_capable: true
+    ollama_think: false   # qwen3 默认 thinking mode 导致 content 为空；think=false 直出答案
     notes: "Intel CPU Ollama — Qwen3-4B；TPS=15.7 tok/s；TTFT warm=1539ms/cold=3714ms；GA PENDING-VERIFY (3-7B tier)；translation PENDING-VERIFY (2026-06-22 E2E)"
     benchmarks:
       ttft:

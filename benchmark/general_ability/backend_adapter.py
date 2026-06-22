@@ -18,5 +18,6 @@ def make_backend(model_cfg) -> OpenAICompatibleBackend:
         backend="openai_compatible",
         openai_base_url=model_cfg.base_url,
         openai_model=getattr(model_cfg, "model_id", None) or model_cfg.hf_repo or model_cfg.name,
+        extra={"ollama_think": getattr(model_cfg, "ollama_think", True)},
     )
     return OpenAICompatibleBackend(lb_cfg)
