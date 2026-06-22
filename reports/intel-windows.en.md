@@ -20,12 +20,13 @@
 
 ## Execution Mode Comparison
 
-| Workload | CPU path | iGPU / OpenVINO | NPU |
+| Workload | CPU path (Ollama) | iGPU / OpenVINO-GenAI | NPU |
 |---|---|---|---|
-| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **investigating** (OpenVINO-GenAI) | not tested |
-| **LLM 4B** | 15.7 TPS; TTFT 1539 ms | **investigating** | not tested |
-| **LLM 3B** | 19.47 TPS; TTFT 781 ms | **investigating** | not tested |
-| **LLM 1.7B** | 33 TPS; TTFT 833 ms | **investigating** | not tested |
+| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **TBD** (4.5 GB INT4 model pending download) | not tested |
+| **LLM 4B (qwen3-4b)** | 15.7 TPS; TTFT 1539 ms | **TBD** | not tested |
+| **LLM 3B** | 19.47 TPS; TTFT 781 ms | **No 3B in OpenVINO model hub** (1.5B or 7B available) | not tested |
+| **LLM 1.7B** | 33 TPS; TTFT 833 ms | **TBD** | not tested |
+| **LLM 1.5B (OV)** | — | **34 TPS; TTFT 192 ms** ✓ (2026-06-22) | not tested |
 | **LLM 1B** | 25.26 TPS; TTFT 875 ms | not tested | not tested |
 | **LLM 0.6B** | 85 TPS; TTFT 437 ms | not tested | not tested |
 | **Embedding 0.6B** | 617.5 ms p50 | not configured | — |
@@ -36,7 +37,7 @@
 | **Reranker v2-m3 (p50)** | 546.5 ms ✓ | — | — |
 
 Intel DirectML OCR is **not usable** (CER 202%). Use OpenVINO instead.  
-Intel iGPU LLM acceleration: **investigation in progress** — OpenVINO 2025.4.1 is installed; `openvino-genai` package being installed for LLM inference on Intel Arc iGPU. Expected to accelerate 3B/4B models; 1GB dedicated VRAM may require INT4 quantized models.
+**Intel Arc iGPU LLM via OpenVINO-GenAI: CONFIRMED WORKING** — `openvino-genai 2025.4.1` installed; `core.available_devices` = ['CPU', 'GPU', 'NPU']. Tested with `OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov`: **GPU TPS=34, TTFT=192ms** vs CPU TPS=6, TTFT=1283ms (2026-06-22). GPU gives 6.7× better TTFT and similar TPS vs Ollama CPU for same model size. OpenVINO model hub has 1.5B and 7B (no 3B); 7B INT4 (~4.5 GB) download pending for full comparison.
 
 **→ Mode details:**
 - [CPU mode — LLM, Embedding, Reranker](./intel-windows-cpu.en.md)
@@ -150,6 +151,7 @@ Intel iGPU LLM acceleration: **investigation in progress** — OpenVINO 2025.4.1
 | `qwen3-1.7b-intel-win` | CPU (Ollama) | llm_nano_plus | **PENDING** | TPS 33.0; TTFT p50/p95 833/3249 ms; GA PENDING-VERIFY (2026-06-22 perf) |
 | `llama3.2-1b-intel-win` | CPU (Ollama) | llm_nano | **FAIL** | TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35; max ctx 32k; GA SKIPPED (1B not GA-tested) |
 | `qwen3-0.6b-intel-win` | CPU (Ollama) | llm_nano_micro | **PENDING** | TPS 85; TTFT p50/p95 437/1508 ms; GA PENDING (MCQ gap expected) (2026-06-22 perf) |
+| `qwen2.5-1.5b-int4-ov` | iGPU OpenVINO-GenAI | llm_igpu_baseline | **MEASURED** | TPS 34; TTFT p50 192 ms (warm); load 39s (cold); 3× runs consistent; model=Qwen2.5-1.5B-Instruct-int4-ov (2026-06-22) |
 | `llava-7b-intel-win` | CPU (Ollama) | vlm_baseline | **FAIL** | TPS 10.02; TTFT p50 703 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | embedding | **PASS** | hit@1 1.000; nDCG 1.000; p50 617.5 ms |
 | `bge-reranker-base-intel-win` | CPU ONNX | reranker_default | **PASS** | nDCG 1.000; MRR 1.000; p50 148.5 ms |
@@ -183,7 +185,7 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 ## Known Limitations
 
 - **`qwen3-0.6b/1.7b/4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT 2026-06-22); quality benchmarks not yet run. **Next:** `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode`
-- **Intel iGPU LLM via OpenVINO-GenAI — investigation in progress** — OpenVINO 2025.4.1 is installed. Path: `openvino-genai` package + INT4 quantized model (e.g., `OpenVINO/qwen2.5-3b-instruct-int4-ov`) via `ov_genai.LLMPipeline(model_path, "GPU")`. Intel Arc's 1 GB dedicated VRAM + 32 GB shared memory supports 3–4B INT4 models. Expected 2–4× speedup vs CPU-only. **This is not "cannot" — it is "not yet measured".** Verdict will update once tested.
+- **Intel Arc LLM via OpenVINO-GenAI CONFIRMED (2026-06-22)** — `openvino-genai 2025.4.1` installed; Arc iGPU detected (`core.available_devices = ['CPU', 'GPU', 'NPU']`). Tested `Qwen2.5-1.5B-Instruct-int4-ov`: GPU TTFT=192ms (p50) / TPS=34; CPU TTFT=1283ms / TPS=6. GPU speedup: **6.7× TTFT**, **5.8× TPS** vs OpenVINO CPU. vs Ollama CPU (qwen3-1.7b 33 TPS): GPU gives better TTFT (192ms vs 833ms) at comparable TPS. 7B INT4 model pending test. **Note:** No 3B model in OpenVINO official model hub (jump from 1.5B to 7B).
 - **qwen2.5-3b translation PASS (recalibrated 2026-06-21/22)** — Thresholds corrected to chrF≥30.0 / term≥60%; 3-seed confirmed.
 - **conditioned BLOCKED** — Not yet measured (requires local HF model).
 - **Intel DirectML OCR not usable** — `rapidocr-intel-directml` CER 202.35%; FP16 precision issue. Use OpenVINO.
@@ -220,11 +222,13 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 
 ### 执行模式对比
 
-| 任务 | CPU 路径 | iGPU/OpenVINO | NPU |
+| 任务 | CPU 路径（Ollama） | iGPU OpenVINO-GenAI | NPU |
 |---|---|---|---|
-| LLM 7B | 8.25 TPS；TTFT 4820 ms | 未配置 | 未测试 |
-| LLM 3B | 19.47 TPS；TTFT 781 ms | 未配置 | — |
-| LLM 1B | 25.26 TPS；TTFT 875 ms | 未配置 | — |
+| LLM 7B | 8.25 TPS；TTFT 4820 ms | 待测（7B INT4 下载中） | 未测试 |
+| LLM 4B | 15.7 TPS；TTFT 1539 ms | 待测 | — |
+| LLM 3B | 19.47 TPS；TTFT 781 ms | OpenVINO 官方无 3B 模型 | — |
+| **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（2026-06-22 已验证）** | — |
+| LLM 1B | 25.26 TPS；TTFT 875 ms | 待测 | — |
 | OCR 文字 p50 | 1593 ms（参考） | 797 ms OpenVINO ✓；946 ms DirectML ✗ | — |
 | ASR RTF | — | 0.341（DirectML）✓ | — |
 | Reranker base p50 | 148.5 ms ✓ | — | — |
@@ -276,6 +280,6 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 
 - **Intel DirectML OCR 不可用** — CER 202.35%，改用 OpenVINO 路径（CER 7.04% PASS）。
 - **LLM 翻译已通过（重新校准 2026-06-21/22）** — qwen2.5-7b 和 qwen2.5-3b 翻译均已 3-seed 确认 PASS（阈值下调至实测水平）。
-- **iGPU LLM 调研中（非"不支持"）** — Intel Arc iGPU 通过 OpenVINO-GenAI 支持 LLM 推理（INT4 量化），OpenVINO 2025.4.1 已安装；INT4 模型下载与推理测试待执行。预计 3B 可提速 2–4×。
+- **iGPU LLM 已确认（2026-06-22）** — Intel Arc 通过 OpenVINO-GenAI 支持 LLM 推理：Qwen2.5-1.5B INT4 在 GPU 上 TTFT=192ms/TPS=34，比 OpenVINO CPU 快 6.7×（TTFT），比 Ollama CPU 快约 4.3×（TTFT）。TPS 与 Ollama CPU 同量级（相近模型大小）。OpenVINO 官方无 3B 模型（1.5B 直跳 7B），7B INT4 下载测试待进行。
 - **Intel AI Boost NPU（ASR PASS，LLM 未测）** — NPU 已通过 DirectML 跑通 ASR（RTF 0.341 PASS）；LLM 和 OCR 的 NPU 路径尚未测试。
-- **qwen3 系列 GA PENDING-VERIFY** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；质量测试待执行。
+- **qwen3 系列 GA PENDING-VERIFY** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；质量测试进行中（qwen3-4b benchmark 运行中）。
