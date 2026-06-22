@@ -217,6 +217,17 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 - `amd/ryzen-ai-171-*` on HuggingFace: AWQ UINT4+BF16 models for XDNA 2 NPU (Ryzen AI 300 only, not applicable to 8845H)
 - For iGPU (780M) with Ollama Vulkan: standard GGUF Q4 from Ollama Hub / HuggingFace
 
+### Summary: Can AMD Windows handle Embedding / Reranker / OCR / ASR?
+
+| Task | NPU (XDNA 1 VitisAI) | iGPU (780M Vulkan/DirectML) | CPU |
+|---|---|---|---|
+| Embedding | **NOT SUPPORTED** (non-generative transformers require special VitisAI ORT env; not set up) | **PASS** via Ollama Vulkan (qwen3-embedding 875 ms; bge-m3 914 ms) | — |
+| Reranker | **NOT SUPPORTED** (requires VitisAI ORT env) | — | **PASS** CPU ONNX (bge-reranker-base 78 ms) |
+| OCR | **PASS** (VitisAI ONNX — field accuracy 92.86%, p50 2031 ms) | **PASS** DirectML (p50 469 ms — 4.3× faster but uses iGPU) | PASS CPU (p50 1593 ms) |
+| ASR | **NOT SUPPORTED** (SenseVoice uses DirectML, not VitisAI) | **PASS** DirectML RTF 0.073, latency 407 ms | — |
+
+**Summary:** AMD XDNA 1 NPU handles **OCR only** (CNN-based). All other non-LLM tasks (embedding/reranker/ASR) run on iGPU or CPU. Embedding/reranker on NPU would require special VitisAI ORT environment setup with INT8 ONNX models (not tested). Production recommendation: use iGPU Vulkan for embedding, CPU ONNX for reranker, NPU for background OCR, iGPU DirectML for ASR.
+
 ---
 
 ## Calibration History

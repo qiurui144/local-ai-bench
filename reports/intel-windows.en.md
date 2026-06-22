@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | **CPU** | Intel Core Ultra 7 155H | 6 P-core + 8 E-core + 2 LP E-core, 22 threads, 1.4–4.8 GHz | 28 W (base) / 115 W (PL2) | Ollama CPU — LLM + Embedding; ONNX CPU — Reranker |
 | **iGPU** | Intel Arc (Meteor Lake) | 8 Xe-cores, 1 GB dedicated + shared system memory (32 GB) | part of SoC TDP | OpenVINO-GenAI GPU — LLM CONFIRMED (34 TPS / 192ms TTFT for 1.5B INT4); OpenVINO — OCR (PASS); DirectML — ASR (PASS), OCR (FAIL) |
-| **NPU** | Intel AI Boost | 11 TOPS INT8 | ~1 W (dedicated) | DirectML — ASR PASS; LLM via OVMS/OpenVINO-GenAI with `device="NPU"` (not yet tested) |
+| **NPU** | Intel AI Boost | 11 TOPS INT8 | ~1 W (dedicated) | DirectML — ASR PASS; **Embedding/Reranker/ASR via VPUX: FAIL** (dynamic shapes not supported; static-shape export required); iGPU (GPU) is the validated path for non-LLM tasks |
 | **RAM** | LPDDR5 | 32 GB | — | — |
 | **Runtime** | Ollama 0.30.6 + OpenVINO-GenAI 2025.4.1 | CPU (Ollama) for Qwen series; iGPU (OpenVINO-GenAI) for INT4 OV models | — | Dual path: CPU LLM (Ollama) + iGPU LLM (OpenVINO-GenAI) |
 
@@ -22,7 +22,7 @@
 
 | Workload | CPU path (Ollama) | iGPU / OpenVINO-GenAI | NPU |
 |---|---|---|---|
-| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **TBD** (4.5 GB INT4 model pending download) | not tested |
+| **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.4 TPS; TTFT 472 ms** ✓ (2026-06-22, GPU INT4) — 10.2× TTFT speedup | not tested |
 | **LLM 4B (qwen3-4b)** | 15.7 TPS; TTFT 1539 ms | **TBD** | not tested |
 | **LLM 3B** | 19.47 TPS; TTFT 781 ms | **No 3B in OpenVINO model hub** (1.5B or 7B available) | not tested |
 | **LLM 1.7B** | 33 TPS; TTFT 833 ms | **TBD** | not tested |
@@ -30,14 +30,22 @@
 | **LLM 1B** | 25.26 TPS; TTFT 875 ms | not tested | not tested |
 | **LLM 0.6B** | 85 TPS; TTFT 437 ms | not tested | not tested |
 | **Embedding 0.6B** | 617.5 ms p50 | not configured | — |
+| **Embedding INT8 (BGE-base)** | — | **22–27 ms warm** (OpenVINO GPU) ✓ | FAIL (dynamic shapes) |
+| **Reranker base INT8 (BGE-base)** | 148.5 ms ✓ | **37.7 ms avg** (OpenVINO GPU) ✓ | FAIL (dynamic shapes) |
 | **OCR text (p50)** | 1593 ms (reference) | 797 ms OpenVINO ✓; 946 ms DirectML ✗ | not tested |
 | **OCR structured (p50)** | 859 ms (reference) | 868 ms OpenVINO ✓; 985 ms DirectML ✗ | not tested |
-| **ASR (RTF)** | — | 0.341 (DirectML) ✓ | — |
-| **Reranker base (p50)** | 148.5 ms ✓ | — | — |
+| **ASR (latency / RTF)** | — | 567 ms (OpenVINO GPU) ✓; 0.341 RTF (DirectML) ✓ | FAIL (dynamic shapes) |
 | **Reranker v2-m3 (p50)** | 546.5 ms ✓ | — | — |
 
 Intel DirectML OCR is **not usable** (CER 202%). Use OpenVINO instead.  
 **Intel Arc iGPU LLM via OpenVINO-GenAI: CONFIRMED WORKING** — `openvino-genai 2025.4.1` installed; `core.available_devices` = ['CPU', 'GPU', 'NPU']. Tested with `OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov`: **GPU TPS=34, TTFT=192ms** vs CPU TPS=6, TTFT=1283ms (2026-06-22). GPU gives 6.7× better TTFT and similar TPS vs Ollama CPU for same model size.
+
+**Intel Arc iGPU 7B result (2026-06-22, OpenVINO/Qwen2.5-7B-Instruct-int4-ov):**  
+GPU: **TTFT=472ms, TPS=8.4** | CPU (Ollama): TTFT=4820ms, TPS=8.25  
+→ **TTFT: 10.2× faster on GPU** | TPS: ~1.0× (identical — memory-bandwidth-bound decoding equalizes GPU/CPU at 7B scale)  
+→ Load time: 53.7s (first-run GPU kernel compilation; cached on subsequent runs)  
+→ Implication for attune: **Use GPU for interactive chat** (10× response latency improvement); batch generation shows no GPU advantage at 7B INT4.  
+→ Stored in `drivers/intel-win/ov_models/llm/qwen2.5-7b-int4-ov/`
 
 **Official Intel OpenVINO model hub (huggingface.co/OpenVINO, 384 models):** Vendor-optimized INT4_ASYM quantization via NNCF+AWQ (calibrated on wikitext2/c4). Available:
 - `OpenVINO/Qwen3-0.6B-int4-ov`, `Qwen3-4B-int4-ov`, `Qwen3-8B-int4-ov`, `Qwen3-30B-A3B-int4-ov` (requires OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0)
@@ -88,14 +96,20 @@ docker run -p 8000:8000 openvino/model_server \
 
 ### Non-LLM Performance
 
-| Capability | Model | Backend | Latency p50 | Quality | Verdict |
+| Capability | Model | Backend | Latency | Quality | Verdict |
 |---|---|---|---|---|---|
-| Embedding | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | 617.5 ms | hit@1 1.000 / nDCG 1.000 / MRR 1.000 | **PASS** |
-| Reranker | `bge-reranker-base-intel-win` | CPU ONNX | 148.5 ms | nDCG 1.000 / MRR 1.000 | **PASS** |
-| Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | 546.5 ms | nDCG 1.000 / MRR 1.000 | **PASS** |
-| OCR text | `rapidocr-intel-openvino` | iGPU OpenVINO | 797 ms | CER 7.04% | **PASS** |
-| OCR structured | `rapidocr-intel-openvino` | iGPU OpenVINO | 867.5 ms | field acc 92.86% | **PASS** |
-| OCR text | `rapidocr-intel-directml` | iGPU DirectML | 946 ms | CER **202%** — not usable | **FAIL** |
+| Embedding (semantic) | `qwen3-embedding-0.6b-intel-win` | CPU (Ollama) | p50 617.5 ms | hit@1 1.000 / nDCG 1.000 | **PASS** |
+| **Embedding INT8 (iGPU)** | `bge-base-en-v1.5-int8-ov` | **iGPU OpenVINO GPU** | **warm 22–27 ms; first 914 ms; load 1,722 ms (cached)** | functional | **PASS** |
+| Embedding INT8 (NPU) | `bge-base-en-v1.5-int8-ov` | NPU VPUX | — | — | **FAIL** (dynamic shapes: "Upper bounds not specified") |
+| Reranker | `bge-reranker-base-intel-win` | CPU ONNX | p50 148.5 ms | nDCG 1.000 / MRR 1.000 | **PASS** |
+| **Reranker INT8 (iGPU)** | `bge-reranker-base-int8-ov` | **iGPU OpenVINO GPU** | **avg 37.7 ms; load 1,363 ms (cached)** | scores [0.989, 1.000, 0.009] — excellent discrimination | **PASS** |
+| Reranker INT8 (NPU) | `bge-reranker-base-int8-ov` | NPU VPUX | — | — | **FAIL** (dynamic shapes) |
+| Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | p50 546.5 ms | nDCG 1.000 / MRR 1.000 | **PASS** |
+| OCR text | `rapidocr-intel-openvino` | iGPU OpenVINO | p50 797 ms | CER 7.04% | **PASS** |
+| OCR structured | `rapidocr-intel-openvino` | iGPU OpenVINO | p50 867.5 ms | field acc 92.86% | **PASS** |
+| OCR text | `rapidocr-intel-directml` | iGPU DirectML | p50 946 ms | CER **202%** — not usable | **FAIL** |
+| **ASR (iGPU)** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | **567 ms inference; load 58 s (first-run GPU compile)** | functional | **PASS** |
+| ASR (NPU) | `whisper-base-int8-ov` | NPU VPUX | — | — | **FAIL** (dynamic shapes) |
 | ASR | `sensevoice-small-intel-win` | DirectML | — | CER 7.69% / RTF **0.341** | **PASS** |
 
 ---
@@ -142,12 +156,14 @@ docker run -p 8000:8000 openvino/model_server \
 | LLM lightweight | `qwen3-4b-intel-win` | CPU | 15.7 TPS, better quality expected than 3B (GA PENDING-VERIFY) |
 | LLM nano | `qwen3-1.7b-intel-win` | CPU | 33 TPS, fast responses (GA PENDING-VERIFY) |
 | LLM nano (high concurrency) | `llama3.2-1b-intel-win` | CPU | 32-concurrency, 32k context; **not GA-tested** |
-| Embedding | `qwen3-embedding-0.6b-intel-win` | CPU | PASS: hit@1 1.000, p50 617.5 ms |
+| Embedding (quality) | `qwen3-embedding-0.6b-intel-win` | CPU | PASS: hit@1 1.000, p50 617.5 ms — best retrieval quality |
+| **Embedding (low-latency)** | `bge-base-en-v1.5-int8-ov` | **iGPU OpenVINO GPU** | **22–27 ms warm** — 26× faster vs CPU; use when CPU busy with LLM |
 | Reranker (default) | `bge-reranker-base-intel-win` | CPU ONNX | p50 148.5 ms, sufficient for most use cases |
+| **Reranker (iGPU, low-latency)** | `bge-reranker-base-int8-ov` | **iGPU OpenVINO GPU** | **avg 37.7 ms** — 4× faster vs CPU |
 | Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | Equal nDCG/MRR but p50 546.5 ms — use when ranking quality critical |
 | OCR | `rapidocr-intel-openvino` | iGPU OpenVINO | PASS: p50 797 ms; **do not use DirectML** (CER 202%) |
-| OCR (batch / background) | *(via NPU — TBD)* | NPU DirectML | Not yet benchmarked; **recommended to test** — would free CPU for LLM |
-| ASR | `sensevoice-small-intel-win` | NPU DirectML | PASS: CER 7.69%, RTF 0.341 — **ideal for always-on background transcription** |
+| ASR (primary) | `sensevoice-small-intel-win` | DirectML | PASS: CER 7.69%, RTF 0.341 — ideal for always-on background transcription |
+| **ASR (alternative)** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | 567 ms/1s-audio; Whisper architecture; first-run 58s GPU compile |
 | LLM (iGPU, quality) | `OpenVINO/Qwen3-8B-int4-ov` | iGPU OpenVINO-GenAI | Official OV hub model (requires OV ≥ 2026.0.0); expected best quality on Arc iGPU (7B download in progress) |
 | LLM (iGPU, confirmed) | `qwen2.5-1.5b-int4-ov` | iGPU OpenVINO-GenAI | MEASURED: 34 TPS, 192ms TTFT — **6.7× TTFT vs CPU** |
 | VLM | *(not recommended)* | — | `llava-7b-intel-win` accuracy FAIL |
@@ -178,20 +194,39 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 ---
 
-## NPU Batch Processing Guidance
+## NPU / iGPU OpenVINO Validation (2026-06-22)
 
-Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** that offloads the CPU during concurrent tasks.
+### Intel AI Boost NPU — Embedding / Reranker / ASR
 
-| Workload | NPU path | Latency | CPU freed | Recommendation |
-|---|---|---|---|---|
-| ASR transcription | DirectML (iGPU/NPU) | RTF 0.341 | Partial CPU | **PASS** — use for background audio processing |
-| OCR single doc | Not tested on NPU | — | — | Use OpenVINO iGPU (797 ms) |
-| Vector DB construction | Not tested | — | — | Currently CPU (embedding 617.5 ms); NPU path TBD |
-| LLM inference | Not tested | — | — | PENDING: requires IPEX-LLM or OpenVINO-GenAI with NPU device |
+**Finding: ALL FAIL on NPU (VPUX compiler).** Root cause: OpenVINO Hub INT8 models use dynamic (unbounded) input shapes. The Intel VPUX compiler requires static shapes and rejects dynamic tensors with:
+- `"Unsupported dynamic ops: op of type ov::op::v1::Shape... 'concat_with_convert_9'"` (embedding)
+- `"Got non broadcastable dimensions pair: N vs N_static"` (reranker)
+- Similar shape errors for ASR encoder
 
-**Key insight:** Intel AI Boost NPU consumes only ~1 W, making it ideal for always-on background transcription (ASR) while the CPU is serving LLM inference. Unlike AMD's 16-TOPS XDNA, Intel's 11-TOPS NPU is less suitable for OCR batching (not tested). The best current NPU use case is **ASR**: RTF=0.341 means 1 second of audio transcribed in 0.34 seconds — fast enough for real-time.
+**Fix requires static-shape model export:** reshape the OV model to a fixed sequence length (e.g., 128 tokens) before compiling for NPU. This is not done yet; iGPU is the validated production path.
 
-**Intel Arc iGPU LLM investigation:** OpenVINO 2025.4.1 is installed; `openvino-genai` package installation in progress. Path: download INT4 quantized model (`OpenVINO/qwen2.5-3b-instruct-int4-ov` or similar), run via `ov_genai.LLMPipeline(model_path, "GPU")`. Intel Arc's 1 GB dedicated VRAM + 32 GB shared memory should support 3B-4B INT4 models. Expected speedup vs CPU: 2–4× (to be measured).
+### Intel Arc iGPU (OpenVINO GPU device) — Validated
+
+| Workload | Model | Device | Load time | Inference latency | Result |
+|---|---|---|---|---|---|
+| Embedding | `bge-base-en-v1.5-int8-ov` | GPU (Arc) | 1,722 ms (cached) | first: 914 ms; warm: **22–27 ms** | **PASS** |
+| Reranker | `bge-reranker-base-int8-ov` | GPU (Arc) | 1,363 ms (cached) | avg **37.7 ms** (3 pairs) | **PASS** (scores: 0.989/1.000/0.009 ✓) |
+| ASR | `whisper-base-int8-ov` | GPU (Arc) | ~58 s (first-run GPU kernel compile) | **567 ms** (1 s audio) | **PASS** |
+
+> GPU first-run load includes Intel Arc OpenCL/GPU kernel compilation. Subsequent runs use cached kernels and load in 1–2 s.
+
+Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
+
+### Summary: Can Intel Windows NPU handle Embedding / Reranker / OCR / ASR?
+
+| Task | NPU (AI Boost VPUX) | iGPU (Arc OpenVINO GPU) | CPU |
+|---|---|---|---|
+| Embedding | **FAIL** (dynamic shapes) | **PASS** warm 22–27 ms | PASS 617.5 ms |
+| Reranker | **FAIL** (dynamic shapes) | **PASS** avg 37.7 ms | PASS 148.5 ms |
+| OCR | not tested | **PASS** 797 ms (OpenVINO) | PASS 1593 ms |
+| ASR | **FAIL** (dynamic shapes) | **PASS** 567 ms inference | — |
+
+**Production recommendation:** Use **iGPU (OpenVINO GPU device)** for all non-LLM tasks. The Arc iGPU provides 3–26× lower latency vs CPU for embedding/reranker (22 ms vs 618 ms). NPU requires static-shape model re-export — defer unless dedicated low-power background inference is a hard requirement (NPU ~1 W vs iGPU ~5–10 W).
 
 ---
 
@@ -199,6 +234,8 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 
 - **`qwen3-0.6b/1.7b/4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT 2026-06-22); quality benchmarks not yet run. **Next:** `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode`
 - **Intel Arc LLM via OpenVINO-GenAI CONFIRMED (2026-06-22)** — GPU TTFT=192ms (p50) / TPS=34 for Qwen2.5-1.5B INT4. **Official OV model hub** (huggingface.co/OpenVINO) has Qwen2.5 (1.5B, 7B) and Qwen3 (0.6B, 4B, 8B, 30B) as INT4 models. Note: Qwen3 INT4 requires OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0. No Qwen2.5-3B in OpenVINO hub (hub has 1.5B and 7B for Qwen2.5; but Qwen3-4B-int4-ov fills the 4B slot). 7B INT4 (~4.5 GB) download in progress for full GPU comparison.
+- **Intel AI Boost NPU: ALL non-LLM workloads FAIL (2026-06-22)** — Embedding / Reranker / ASR all fail on VPUX compiler due to dynamic (unbounded) input shapes in OpenVINO Hub INT8 models. Fix requires static-shape model re-export (not done). Use **iGPU (OpenVINO GPU device)** as validated production path.
+- **iGPU non-LLM CONFIRMED (2026-06-22)** — BGE-base INT8 embedding warm=22–27 ms; BGE-reranker-base INT8 avg=37.7 ms; Whisper-base INT8 ASR=567 ms. All PASS on Arc iGPU. Models in `drivers/intel-win/ov_models/`.
 - **qwen2.5-3b translation PASS (recalibrated 2026-06-21/22)** — Thresholds corrected to chrF≥30.0 / term≥60%; 3-seed confirmed.
 - **conditioned BLOCKED** — Not yet measured (requires local HF model).
 - **Intel DirectML OCR not usable** — `rapidocr-intel-directml` CER 202.35%; FP16 precision issue. Use OpenVINO.
@@ -214,7 +251,7 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 | 2026-06-19 | Initial full calibration: all 10 models measured; CPU LLM, OpenVINO OCR, DirectML ASR calibrated |
 | 2026-06-21 | GA quality unblocked; qwen2.5-3b/7b GA PASS; translation threshold recalibration (7B: chrF 40→35, term 80%→75%; 3B: chrF 40→30, term 80%→60%); 1B/3B/7B perf thresholds added |
 | 2026-06-21/22 | 3B and 7B translation 3-seed confirmed — both PASS |
-| 2026-06-22 | qwen3:0.6b/1.7b/4b added (all 3 downloaded, perf calibrated); models.yaml entries added; GA/translation PENDING-VERIFY; iGPU LLM via OpenVINO-GenAI confirmed (34 TPS/192ms TTFT); official OpenVINO HF hub documented; OVMS as official serving recommendation added |
+| 2026-06-22 | qwen3:0.6b/1.7b/4b added (all 3 downloaded, perf calibrated); models.yaml entries added; GA/translation PENDING-VERIFY; iGPU LLM via OpenVINO-GenAI confirmed (34 TPS/192ms TTFT); official OpenVINO HF hub documented; OVMS as official serving recommendation added; NPU validation completed (FAIL for all: dynamic shapes); iGPU non-LLM validated (embedding 22–27ms, reranker 37.7ms, ASR 567ms — all PASS); OV models synced to drivers/ |
 
 ---
 
@@ -230,21 +267,21 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 |---|---|---|---|---|
 | **CPU** | Core Ultra 7 155H | 6P+8E+2LP-E 核，22 线程，1.4–4.8 GHz | 28 W（基础）/ 115 W（PL2） | Ollama CPU — LLM/Embedding；ONNX CPU — Reranker |
 | **iGPU** | Intel Arc（Meteor Lake） | 8 Xe-核，1 GB 独显，共享系统内存 | SoC TDP 内 | OpenVINO-GenAI GPU — LLM（34 TPS/192ms TTFT，已验证）；OpenVINO — OCR（PASS）；DirectML — OCR（FAIL）/ASR（PASS） |
-| **NPU** | Intel AI Boost | 11 TOPS INT8，~1 W 专用 | ~1 W | DirectML — ASR（PASS）；LLM via OpenVINO NPU 待测 |
+| **NPU** | Intel AI Boost | 11 TOPS INT8，~1 W 专用 | ~1 W | Embedding/Reranker/ASR via VPUX：**全部 FAIL**（动态形状不兼容）；生产路径改用 iGPU；LLM NPU 待测 |
 | **RAM** | LPDDR5 | 32 GB | — | — |
 
 ### 执行模式对比
 
-| 任务 | CPU 路径（Ollama） | iGPU OpenVINO-GenAI | NPU |
+| 任务 | CPU 路径（Ollama） | iGPU（OpenVINO GPU） | NPU（VPUX） |
 |---|---|---|---|
 | LLM 7B | 8.25 TPS；TTFT 4820 ms | 待测（7B INT4 下载中） | 未测试 |
 | LLM 4B | 15.7 TPS；TTFT 1539 ms | 待测 | — |
 | LLM 3B | 19.47 TPS；TTFT 781 ms | OpenVINO 官方无 3B 模型 | — |
-| **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（2026-06-22 已验证）** | — |
-| LLM 1B | 25.26 TPS；TTFT 875 ms | 待测 | — |
-| OCR 文字 p50 | 1593 ms（参考） | 797 ms OpenVINO ✓；946 ms DirectML ✗ | — |
-| ASR RTF | — | 0.341（DirectML）✓ | — |
-| Reranker base p50 | 148.5 ms ✓ | — | — |
+| **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（已验证）** | — |
+| Embedding INT8 | — | **warm 22–27 ms ✓（2026-06-22 已验证）** | **FAIL**（动态形状） |
+| Reranker INT8 | 148.5 ms ✓ | **avg 37.7 ms ✓（2026-06-22 已验证）** | **FAIL**（动态形状） |
+| OCR 文字 p50 | 1593 ms（参考） | 797 ms OpenVINO ✓；946 ms DirectML ✗ | 未测试 |
+| ASR | — | 567 ms（OpenVINO GPU）✓；RTF 0.341（DirectML）✓ | **FAIL**（动态形状） |
 
 ### 综合性能 + 模型效果
 
@@ -282,11 +319,13 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 | LLM 轻量 | `qwen3-4b-intel-win` | CPU | 15.7 TPS；GA PENDING-VERIFY；预期优于 3B |
 | LLM 纳米 | `qwen3-1.7b-intel-win` | CPU | 33 TPS；GA PENDING-VERIFY |
 | LLM 纳米（高并发） | `llama3.2-1b-intel-win` | CPU | 32k 上下文；c32 并发；未做 GA 测试 |
-| Embedding | `qwen3-embedding-0.6b-intel-win` | CPU | hit@1=1.000；617 ms |
+| Embedding（质量） | `qwen3-embedding-0.6b-intel-win` | CPU | hit@1=1.000；617 ms |
+| **Embedding（低延迟）** | `bge-base-en-v1.5-int8-ov` | **iGPU OpenVINO GPU** | **warm 22–27 ms；比 CPU 快 26×；CPU 忙于 LLM 时使用** |
 | Reranker（默认） | `bge-reranker-base-intel-win` | CPU ONNX | 148 ms；最低延迟 |
+| **Reranker（iGPU）** | `bge-reranker-base-int8-ov` | **iGPU OpenVINO GPU** | **avg 37.7 ms；比 CPU 快 4×** |
 | OCR（首选） | `rapidocr-intel-openvino` | iGPU OpenVINO | **勿用 DirectML**（CER 202%）；OpenVINO p50 797 ms |
-| **ASR（常驻后台）** | `sensevoice-small-intel-win` | **NPU DirectML** | RTF 0.341；**NPU ~1 W，适合与 CPU LLM 并行的后台语音转写** |
-| **OCR（后台批处理）** | *(待测)* | **NPU — 建议测试** | 释放 CPU 供 LLM；若 NPU 路径可行可替代 iGPU |
+| ASR（首选） | `sensevoice-small-intel-win` | DirectML | RTF 0.341；适合常驻后台语音转写 |
+| **ASR（备选）** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | 567 ms/秒音频；首次运行 GPU 编译 ~58 s |
 | LLM（iGPU，已验证） | `qwen2.5-1.5b-int4-ov` | iGPU OpenVINO-GenAI | **34 TPS，192ms TTFT（GPU），6.7× TTFT 优于 CPU** |
 | LLM（iGPU，质量最优） | `OpenVINO/Qwen3-8B-int4-ov` | iGPU OpenVINO-GenAI | 官方 OV Hub 模型（需 OV ≥ 2026.0.0）；7B INT4 下载中 |
 
@@ -296,5 +335,6 @@ Intel AI Boost NPU (11 TOPS INT8, ~1 W) is suited for **background inference** t
 - **LLM 翻译已通过（重新校准 2026-06-21/22）** — qwen2.5-7b 和 qwen2.5-3b 翻译均已 3-seed 确认 PASS（阈值下调至实测水平）。
 - **iGPU LLM 已确认（2026-06-22）** — Intel Arc 通过 OpenVINO-GenAI 支持 LLM 推理：Qwen2.5-1.5B INT4 在 GPU 上 TTFT=192ms/TPS=34，比 OpenVINO CPU 快 6.7×（TTFT）。OpenVINO 官方 Hub（huggingface.co/OpenVINO，384 个模型）提供：Qwen2.5（1.5B/7B）和 Qwen3（0.6B/4B/8B/30B）INT4 模型，经 NNCF+AWQ 量化校准。Qwen3 INT4 模型需 OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0。7B INT4 下载测试待进行。
 - **生产推理建议（Intel 官方文档）** — OVMS（OpenVINO Model Server）是 Intel 官方推荐的 LLM 生产部署路径，提供 OpenAI 兼容 REST API（`/v3/chat/completions`），支持持续批处理 + 分页注意力机制，自动从 HF 下载 OpenVINO 模型。
-- **Intel AI Boost NPU（ASR PASS，LLM 未测）** — NPU 已通过 DirectML 跑通 ASR（RTF 0.341 PASS）；LLM 和 OCR 的 NPU 路径尚未测试。
+- **Intel AI Boost NPU：所有非 LLM 任务全部 FAIL（2026-06-22）** — Embedding/Reranker/ASR 均因 OpenVINO Hub INT8 模型使用动态形状而在 VPUX 编译器上失败。修复需对模型进行固定形状导出（未完成）。生产路径使用 iGPU（OpenVINO GPU device）。
+- **iGPU 非 LLM 任务已验证（2026-06-22）** — BGE-base INT8 embedding warm=22–27 ms；BGE-reranker-base INT8 avg=37.7 ms；Whisper-base INT8 ASR=567 ms。三项均 PASS。模型存放于 `drivers/intel-win/ov_models/`。
 - **qwen3 系列 GA PENDING-VERIFY** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；质量测试进行中（qwen3-4b benchmark 运行中）。
