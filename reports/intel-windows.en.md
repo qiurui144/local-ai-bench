@@ -23,11 +23,11 @@
 | Workload | CPU path (Ollama 100% CPU) | iGPU / OpenVINO (optimum-intel) | NPU |
 |---|---|---|---|
 | **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.1 TPS** (OVModelForCausalLM GPU, 115s load) ✓ — *8.4 TPS via LLMPipeline when fixed* | not tested |
-| **LLM 4B (qwen3-4b INT4 OV)** | 15.7 TPS (GGUF CPU) | **TBD** — need to download Qwen3-4B-int4-ov | not tested |
-| **LLM 1.7B** | 33 TPS (GGUF CPU) | **No OV 1.7B in hub** (gap: 1.5B or jump to 4B) | not tested |
+| **LLM 4B (qwen3-4b INT4 OV)** | 15.7 TPS (GGUF CPU) | TBD — need to download Qwen3-4B-int4-ov | not tested |
+| **LLM 1.7B** | 33 TPS (GGUF CPU) | **FAIL** — 13.9 TPS; translation FAIL (zh→en chrF=24.3; en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) | not tested |
 | **LLM 1.5B (OV)** | — | **10.6 TPS** (OVModelForCausalLM GPU, 54s load) ✓; *34 TPS via LLMPipeline when fixed* | not tested |
 | **LLM 1B** | 25.26 TPS (GGUF CPU) | No OV 1B in hub | not tested |
-| **LLM 0.6B (qwen3-0.6b INT4 OV)** | 85 TPS (GGUF CPU) | **TBD** — need to download Qwen3-0.6B-int4-ov | not tested |
+| **LLM 0.6B (qwen3-0.6b INT4 OV)** | 85 TPS (GGUF CPU) | **15.9 TPS** (OVModelForCausalLM GPU); translation FAIL (too small); 3-seed 2026-06-23 | not tested |
 | **LLM 3B** | 19.47 TPS (GGUF CPU) | **No 3B in OV hub** (use 1.5B or 4B OV) | not tested |
 | **Embedding 0.6B** | 617.5 ms p50 | not tested via OV | — |
 | **Embedding INT8 (BGE-base)** | — | **~25 ms warm** (OVModelForFeatureExtraction GPU) ✓ | FAIL (dynamic shapes) |
@@ -92,11 +92,13 @@ docker run -p 8000:8000 openvino/model_server \
 | `qwen2.5-7b-intel-win` | **0.833** (n=30) | **0.719** (n=32) | **0.767** (n=30) | **PASS** | **PASS** (term 79.0%≥75%; 3-seed) | **PASS** (chrF 36.95±0.06≥35.0; 3-seed) |
 | `qwen3-4b-intel-win` | PENDING | PENDING | PENDING | **PENDING** | PENDING | PENDING |
 | `qwen2.5-3b-intel-win` | **0.740** (n=100) | **0.530** (n=100) | **0.760** (n=100) | **PASS** | **PASS** (chrF 57.0; 3-seed) | **PASS** (chrF 33.44±0.08≥30.0; 3-seed) |
-| `qwen3-1.7b-intel-win` | PENDING | PENDING | PENDING | **PENDING** | — (skip) | — (skip) |
+| `qwen3-1.7b-intel-win` | PENDING | PENDING | PENDING | **PENDING** | PENDING (benchmark running 2026-06-23) | PENDING |
+| `qwen3-1.7b-igpu-intel-win` | — | — | — | SKIP (GA dims skipped) | **FAIL** (zh→en chrF=24.3<38; en→zh chrF=6.6<38; 3-seed 2026-06-23; INT4 quality degraded) | — |
+| `qwen3-0.6b-igpu-intel-win` | — | — | — | SKIP (GA dims skipped) | **FAIL** (zh→en BLEU=7<15, en→zh chrF=23.9<35; 3-seed 2026-06-23) | — |
 | `llama3.2-1b-intel-win` | — | — | — | SKIPPED | SKIPPED | SKIPPED |
 | `qwen3-0.6b-intel-win` | PENDING | PENDING (MCQ gap expected) | PENDING | **PENDING** | — (skip) | — (skip) |
 
-**Next step:** Run `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode` to calibrate GA + translation quality.
+**iGPU translation note:** OV INT4 0.6B FAIL (too small). OV INT4 1.7B FAIL (3-seed 2026-06-23: zh→en l1_flores chrF=24.3, en→zh l1_flores chrF=6.6 — quality severely degraded at INT4 quantization). Minimum viable iGPU LLM translation requires ≥4B OV model (Qwen3-4B-int4-ov — not yet tested).
 
 ### Non-LLM Performance
 
@@ -115,9 +117,10 @@ docker run -p 8000:8000 openvino/model_server \
 | **OCR det (NPU)** | `ch_PP-OCRv4_det` | **NPU VPUX** (static [1,3,640,640]) | **compile 4.6 s; avg 33 ms** | — | **PASS** |
 | **OCR rec (NPU)** | `ch_PP-OCRv4_rec` | **NPU VPUX** (static [1,3,48,320]; H=48) | **compile 2.9 s; avg 11 ms** | — | **PASS** |
 | **OCR cls (NPU)** | `ch_PP-OCRv4_cls` | **NPU VPUX** (static [1,3,48,192]) | **compile 2.0 s; avg 3 ms** | — | **PASS** |
-| **ASR (iGPU)** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | **567 ms inference; load 58 s (first-run GPU compile)** | functional | **PASS** |
-| **ASR encoder (NPU)** | `whisper-base-int8-ov` encoder | **NPU VPUX** (static [1,80,3000]) | **compile ~15 s cold (cached ~0.5 s); avg 115 ms** | encoder only | **PASS** |
-| **ASR decoder (CPU)** | `whisper-base-int8-ov` decoder | **CPU** (dynamic autoregressive) | compile 1.0 s | paired with NPU encoder | **PASS** |
+| **ASR (iGPU)** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | **567 ms inference; load 58 s (first-run GPU compile)** | functional (manual test only) | PASS (latency) |
+| **ASR encoder (NPU)** | `whisper-base-int8-ov` encoder | **NPU VPUX** (static [1,80,3000]) | **compile ~15 s cold (cached ~0.5 s); avg 115 ms** | encoder only | PASS (encoder only) |
+| **ASR decoder (CPU)** | `whisper-base-int8-ov` decoder | **CPU** (dynamic autoregressive) | compile 1.0 s | paired with NPU encoder | PASS (encoder only) |
+| **ASR quality (E2E benchmark)** | `whisper-base-npu-intel-win` | iGPU/NPU OpenVINO | RTF 3.64 (≫0.5) | **CER 53.85% (>12%), WER 100%** | **FAIL** (3-seed 2026-06-23; decoder on CPU too slow + quality gap) |
 | ASR SenseVoice (NPU) | `model.int8.onnx` | NPU VPUX | — | dynamic self-attn mask remains | **FAIL** (needs re-export) |
 | ASR | `sensevoice-small-intel-win` | DirectML | — | CER 7.69% / RTF **0.341** | **PASS** |
 
@@ -172,7 +175,7 @@ docker run -p 8000:8000 openvino/model_server \
 | Reranker (quality) | `bge-reranker-v2-m3-intel-win` | CPU ONNX | Equal nDCG/MRR but p50 546.5 ms — use when ranking quality critical |
 | OCR | `rapidocr-intel-openvino` | iGPU OpenVINO | PASS: p50 797 ms; **do not use DirectML** (CER 202%) |
 | ASR (primary) | `sensevoice-small-intel-win` | DirectML | PASS: CER 7.69%, RTF 0.341 — ideal for always-on background transcription |
-| **ASR (alternative)** | `whisper-base-int8-ov` | **iGPU OpenVINO GPU** | 567 ms/1s-audio; Whisper architecture; first-run 58s GPU compile |
+| ASR (alternative — FAIL) | `whisper-base-npu-intel-win` | iGPU/NPU OpenVINO | **FAIL**: CER 53.85%, WER 100%, RTF 3.64; decoder on CPU bottleneck; not recommended until decoder runs on GPU |
 | LLM (iGPU, quality) | `OpenVINO/Qwen3-8B-int4-ov` | iGPU OpenVINO-GenAI | Official OV hub model (requires OV ≥ 2026.0.0); expected best quality on Arc iGPU (7B download in progress) |
 | LLM (iGPU, confirmed) | `qwen2.5-1.5b-int4-ov` | iGPU OpenVINO-GenAI | MEASURED: 34 TPS, 192ms TTFT — **6.7× TTFT vs CPU** |
 | VLM | *(not recommended)* | — | `llava-7b-intel-win` accuracy FAIL |
@@ -196,6 +199,11 @@ docker run -p 8000:8000 openvino/model_server \
 | `bge-reranker-v2-m3-intel-win` | CPU ONNX | reranker_stronger | **PASS** | nDCG 1.000; MRR 1.000; p50 546.5 ms |
 | `rapidocr-intel-openvino` | iGPU OpenVINO | ocr_openvino | **PASS** | CER 7.04%; p50 797 ms; structured field acc 92.86%; structured p50 867.5 ms |
 | `rapidocr-intel-directml` | iGPU DirectML | ocr_directml | **FAIL** | CER 202.35% — not usable |
+| `qwen3-0.6b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_small | **FAIL** | TPS 15.9; TTFT OV-batch (non-streaming); translation FAIL (zh→en BLEU=7.1<15, en→zh chrF=23.9<35; 3-seed 2026-06-23); GA dims skipped |
+| `qwen3-1.7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_mid | **FAIL** | TPS 13.9 (3-seed 12.76±0.30); OV batch non-streaming (TTFT=0ms, error_rate=100%); translation FAIL (zh→en chrF=24.3, en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) |
+| `bge-base-en-v1.5-igpu-intel-win` | iGPU OpenVINO GPU | embedding_igpu | **PASS** | hit@1 0.833; nDCG@10 — ; 3-seed confirmed 2026-06-23; warm 22–27 ms |
+| `bge-reranker-base-igpu-intel-win` | iGPU OpenVINO GPU | reranker_igpu | **PASS** | nDCG@10 1.0; MRR 1.0; avg 36.4 ms; 3-seed confirmed 2026-06-23 |
+| `whisper-base-npu-intel-win` | iGPU/NPU OpenVINO | asr | **FAIL** | CER 53.85% (>12%); WER 100%; RTF 3.64 (>0.5); 3-seed 2026-06-23 |
 | `sensevoice-small-intel-win` | DirectML (NPU) | asr | **PASS** | CER 7.69%; RTF 0.341 |
 
 **Status legend:** PASS = all thresholds met. FAIL = one or more thresholds missed.
@@ -282,7 +290,8 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 
 ## Known Limitations
 
-- **`qwen3-0.6b/1.7b/4b` GA/translation PENDING-VERIFY** — Performance calibrated (TPS/TTFT 2026-06-22); quality benchmarks not yet run. **Next:** `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode`
+- **`qwen3-0.6b-igpu-intel-win` / `qwen3-1.7b-igpu-intel-win` translation FAIL (3-seed 2026-06-23)** — OV INT4 at 0.6B and 1.7B both FAIL translation. 0.6B: too small. 1.7B: INT4 quantization severely degrades Chinese translation quality (en→zh l1_flores chrF=6.6). **Next iGPU LLM:** Qwen3-4B-int4-ov download pending.
+- **`qwen3-0.6b/1.7b/4b` GA/translation PENDING-VERIFY (CPU Ollama)** — Performance calibrated (TPS/TTFT 2026-06-22); CPU quality benchmarks not yet run. **Next:** `python run_benchmark.py --model qwen3-4b-intel-win --skip stability,concurrency,conditioned,scenarios,prefill_decode`
 - **Intel Arc LLM via OpenVINO-GenAI CONFIRMED (2026-06-22)** — GPU TTFT=192ms (p50) / TPS=34 for Qwen2.5-1.5B INT4. **Official OV model hub** (huggingface.co/OpenVINO) has Qwen2.5 (1.5B, 7B) and Qwen3 (0.6B, 4B, 8B, 30B) as INT4 models. Note: Qwen3 INT4 requires OpenVINO ≥ 2026.0.0 + Optimum Intel ≥ 1.27.0. No Qwen2.5-3B in OpenVINO hub (hub has 1.5B and 7B for Qwen2.5; but Qwen3-4B-int4-ov fills the 4B slot). 7B INT4 (~4.5 GB) download in progress for full GPU comparison.
 - **Intel AI Boost NPU: OCR + Whisper encoder CONFIRMED (2026-06-22 reshape)** — PP-OCRv4 det/rec/cls all PASS on NPU with static-shape reshape (det 33ms, rec 11ms [H=48], cls 3ms). Whisper encoder [1,80,3000] PASS on NPU (115ms; decoder on CPU). Embedding/Reranker FAIL (dynamic attention). SenseVoice FAIL (dynamic self-attn mask, needs re-export). **Attune deployment: OCR on NPU frees Arc iGPU for LLM + embedding + reranker — zero contention.**
 - **iGPU non-LLM CONFIRMED (2026-06-22)** — BGE-base INT8 embedding warm=22–27 ms; BGE-reranker-base INT8 avg=37.7 ms; Whisper-base INT8 ASR=567 ms. All PASS on Arc iGPU. Models in `drivers/intel-win/ov_models/`.
@@ -303,6 +312,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 | 2026-06-21/22 | 3B and 7B translation 3-seed confirmed — both PASS |
 | 2026-06-22 AM | qwen3:0.6b/1.7b/4b added (all 3 downloaded, perf calibrated); models.yaml entries added; GA/translation PENDING-VERIFY; iGPU LLM via OpenVINO-GenAI confirmed (34 TPS/192ms TTFT); official OpenVINO HF hub documented; OVMS as official serving recommendation added; NPU round-1 validation (FAIL for all: dynamic shapes); iGPU non-LLM validated (embedding 22–27ms, reranker 37.7ms, ASR 567ms — all PASS); OV models synced to drivers/ |
 | 2026-06-22 PM | NPU reshape validation: PP-OCRv4 all 3 sub-models PASS on NPU (det [640×640] 33ms, rec [48×320] 11ms [H=48 required], cls [48×192] 3ms); Whisper encoder [1,80,3000] PASS on NPU (115ms avg); Whisper decoder PASS on CPU (dynamic — autoregressive); SenseVoice FAIL (dynamic self-attn mask); **OCR on NPU + LLM/embedding/reranker on iGPU = zero resource contention** — recommended deployment for attune |
+| 2026-06-23 | iGPU LLM translation 3-seed confirmed: 0.6B FAIL (confirmed prior) + **1.7B FAIL** (TPS 12.76±0.30; translation: zh→en chrF=24.0±0.6, en→zh chrF=6.4±0.5; INT4 quantization severely degrades Chinese translation quality); thresholds calibrated (tps_min: 10, TTFT: p50=30s/p95=150s for OV batch); minimum viable iGPU LLM translation = ≥4B OV model |
 
 ---
 
@@ -326,7 +336,8 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 | 任务 | CPU 路径（Ollama） | iGPU（OpenVINO GPU） | NPU（VPUX） |
 |---|---|---|---|
 | LLM 7B | 8.25 TPS；TTFT 4820 ms | 待测（7B INT4 下载中） | 未测试 |
-| LLM 4B | 15.7 TPS；TTFT 1539 ms | 待测 | — |
+| LLM 4B | 15.7 TPS；TTFT 1539 ms | 待测（Qwen3-4B-int4-ov 下载中） | — |
+| **LLM 1.7B** | 33 TPS；TTFT 833 ms | **FAIL** — 13.9 TPS；翻译 FAIL（INT4 退化：en→zh chrF=6.6；3-seed 2026-06-23） | 未测试 |
 | LLM 3B | 19.47 TPS；TTFT 781 ms | OpenVINO 官方无 3B 模型 | — |
 | **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（已验证）** | — |
 | Embedding INT8 | — | **warm 22–27 ms ✓（2026-06-22 已验证）** | **FAIL**（动态形状） |
@@ -391,4 +402,5 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 - **生产推理建议（Intel 官方文档）** — OVMS（OpenVINO Model Server）是 Intel 官方推荐的 LLM 生产部署路径，提供 OpenAI 兼容 REST API（`/v3/chat/completions`），支持持续批处理 + 分页注意力机制，自动从 HF 下载 OpenVINO 模型。
 - **Intel AI Boost NPU：OCR + Whisper 编码器已确认（2026-06-22 reshape 验证）** — PP-OCRv4 全部三个子模型通过静态 reshape 在 NPU 上运行：det [640×640] 33ms、rec [48×320] 11ms（必须 H=48；H=32 因 AvgPool kernel=3 > 特征高度=2 而失败）、cls [48×192] 3ms。Whisper 编码器 [1,80,3000] NPU PASS（115ms；比 CPU 快 11.5×）；解码器为动态形状，在 CPU 运行（PASS，编译 1s）。Embedding/Reranker FAIL（动态注意力形状）。SenseVoice FAIL（动态自注意力掩码，需重导出）。**attune 部署建议：OCR 放 NPU，LLM/Embedding/Reranker 放 iGPU，零资源竞争。**
 - **iGPU 非 LLM 任务已验证（2026-06-22）** — BGE-base INT8 embedding warm=22–27 ms；BGE-reranker-base INT8 avg=37.7 ms；Whisper-base INT8 ASR=567 ms。三项均 PASS。模型存放于 `drivers/intel-win/ov_models/`。
-- **qwen3 系列 GA PENDING-VERIFY** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；质量测试进行中（qwen3-4b benchmark 运行中）。
+- **qwen3 iGPU 翻译 FAIL（2026-06-23 3-seed 已确认）** — 0.6B（模型过小）和 1.7B（INT4 量化严重退化：en→zh chrF=6.6；zh→en chrF=24.3）均 FAIL。iGPU LLM 翻译最低要求 ≥4B OV 模型（Qwen3-4B-int4-ov 待测试）。
+- **qwen3 系列 GA PENDING-VERIFY（CPU Ollama 路径）** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；CPU 质量测试进行中（qwen3-4b benchmark 待运行）。

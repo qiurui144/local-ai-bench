@@ -233,11 +233,11 @@ models:
     notes: "Intel Windows ASR：SenseVoice sherpa-onnx 本地 ONNX；CPU baseline，OpenVINO/NPU ASR 可作为后续专用 backend"
 
   - name: whisper-base-npu-intel-win
-    provider: local_whisper_ov
+    provider: openai
     target: intel-win-x86
-    ov_model_dir: "C:\\ov_models\\asr\\whisper-base-int8-ov"
-    asr_backend: whisper_ov
-    port: 0
+    base_url_env: OV_EXTRAS_INTEL_BASE_URL   # http://192.168.100.116:8081/v1
+    model_id: whisper-base-int8-ov
+    port: 8081
     role: asr_intel_win_npu
     task_type: text_only
     asr_capable: true
@@ -247,7 +247,7 @@ models:
           cer_max: 0.12
           rtf_max: 0.5
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, ocr]
-    notes: "Intel Windows ASR NPU：Whisper-base INT8 OV，encoder=NPU(AI Boost) / decoder=CPU；encoder 115ms confirmed (2026-06-22)；model dir: C:\\ov_models\\asr\\whisper-base-int8-ov"
+    notes: "Intel Windows ASR NPU：Whisper-base INT8 OV via serve_ov_extras.py port 8081；encoder=NPU(AI Boost)/decoder=CPU；encoder 115ms confirmed (2026-06-22)；3-seed benchmark 2026-06-23 FAIL (CER=53.85%>12%, WER=100%, RTF=3.64>0.5 — decoder on CPU too slow + quality gap vs full model)；HTTP endpoint: /asr/transcribe"
 
   # ═══ Windows AMD（Ryzen 7 8845H + Radeon 780M，Ollama Vulkan GPU 模式）═══
   #
@@ -475,8 +475,8 @@ models:
     role: llm_lightweight
     task_type: text_only
     translation_capable: true
-    ollama_think: false   # qwen3 默认 thinking mode 导致 content 为空；think=false 直出答案
-    notes: "AMD 780M Vulkan — Qwen3-4B；TTFT P50=867ms(warm)/P95=4287ms(cold)，TPS=30.7 tok/s；GA PENDING-VERIFY (3-7B tier thresholds)；translation PENDING-VERIFY；prefill_decode PENDING-VERIFY (Ollama qwen3 usage 不返回) (2026-06-22 E2E)"
+    ollama_think: false   # qwen3 默认 thinking mode 导致 content 为空；think=false 无效（Ollama不支持完全禁用thinking）
+    notes: "AMD 780M Vulkan — Qwen3-4B；TTFT P50=867ms(warm)/P95=4287ms(cold)，TPS=29-30.7 tok/s (实测2026-06-22/23)；Thinking模式根因：options.think=false不阻止思考，模型先生成~1500-2000 thinking tokens后才输出内容，max_tokens=2048不足以覆盖l1_flores长prompt→l1_flores 87-100%空输出；translation 3-seed FAIL (2026-06-23)：zh→en l1_flores empty=87%/l3_term chrF=63.6/term=64%<75%；en→zh l1_flores empty=100%/l3_term chrF=32.2<35；Fix=max_tokens≥4096或Ollama升级支持真正think=false；GA暂skip(每题~68s，300题×3seed≈17h)；prefill_decode SKIP (Ollama qwen3 usage不返回)"
     benchmarks:
       ttft:
         samples: 3
@@ -486,18 +486,13 @@ models:
       throughput:
         duration_s: 20
         thresholds:
-          tps_min: 20              # 实测 ~30.7 TPS (2026-06-22)；20 为下限含余量
-      general_ability:
-        thresholds:
-          gsm8k_min: 0.55          # PENDING-VERIFY: 3-7B tier
-          mmlu_min: 0.55           # PENDING-VERIFY: 3-7B tier
-          hellaswag_min: 0.60      # PENDING-VERIFY: 3-7B tier
+          tps_min: 20              # 实测 ~29-30.7 TPS (2026-06-22/23)；20 为下限含余量
       translation:
         max_pairs: 10
         thresholds:
-          chrf_min: 35.0           # PENDING-VERIFY: 3-7B 翻译阈值（参考 qwen2.5-7b 实测）
-          term_match_rate_min: 0.75 # PENDING-VERIFY
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
+          chrf_min: 35.0           # 生产门槛（参考 qwen2.5-7b 实测）；3-seed FAIL (2026-06-23)：l1_flores empty→chrF=0；l3_term en→zh chrF=32.2<35
+          term_match_rate_min: 0.75 # 生产门槛；3-seed FAIL: zh→en term=64%；en→zh term=54%
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
 
   - name: bge-reranker-base-amd-win
     provider: local_reranker
@@ -528,6 +523,42 @@ models:
         num_samples: 6
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
     notes: "AMD Windows 专用 reranker：BAAI/bge-reranker-v2-m3 CrossEncoder，高精度专用重排"
+
+  - name: bge-base-en-v1.5-igpu-amd-win
+    provider: openai
+    target: amd-win-x86
+    base_url_env: ORT_AMD_EXTRAS_BASE_URL   # http://192.168.100.201:8091/v1
+    model_id: bge-base-en-v1.5-ort-dml
+    port: 8091
+    role: embedding_amd_win_igpu
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      embedding:
+        thresholds:
+          recall_at_10_min: 0.75
+          latency_ms_p95_max: 400    # 3-seed measured P50=271ms; DirectML overhead > OV; floor=400ms P95
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, rerank]
+    notes: "AMD Radeon 780M iGPU embedding：BGE-base-en-v1.5 INT8 ONNX via ORT+DirectML，serve_ort_extras_amd.py port 8091；3-seed confirmed 2026-06-23 PASS (hit@1=1.0, nDCG@10=0.987, P50=271ms)；ORT_AMD_EXTRAS_BASE_URL=http://192.168.100.201:8091/v1"
+
+  - name: bge-reranker-base-igpu-amd-win
+    provider: openai
+    target: amd-win-x86
+    base_url_env: ORT_AMD_EXTRAS_BASE_URL   # http://192.168.100.201:8091/v1
+    model_id: bge-reranker-base-ort-dml
+    port: 8091
+    role: reranker_amd_win_igpu
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+        thresholds:
+          ndcg_at_5_min: 0.65
+          latency_ms_p95_max: 300    # 3-seed measured pair P50=207ms; floor=300ms P95
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
+    notes: "AMD Radeon 780M iGPU reranker：BGE-reranker-base INT8 ONNX via ORT+DirectML，serve_ort_extras_amd.py port 8091；3-seed confirmed 2026-06-23 PASS (nDCG@10=1.0, pair P50=207ms)；ORT_AMD_EXTRAS_BASE_URL=http://192.168.100.201:8091/v1"
 
   - name: qwen2.5-14b-amd-win
     provider: ollama
@@ -1151,6 +1182,87 @@ models:
           term_match_rate_min: 0.70 # PENDING-VERIFY
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
 
+  - name: qwen2.5-1.5b-igpu-intel-win
+    provider: openai
+    target: intel-win-x86
+    base_url_env: OV_INTEL_BASE_URL
+    model_id: qwen2.5-1.5b-int4-ov
+    port: 8080
+    role: llm_intel_win_igpu
+    task_type: text_only
+    translation_capable: true
+    notes: "Intel Arc iGPU via serve_ov_intel.py：Qwen2.5-1.5B INT4 OVModelForCausalLM device=GPU；port 8080；OV_INTEL_BASE_URL=http://192.168.100.116:8080/v1；冷启~54s；实测25.7 TPS（2026-06-23）；TTFT N/A（OV server无流式）；translation 实测zh->en BLEU=16.4/chrF=43.6，en->zh BLEU=34.4/chrF=31.2，term_match=62-64%；判定FAIL(BLEU<20, en->zh chrF<40, term<80%)：1.5B不适合生产翻译"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 800     # OV server无流式支持，TTFT恒为0ms；留给未来流式实现
+          p95_ttft_ms_max: 2000
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 18              # 实测25.7 TPS（2026-06-23）；18为下限含30%余量
+      translation:
+        max_pairs: 10
+        thresholds: {}             # 使用代码默认：bleu_min=20, chrf_min=40, term_match=0.80；1.5B实测FAIL属预期
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-0.6b-igpu-intel-win
+    provider: openai
+    target: intel-win-x86
+    base_url_env: OV_INTEL_QWEN3_06B_BASE_URL   # http://192.168.100.116:8082/v1
+    model_id: qwen3-0.6b-int4-ov
+    port: 8082
+    role: llm_intel_win_igpu_qwen3_small
+    task_type: text_only
+    translation_capable: true
+    notes: "Intel Arc iGPU via serve_ov_intel.py port 8082：Qwen3-0.6B INT4 OVModelForCausalLM device=GPU；3-seed confirmed 2026-06-23；translation FAIL (0.6B too small: zh->en BLEU=7, en->zh chrF=23.9)；OV_INTEL_QWEN3_06B_BASE_URL=http://192.168.100.116:8082/v1"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 30000   # OV batch非流式：TTFT=0ms但错误率100%；暂保留字段
+          p95_ttft_ms_max: 60000
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 12              # 3-seed measured 15.9±0.04 TPS; floor=12 (80%)
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 15.0           # 生产门槛；0.6B FAIL (zh->en 7.1, en->zh 25.2)
+          chrf_min: 35.0           # 生产门槛；en->zh chrF=23.7 FAIL
+          term_match_rate_min: 0.65 # 生产门槛；zh->en term=27% FAIL
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-1.7b-igpu-intel-win
+    provider: openai
+    target: intel-win-x86
+    base_url_env: OV_INTEL_QWEN3_17B_BASE_URL   # http://192.168.100.116:8083/v1
+    model_id: qwen3-1.7b-int4-ov
+    port: 8083
+    role: llm_intel_win_igpu_qwen3_mid
+    task_type: text_only
+    translation_capable: true
+    notes: "Intel Arc iGPU via serve_ov_intel.py port 8083：Qwen3-1.7B INT4 OVModelForCausalLM device=GPU；TPS=12.76±0.30 tok/s (3-seed 2026-06-23)；warm total ~16s/request (OV batch非流式，TTFT=0ms，error_rate=100%)；translation 3-seed FAIL (zh→en: l1_flores chrF=24.0±0.6 / l3_term chrF=16.2; en→zh: l1_flores chrF=6.4±0.5 / l3_term chrF=11.9; 低于阈值，INT4量化使模型翻译能力严重退化)；OV_INTEL_QWEN3_17B_BASE_URL=http://192.168.100.116:8083/v1"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 30000   # OV batch非流式：TTFT=0ms但错误率100%；暂保留字段（同0.6B）
+          p95_ttft_ms_max: 150000  # 覆盖冷启动（seed 1 cold: ~122s）
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 10              # 3-seed measured 12.76±0.30 TPS; floor=10 (78%)
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 18.0           # 生产门槛；3-seed FAIL (zh→en l1=2.3, en→zh l1=5.1)
+          chrf_min: 38.0           # 生产门槛；3-seed FAIL (zh→en l1=24.3, en→zh l1=6.6; INT4退化)
+          term_match_rate_min: 0.72 # 3-seed: zh→en=73%, en→zh=77% (达到但chrF未过)
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
+
   - name: qwen2.5-7b-intel-win
     provider: ollama
     target: intel-win-x86
@@ -1205,11 +1317,11 @@ models:
     notes: "Intel CPU Ollama — embedding 基线对比 AMD"
 
   - name: bge-base-en-v1.5-igpu-intel-win
-    provider: local_embedding_ov
+    provider: openai
     target: intel-win-x86
-    ov_model_dir: "C:\\ov_models\\embedding\\bge-base-en-v1.5-int8-ov"
-    ov_device: GPU
-    port: 0
+    base_url_env: OV_EXTRAS_INTEL_BASE_URL   # http://192.168.100.116:8081/v1
+    model_id: bge-base-en-v1.5-int8-ov
+    port: 8081
     role: embedding_intel_win_igpu
     task_type: text_only
     embedding_capable: true
@@ -1219,7 +1331,7 @@ models:
           recall_at_10_min: 0.75
           latency_ms_p95_max: 100
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, rerank]
-    notes: "Intel Windows iGPU embedding：BGE-base-en-v1.5 INT8 OVModelForFeatureExtraction device=GPU；~25ms warm confirmed (2026-06-22)；model dir: C:\\ov_models\\embedding\\bge-base-en-v1.5-int8-ov；需 scripts/serve_ov_intel.py 或 local_embedding_ov provider"
+    notes: "Intel Windows Arc iGPU embedding：BGE-base-en-v1.5 INT8 OVModelForFeatureExtraction device=GPU via serve_ov_extras.py port 8081；~25ms warm confirmed (2026-06-22)；HTTP: POST /v1/embeddings"
 
   - name: llava-7b-intel-win
     provider: ollama
@@ -1260,13 +1372,11 @@ models:
     notes: "Intel Windows 专用 reranker：BAAI/bge-reranker-base CrossEncoder CPU，本地进程内专用重排；替代 LLM yes/no 代理"
 
   - name: bge-reranker-base-igpu-intel-win
-    provider: local_reranker
+    provider: openai
     target: intel-win-x86
-    model_id: BAAI/bge-reranker-base
-    ov_model_dir: "C:\\ov_models\\reranker\\bge-reranker-base-int8-ov"
-    ov_device: GPU
-    rerank_backend: openvino_gpu
-    port: 0
+    base_url_env: OV_EXTRAS_INTEL_BASE_URL   # http://192.168.100.116:8081/v1
+    model_id: bge-reranker-base-int8-ov
+    port: 8081
     role: reranker_intel_win_igpu
     task_type: text_only
     rerank_capable: true
@@ -1278,7 +1388,7 @@ models:
           ndcg_at_5_min: 0.65
           latency_ms_p95_max: 100
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding]
-    notes: "Intel Windows iGPU reranker：bge-reranker-base INT8 OV + OVModelForSequenceClassification device=GPU；36.4ms avg confirmed (2026-06-22)；model dir: C:\\ov_models\\reranker\\bge-reranker-base-int8-ov"
+    notes: "Intel Windows Arc iGPU reranker：BGE-reranker-base INT8 OVModelForSequenceClassification device=GPU via serve_ov_extras.py port 8081；36.4ms avg confirmed (2026-06-22)；HTTP: POST /v1/rerank (cohere-style)"
 
   - name: bge-reranker-v2-m3-intel-win
     provider: local_reranker
