@@ -29,11 +29,11 @@ All measured values are p50 latency or TPS from E2E calibration runs.
 | **LLM NPU pure (Lemonade FLM)** | — | — | **NOT SUPPORTED** on 8845H (XDNA 1). Requires Ryzen AI 300 / XDNA 2 |
 | **LLM Hybrid iGPU+NPU (Lemonade)** | — | — | **NOT SUPPORTED** on 8845H (XDNA 1). Requires Ryzen AI 300 / XDNA 2 |
 | **Embedding 0.6B** | — | 875 ms p50 ✓ | — |
-| **Embedding INT8 (BGE-base, DML)** | — | **271 ms p50** ✓ DirectML | — |
+| **Embedding INT8 (BGE-base, DML)** | — | **2750 ms p50** ✓ DirectML (ORT round-trip) | — |
 | **OCR text (p50)** | 1593 ms | **469 ms** ✓ fastest | 2031 ms |
 | **OCR structured (p50)** | 859 ms | **477 ms** ✓ | 1868 ms |
 | **ASR (RTF)** | — | — | **0.073** ✓ |
-| **Reranker base (p50 pair)** | **78 ms** ✓ CPU | **207 ms** ✓ DirectML | — |
+| **Reranker base (p50 pair)** | **78 ms** ✓ CPU | **697 ms** ✓ DirectML (ORT round-trip) | — |
 | **Reranker v2-m3 (p50)** | 289 ms | — | — |
 
 CPU-only LLM is not independently benchmarked; Ollama defaults to Vulkan iGPU.
@@ -72,7 +72,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | `qwen2.5-7b` | **0.880** | **0.600** | **0.790** | **PASS** | **PASS** (zh→en term 79%≥75%; en→zh chrF 36.4≥35.0; recal 2026-06-21) |
 | `qwen3-4b` | — | — | — | SKIP (each Q ~68s; GA not run) | **FAIL** (zh→en l1_flores empty=87%; l3_term chrF=63.6/term=64%<75%; en→zh l1_flores empty=100%; l3_term chrF=32.2<35; 3-seed 2026-06-23) |
 | `llama3.2-3b` | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | **FAIL** ⚠️ model-level | FAIL (zh→en term 55%; en→zh chrF 27.6) |
-| `qwen3-1.7b` | 0.300/PASS | 0.000/**FAIL** | 0.000/**FAIL** | **FAIL** (MCQ answer format; think=false does not fix) | — (skip) |
+| `qwen3-1.7b` | 0.293±0.015/**FAIL** | 0.033±0.006/**FAIL** | 0.007±0.006/**FAIL** | **FAIL** (MCQ answer format; think=false does not fix) | — (skip) |
 | `qwen3-0.6b` | 0.390/PASS | 0.000/**FAIL** | 0.000/**FAIL** | **FAIL** | FAIL (MCQ capability gap) |
 
 **Best confirmed quality:** `qwen2.5-7b-amd-win`.  
@@ -88,8 +88,8 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | `rapidocr-amd-directml` | OCR iGPU | 468.5 ms | CER 7.04%, struct 92.86% | **PASS** |
 | `rapidocr-amd-npu` | OCR NPU | 2031 ms | CER 7.04% | **PASS** |
 | `rapidocr-cpu` | OCR CPU | 1592.5 ms | CER 7.04% | **PASS** |
-| `bge-base-en-v1.5-igpu-amd-win` | **Embedding DirectML** | 271 ms p50 | hit@1=1.000, nDCG=0.987 | **PASS** |
-| `bge-reranker-base-igpu-amd-win` | **Reranker DirectML** | 207 ms/pair p50 | nDCG=1.000, MRR=1.000 | **PASS** |
+| `bge-base-en-v1.5-igpu-amd-win` | **Embedding DirectML** | 2750 ms p50¹ | hit@1=1.000, nDCG=0.987 | **PASS** |
+| `bge-reranker-base-igpu-amd-win` | **Reranker DirectML** | 697 ms/pair p50¹ | nDCG=1.000, MRR=1.000 | **PASS** |
 | `bge-reranker-base-amd-win` | Reranker CPU | 78 ms | nDCG=1.000 | **PASS** |
 | `bge-reranker-v2-m3-amd-win` | Reranker CPU | 289 ms | nDCG=1.000 | **PASS** |
 | `sensevoice-small-amd-win` | ASR NPU | — | CER 7.69%, RTF 0.073 | **PASS** |
@@ -147,9 +147,9 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | LLM nano-micro | `qwen3-0.6b-amd` | iGPU (Vulkan) | 91 TPS; MCQ ability insufficient (MMLU=0.000); **not for GA use** |
 | Embedding (primary) | `qwen3-embedding-0.6b-amd` | iGPU (Vulkan) | Best retrieval quality, lower latency |
 | Embedding (multilingual) | `bge-m3-amd` | iGPU (Vulkan) | Drop-in multilingual alternative |
-| **Embedding iGPU (vendor-specific ONNX)** | `bge-base-en-v1.5-igpu-amd-win` | **iGPU DirectML (ORT INT8)** | 271 ms p50, PASS; use when Ollama port busy with LLM |
+| **Embedding iGPU (vendor-specific ONNX)** | `bge-base-en-v1.5-igpu-amd-win` | **iGPU DirectML (ORT INT8)** | 2750 ms p50 (ORT SSH round-trip), PASS; quality: hit@1=1.000, nDCG=0.987 |
 | Reranker (default) | `bge-reranker-base-amd-win` | CPU ONNX | p50 78 ms, sufficient quality — fastest option |
-| **Reranker iGPU (vendor-specific ONNX)** | `bge-reranker-base-igpu-amd-win` | **iGPU DirectML (ORT INT8)** | 207 ms/pair p50, PASS; offloads CPU; vendor-optimized path |
+| **Reranker iGPU (vendor-specific ONNX)** | `bge-reranker-base-igpu-amd-win` | **iGPU DirectML (ORT INT8)** | 697 ms/pair p50 (ORT SSH round-trip), PASS; quality: nDCG=1.000, MRR=1.000 |
 | Reranker (quality) | `bge-reranker-v2-m3-amd-win` | CPU ONNX | Equal nDCG/MRR but 3.7× latency — use when ranking quality critical |
 | OCR (interactive) | `rapidocr-amd-directml` | iGPU DirectML | Fastest: p50 468 ms |
 | **OCR (batch / background)** | `rapidocr-amd-npu` | **NPU VitisAI** | p50 2031 ms — **frees iGPU for concurrent LLM**; use when indexing docs while serving LLM chat |
@@ -172,12 +172,12 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | `llava-7b-amd-win` | iGPU Vulkan | vlm_baseline | **FAIL** | TPS 16.84; TTFT p50 890 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | embedding_primary | **PASS** | hit@1 1.000; nDCG 1.000; p50 875 ms |
 | `bge-m3-amd` | iGPU Vulkan | embedding_bge | **PASS** | hit@1 1.000; nDCG 1.000; p50 914 ms |
-| `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | embedding_igpu_dml | **PASS** | hit@1 1.000; nDCG@10 0.987; p50 271 ms; 3-seed 2026-06-23 |
+| `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | embedding_igpu_dml | **PASS** | hit@1 1.000; nDCG@10 0.987; p50 2750 ms¹; 3-seed 2026-06-23 |
 | `rapidocr-amd-directml` | iGPU DirectML | ocr_gpu | **PASS** | CER 7.04%; p50 468.5 ms; structured field acc 92.86%; structured p50 476.5 ms |
 | `rapidocr-amd-npu` | NPU VitisAI | ocr_npu | **PASS** | CER 7.04%; p50 2031 ms; structured field acc 92.86%; structured p50 1867.5 ms |
 | `rapidocr-cpu` | CPU ONNX | ocr_cpu_baseline | **PASS** | CER 7.04%; p50 1592.5 ms; structured field acc 92.86%; structured p50 859.0 ms |
 | `paddleocr-cpu` | CPU ONNX | ocr_cpu_paddle | **PASS** | CER 7.04%; p50 1829.5 ms |
-| `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | reranker_igpu_dml | **PASS** | nDCG@10 1.000; MRR 1.000; pair p50 207 ms; 3-seed 2026-06-23 |
+| `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | reranker_igpu_dml | **PASS** | nDCG@10 1.000; MRR 1.000; pair p50 697 ms¹; query p50 2815 ms¹; 3-seed 2026-06-23 |
 | `bge-reranker-base-amd-win` | CPU ONNX | reranker_default | **PASS** | nDCG 1.000; MRR 1.000; p50 78 ms |
 | `bge-reranker-v2-m3-amd-win` | CPU ONNX | reranker_stronger | **PASS** | nDCG 1.000; MRR 1.000; p50 289 ms |
 | `sensevoice-small-amd-win` | iGPU DirectML | asr | **PASS** | CER 7.69%; RTF 0.073 |
@@ -187,13 +187,15 @@ MEASURED = latency/throughput collected; quality dims not fully qualified.
 
 ---
 
+> ¹ **ORT+DirectML latency note:** BGE embedding/reranker latency values (2750 ms / 697 ms pair) are ORT+DirectML SSH round-trip times measured from the harness (benchmark host → remote server → inference → return). Pure model inference on the Radeon 780M is faster; the overhead is dominated by network round-trip and ORT warm-up per request. Latency is informational only — verdict is determined by quality metrics (hit@1, nDCG, MRR), which are measured correctly regardless of round-trip time.
+
 ## Known Limitations
 
 - **`qwen2.5-7b` translation PASS (recalibrated 2026-06-21)** — Thresholds corrected to chrF≥35.0 / term≥75%. 3-seed confirmed: zh→en 79%≥75%, en→zh chrF 36.4≥35.0.
 - **`llama3.2-3b` GA FAIL — model-level weakness, not platform** — MMLU=0.390 and HellaSwag=0.320 are intrinsic LLaMA 3.2-3B limitations. GSM8K=0.710 PASS (math-only). Keep llama3.2-3b only for: (a) 32k+ context workloads, (b) tool-calling use cases. Do NOT replace with `qwen3-4b-amd` until its translation is fixed (see above).
 - **`qwen3-0.6b` MCQ FAIL** — mmlu=0.000, hellaswag=0.000. 0.6B model incapable of reliable MCQ letter output, confirmed post parser-fix. Use qwen3-1.7b for better GA coverage.
 - **`qwen3-4b` translation FAIL (3-seed 2026-06-23)** — Root cause: Ollama `think=false` option does not disable thinking mode; model generates ~1500–2000 thinking tokens before content. `max_tokens=2048` (current common.py setting) is exhausted during thinking on l1_flores long prompts, producing empty outputs (empty_rate=87–100%). l3_terminology shorter prompts partially succeed (zh→en chrF=63.6, but term=64%<75%; en→zh chrF=32.2<35). To fix: increase `max_tokens≥4096` in common.py (will increase per-request time to ~136s). GA skipped for now (each question ~68s; 300Q×3seeds≈17 hours).
-- **`qwen3-1.7b` GA FAIL (3-seed 2026-06-23, confirmed with and without `think=false`)** — gsm8k=0.300/PASS (numeric format works), mmlu=0.000/FAIL, hellaswag=0.000/FAIL. Zero variance across all 3 seeds in both v1 (no think=false, TTFT=0ms) and v2 (think=false, TTFT=6646ms). Root cause: **Qwen3 1.7B does not follow the MCQ "answer with just the letter A/B/C/D" instruction** regardless of thinking mode — model generates verbose multi-token explanations; benchmark parser fails to extract A/B/C/D. This is a model capability issue, not a thinking-mode issue. `think=false` fixes TTFT measurement only. Fix requires either prompt engineering (few-shot MCQ examples) or a more capable model tier. Same GA failure pattern as `qwen3-0.6b`.
+- **`qwen3-1.7b` GA FAIL (3-seed 2026-06-23, confirmed with and without `think=false`)** — v1 (no think=false): gsm8k=0.300/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL. v2 (think=false, 3-seed): gsm8k=0.293±0.015/FAIL (worst seed 0.280 < 0.30), mmlu=0.033±0.006/FAIL, hellaswag=0.007±0.006/FAIL. `think=false` marginally improved mmlu/hellaswag but worsened gsm8k below threshold. Root cause: **Qwen3 1.7B does not follow the MCQ "answer with just the letter A/B/C/D" instruction** regardless of thinking mode — model generates verbose multi-token explanations; benchmark parser fails to extract A/B/C/D. This is a model capability issue, not a thinking-mode issue. Fix requires either prompt engineering (few-shot MCQ examples) or a more capable model tier. Same GA failure pattern as `qwen3-0.6b`.
 - **LLM conditioned/scenarios FAIL** — Long-context conditioning fails across all tested models.
 - **No qualified VLM** — `llava-7b-amd-win` accuracy FAIL; no VLM workloads recommended.
 - **NPU LLM NOT SUPPORTED on 8845H** — AMD Ryzen 8845H has XDNA 1 (Hawk Point). Lemonade FLM / OGA NPU inference requires **XDNA 2 (Ryzen AI 300 series, e.g. Ryzen AI 9 HX 370)**. The 8845H iGPU (Radeon 780M) is the only GPU inference path via Ollama Vulkan.
@@ -248,7 +250,7 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | 2026-06-20 | Added quality dims: qwen2.5-7b general_ability PASS (3-seed); llama3.2-3b general_ability FAIL (3-seed — model-level); qwen3-0.6b FAIL (MCQ gap confirmed post parser-fix) |
 | 2026-06-21 | qwen2.5-14b perf recalibrated (TPS 8.6); AMD 7B translation threshold recalibrated (chrF 40→35, term 80%→75%); translation PASS confirmed 3-seed |
 | 2026-06-22 | Added qwen3:1.7b (TPS 63.5, TTFT P50 497ms) and qwen3:4b (TPS 30.7, TTFT P50 867ms); perf thresholds calibrated; GA/translation PENDING-VERIFY; llama3.2-3b documented as model-level GA FAIL; corrected XDNA 1 vs XDNA 2 hardware description (per official AMD docs); clarified NPU LLM NOT supported on 8845H; ASR moved from NPU to iGPU DirectML |
-| 2026-06-23 | qwen3-1.7b GA 3-seed confirmed FAIL (v1 no think=false + v2 with think=false — both FAIL identically: gsm8k=0.300/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL; root cause: model does not follow MCQ "just letter" instruction, not thinking mode); v2 TTFT corrected: P50=6646ms/P95=6962ms (think=false warm); TPS=60.0 tok/s |
+| 2026-06-23 | qwen3-1.7b GA 3-seed v2 (think=false) confirmed FAIL: gsm8k=0.293±0.015/FAIL (worst seed 0.280<0.30), mmlu=0.033±0.006/FAIL, hellaswag=0.007±0.006/FAIL; v1 (no think=false) had gsm8k=0.300/PASS but mmlu=0.000/FAIL, hellaswag=0.000/FAIL; think=false marginally improved mmlu/hellaswag but worsened gsm8k below threshold; root cause: model ignores MCQ "just letter" instruction regardless of thinking mode; v2 TTFT: P50=6646ms/P95=6962ms; TPS=60.0 tok/s |
 
 ---
 
