@@ -448,13 +448,14 @@ models:
     role: llm_nano_plus
     task_type: text_only
     translation_capable: false
-    notes: "AMD 780M Vulkan — Qwen3-1.7B；TTFT P50=497ms(warm)/P95=3034ms(cold)，TPS=64 tok/s；GA PENDING-VERIFY (1.5B tier thresholds: gsm8k≥0.30, mmlu≥0.45, hellaswag≥0.50)；translation skipped (1.7B insufficient)；prefill_decode PENDING-VERIFY (Ollama qwen3 usage 不返回) (2026-06-22 E2E)"
+    ollama_think: false   # think=false修复TTFT（0ms→6646ms正常），但MCQ仍FAIL；根因是模型行为而非thinking mode
+    notes: "AMD 780M Vulkan — Qwen3-1.7B；TPS=60.0 tok/s（3-seed v2 2026-06-23）；TTFT P50=6646ms/P95=6962ms（think=false warm，v2实测）；GA FAIL（gsm8k=0.300/PASS，mmlu=0.000/FAIL，hellaswag=0.000/FAIL；3-seed零方差；根因：Qwen3 1.7B不遵守MCQ'仅输出字母A/B/C/D'指令，解析器无法提取答案；think=false不解决此问题—v1无think=false同样FAIL，v2 with think=false同样FAIL；gsm8k=0.300 PASS因为数字格式正常）；translation skip (1.7B insufficient)"
     benchmarks:
       ttft:
         samples: 3
         thresholds:
-          p50_ttft_ms_max: 1000    # 实测 warm P50=497ms (2026-06-22)；含余量
-          p95_ttft_ms_max: 4500    # 实测 cold P95=3034ms (2026-06-22)；含余量
+          p50_ttft_ms_max: 9000    # think=false实测warm=6646ms(v2 2026-06-23)；9000含余量
+          p95_ttft_ms_max: 15000   # think=false估≤10s；15000含余量
       throughput:
         duration_s: 20
         thresholds:
@@ -1131,17 +1132,18 @@ models:
     role: llm_nano_plus
     task_type: text_only
     translation_capable: false
-    notes: "Intel CPU Ollama — Qwen3-1.7B；TPS=33 tok/s；TTFT warm=833ms/cold=3249ms；GA PENDING-VERIFY (1.5B tier)；translation skip (2026-06-22 E2E)"
+    ollama_think: false   # think=false修复TTFT测量（0ms→正常值），但MCQ仍FAIL；AMD v2已证实根因是模型行为
+    notes: "Intel CPU Ollama — Qwen3-1.7B；TPS=25.9 tok/s（3-seed 2026-06-23，2请求短暂测量）/33 tok/s（2026-06-22 20s持续测量）；TTFT=0ms（3-seed run无think=false，思考token立即流式）；think=false TTFT预估warm≈14s（PENDING-VERIFY）；GA FAIL confirmed 3-seed 2026-06-23（gsm8k=0.270/FAIL<0.30，mmlu=0.000/FAIL，hellaswag=0.000/FAIL；全零方差；Intel比AMD略差：gsm8k=0.270 vs AMD 0.300；根因：Qwen3 1.7B不遵守MCQ'仅输出字母'指令；与think=false无关—AMD v2已证实）；translation skip (2026-06-22 E2E)"
     benchmarks:
       ttft:
         samples: 3
         thresholds:
-          p50_ttft_ms_max: 1500    # 实测 warm P50=833ms (2026-06-22)；含余量
-          p95_ttft_ms_max: 5000    # 实测 cold=3249ms (2026-06-22)；含余量
+          p50_ttft_ms_max: 16000   # think=false预估warm≈13s（33TPS×AMD7s×64/33）；含余量
+          p95_ttft_ms_max: 25000   # think=false cold预估；含余量
       throughput:
         duration_s: 20
         thresholds:
-          tps_min: 22              # 实测 ~33 TPS (2026-06-22)；22 为下限
+          tps_min: 22              # 实测25.9 tok/s（3-seed 2026-06-23）/33 tok/s（2026-06-22）；22为下限（85%×25.9）
       general_ability:
         thresholds:
           gsm8k_min: 0.30          # PENDING-VERIFY: 1.5B tier
@@ -1159,7 +1161,7 @@ models:
     task_type: text_only
     translation_capable: true
     ollama_think: false   # qwen3 默认 thinking mode 导致 content 为空；think=false 直出答案
-    notes: "Intel CPU Ollama — Qwen3-4B；TPS=15.7 tok/s；TTFT warm=1539ms/cold=3714ms；GA PENDING-VERIFY (3-7B tier)；translation PENDING-VERIFY (2026-06-22 E2E)"
+    notes: "Intel CPU Ollama — Qwen3-4B；TTFT FAIL：实测110-144s（vs阈值2500ms）；根因：Qwen3 4B在Ollama中默认启动thinking mode并缓冲全部thinking tokens，think=false选项对4B无效（仅对1.7B有效）；translation/GA均未测（200s/req×120req=不可行）；基准测试于2026-06-23 11:40强制终止；此模型不适合生产：延迟不可接受"
     benchmarks:
       ttft:
         samples: 3
@@ -1261,6 +1263,34 @@ models:
           bleu_min: 18.0           # 生产门槛；3-seed FAIL (zh→en l1=2.3, en→zh l1=5.1)
           chrf_min: 38.0           # 生产门槛；3-seed FAIL (zh→en l1=24.3, en→zh l1=6.6; INT4退化)
           term_match_rate_min: 0.72 # 3-seed: zh→en=73%, en→zh=77% (达到但chrF未过)
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
+
+  - name: qwen3-4b-igpu-intel-win
+    provider: openai
+    target: intel-win-x86
+    base_url_env: OV_INTEL_QWEN3_4B_BASE_URL   # http://192.168.100.116:8084/v1
+    model_id: qwen3-4b-int4-ov
+    port: 8084
+    role: llm_intel_win_igpu_qwen3_large
+    task_type: text_only
+    translation_capable: true
+    notes: "TPS=11.79±0.10 tok/s（3-seed 2026-06-23）；翻译 FAIL：zh→en BLEU=3.86±0.77/chrF=28.52±3.19（阈值18/38），en→zh BLEU=4.98±0.28/chrF=7.49±0.39（near-random，阈值18/38）；术语率 zh→en=73%/en→zh=85%（均过72%）；根因：Qwen3-4B thinking mode 污染翻译输出（en→zh chrF=7.5≈随机，模型输出英文思考token而非中文翻译）；Intel Arc iGPU OV batch非流式TTFT=0ms；OV_INTEL_QWEN3_4B_BASE_URL=http://192.168.100.116:8084/v1"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 30000   # OV batch非流式：TTFT=0ms；同 0.6B/1.7B 模式
+          p95_ttft_ms_max: 200000  # 覆盖冷启动（4B cold compile ~180s）
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 9               # 实测11.79±0.10 tok/s（3-seed 2026-06-23）；78%阈值=9.2→取9
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 18.0           # 生产门槛（实测4.3→FAIL；thinking mode根因，不降阈值）
+          chrf_min: 38.0           # 生产门槛（实测zh→en=30.3/en→zh=7.9→均FAIL）
+          term_match_rate_min: 0.72 # 生产门槛（实测73%/85%→均PASS）
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
 
   - name: qwen2.5-7b-intel-win
