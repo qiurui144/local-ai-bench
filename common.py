@@ -372,6 +372,9 @@ def infer_sync(
         payload["seed"] = seed   # OpenAI 兼容采样种子(vLLM 支持);judge 多 seed 用
     if not getattr(model_cfg, "ollama_think", True):
         payload["options"] = {"think": False}
+        # Qwen3 thinking models use ~1000-2000 tokens for reasoning before emitting
+        # content; bump max_tokens so thinking finishes and content is non-empty.
+        payload["max_tokens"] = max(max_tokens, 2048)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -487,6 +490,7 @@ def infer_stream(
         payload["seed"] = seed   # 缓存 A/B 一致性校验需确定性采样(spec §11)
     if not getattr(model_cfg, "ollama_think", True):
         payload["options"] = {"think": False}
+        payload["max_tokens"] = max(max_tokens, 2048)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()

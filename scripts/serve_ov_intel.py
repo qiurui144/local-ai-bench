@@ -23,15 +23,45 @@ Notes:
 - Embedding warm latency: ~25 ms (bge-base-en INT8 on Arc).
 """
 
-from __future__ import annotations
-
 import argparse
 import logging
 import time
-from typing import Optional
+from typing import List, Optional, Union
+
+# Request must be at module scope so typing.get_type_hints() can resolve it
+# (from __future__ import annotations would make all annotations lazy strings,
+# causing FastAPI to fail resolution when _FastAPIRequest is only a local var)
+try:
+    from fastapi import Request as _FastAPIRequest  # type: ignore
+except ImportError:
+    _FastAPIRequest = None  # type: ignore
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+
+# Pydantic models at module scope so FastAPI resolves type hints correctly
+try:
+    from pydantic import BaseModel as _BaseModel  # type: ignore
+
+    class _ChatMessage(_BaseModel):
+        role: str
+        content: str
+
+    class _ChatRequest(_BaseModel):
+        model: str = ""
+        messages: List[_ChatMessage]
+        max_tokens: int = 512
+        temperature: float = 0.7
+        stream: bool = False
+        logprobs: bool = False
+        top_logprobs: int = 0
+
+    class _EmbRequest(_BaseModel):
+        model: str = ""
+        input: Union[List[str], str]
+
+except ImportError:
+    _ChatMessage = _ChatRequest = _EmbRequest = None  # type: ignore
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Lazy global singletons — loaded once on first request to avoid startup delay
@@ -86,27 +116,15 @@ def build_app(
 ):
     try:
         from fastapi import FastAPI, HTTPException  # type: ignore
-        from pydantic import BaseModel  # type: ignore
     except ImportError as e:
         raise SystemExit(f"Install fastapi + uvicorn: pip install fastapi uvicorn\n{e}")
+
+    if _FastAPIRequest is None:
+        raise SystemExit("Install fastapi: pip install fastapi uvicorn")
 
     import torch  # type: ignore
 
     app = FastAPI(title="OV Intel iGPU Server")
-
-    class ChatMessage(BaseModel):
-        role: str
-        content: str
-
-    class ChatRequest(BaseModel):
-        model: str = ""
-        messages: list[ChatMessage]
-        max_tokens: int = 512
-        temperature: float = 0.7
-
-    class EmbRequest(BaseModel):
-        model: str = ""
-        input: list[str] | str
 
     @app.get("/v1/models")
     def list_models():
@@ -118,7 +136,9 @@ def build_app(
         return {"object": "list", "data": models}
 
     @app.post("/v1/chat/completions")
-    def chat(req: ChatRequest):
+    async def chat(request: _FastAPIRequest):
+        body = await request.json()
+        req = _ChatRequest(**body)
         if not llm_dir:
             raise HTTPException(status_code=501, detail="LLM not configured (--llm flag missing)")
         _load_llm(llm_dir, llm_device)
@@ -151,7 +171,9 @@ def build_app(
         }
 
     @app.post("/v1/embeddings")
-    def embeddings(req: EmbRequest):
+    async def embeddings(request: _FastAPIRequest):
+        body = await request.json()
+        req = _EmbRequest(**body)
         if not emb_dir:
             raise HTTPException(status_code=501, detail="Embedding not configured (--emb flag missing)")
         _load_emb(emb_dir, emb_device)
