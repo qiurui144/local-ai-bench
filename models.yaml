@@ -818,12 +818,12 @@ models:
       ttft:
         prompt_tokens: 64
         thresholds:
-          p50_ttft_ms_max: 720                        # E2E实测 P50=647ms（3-seed，2026-06-20，VL server）；1.11× margin
-          p95_ttft_ms_max: 950                        # E2E实测 P95=822ms（3-seed，2026-06-20）；1.16× margin
+          p50_ttft_ms_max: 200                        # 实测 P50=131ms（3-seed，2026-06-23，VL server）；1.53× margin
+          p95_ttft_ms_max: 250                        # 实测 P95=148ms（3-seed，2026-06-23）；1.69× margin
       throughput:
         output_tokens: 32                             # ctx=768，保守 output
         thresholds:
-          tps_min: 65                                 # 3-seed mean=99.8 t/s±15.5（seeds: 77.9/110.5/111.0，2026-06-20）；65% floor，所有 seed 均通过
+          tps_min: 75                                 # 3-seed 2026-06-23 mean=110.1 t/s；68% floor
       prefill_decode:
         samples: 2
         thresholds:
@@ -836,7 +836,7 @@ models:
           chrf_min: 26.0                              # E2E实测 en->zh chrF=35.5；73% floor
           term_match_rate_min: 0.50                   # E2E实测 zh->en term=68%；74% floor
       skip: [accuracy, stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, prefill_decode, general_ability]
-    notes: "RK1820 PCIe NPU（VL server：LLM+vision.rknn，ctx=768，port 18001）；TTFT 3-seed P50=647ms/P95=822ms（2026-06-20）；TPS 3-seed mean=99.8±15.5 t/s（seeds: 77.9/110.5/111.0，2026-06-20）；翻译 2026-06-19 PASS（BLEU≥14，chrF≥26）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达；GSM8K 参考值 66%（2026-06-19 非正式）"
+    notes: "RK1820 PCIe NPU（VL server：LLM+vision.rknn，ctx=768，port 18001）；TTFT 3-seed P50=131ms/P95=148ms（2026-06-23 最新实测）；TPS 3-seed mean=110.1 t/s（throughput benchmark）；翻译 3-seed 2026-06-23 PASS（zh→en BLEU=24.7/chrF=55.9，en→zh BLEU=39.7/chrF=35.1，零方差）；general_ability 永久跳过：ctx=768 不支持 few-shot，HF 不可达；GSM8K 参考值 66%（2026-06-19 非正式）"
 
   # MiniCPM embedding on port 18080（已运行）
   # 实际运行在 RK3588 内置 RKNPU3（3×2 TOPS）上，不是 RK1820 PCIe NPU
@@ -861,7 +861,7 @@ models:
           mrr_min: 0.85               # 实测 MRR=1.000
           ndcg_at_10_min: 0.85        # 实测 nDCG@10=1.000
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, stability, concurrency, rerank, asr, ocr]
-    notes: "RK3588 内置 RKNPU3（3×2 TOPS）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；阈值 2026-06-19 实测校准（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=143ms）"
+    notes: "RK3588 内置 RKNPU3（3×2 TOPS）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；3-seed 2026-06-23 PASS（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=155.9ms，零方差）"
 
   # ═══ RK1820 PCIe NPU（独立 PCIe NPU 卡，官方名 RK1820，SDK: RKNN3 V0.3.0b0）═══
   # 运行时：rkllm3-server（port 18001 LLM；port 18002 ASR；port 18003 TTS）
@@ -1274,7 +1274,7 @@ models:
     role: llm_intel_win_igpu_qwen3_large
     task_type: text_only
     translation_capable: true
-    notes: "TPS=11.79±0.10 tok/s（3-seed 2026-06-23）；翻译 FAIL：zh→en BLEU=3.86±0.77/chrF=28.52±3.19（阈值18/38），en→zh BLEU=4.98±0.28/chrF=7.49±0.39（near-random，阈值18/38）；术语率 zh→en=73%/en→zh=85%（均过72%）；根因：Qwen3-4B thinking mode 污染翻译输出（en→zh chrF=7.5≈随机，模型输出英文思考token而非中文翻译）；Intel Arc iGPU OV batch非流式TTFT=0ms；GA PENDING（harness fix 2026-06-23：think→顶层/max_tokens=512；GA harness通过<think>剥离后解析答案）；OV_INTEL_QWEN3_4B_BASE_URL=http://192.168.100.116:8084/v1"
+    notes: "TPS=11.79±0.10 tok/s（3-seed 2026-06-23）；GA FAIL confirmed（3-seed 2026-06-24：gsm8k=0.377±0.015/worst 0.390/FAIL（<0.55），mmlu=0.167±0.021/worst 0.190/FAIL（<0.55，error_rate=5.67%），hellaswag=0.200±0.010/worst 0.190/FAIL（<0.60）；根因：Qwen3-4B thinking mode OV batch无法遵守MCQ'仅输出字母'指令，思考tokens污染答案解析；mmlu error_rate=5.67%佐证解析失败；与translation FAIL同根因）；翻译 FAIL：zh→en BLEU=3.86±0.77/chrF=28.52±3.19（阈值18/38），en→zh BLEU=4.98±0.28/chrF=7.49±0.39（near-random，阈值18/38）；术语率 zh→en=73%/en→zh=85%（均过72%）；Intel Arc iGPU OV batch非流式TTFT=0ms；OV_INTEL_QWEN3_4B_BASE_URL=http://192.168.100.116:8084/v1"
     benchmarks:
       ttft:
         samples: 3
