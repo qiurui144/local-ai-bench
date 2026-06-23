@@ -60,7 +60,7 @@ def _choose(backend, prompt: str):
             return predicted
     except Exception:
         pass
-    return parse_choice_letter(backend.generate(prompt, max_tokens=16, temperature=0.0))
+    return parse_choice_letter(backend.generate(prompt, max_tokens=512, temperature=0.0))
 
 
 def _eval(samples, answer_one, floor: float, extra: dict | None = None) -> dict:

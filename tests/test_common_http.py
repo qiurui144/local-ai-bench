@@ -118,7 +118,7 @@ def test_infer_sync_strips_think_from_content(monkeypatch):
 
 
 def test_openai_backend_generate_with_logprobs_passes_think_false(monkeypatch):
-    """generate_with_logprobs must pass options.think=False when ollama_think=False."""
+    """generate_with_logprobs must pass think=False at top level (not in options) when ollama_think=False."""
     import httpx
     from benchmark.llama_benchmark.backends.openai_compatible_backend import OpenAICompatibleBackend
     from benchmark.llama_benchmark.core.config import ModelConfig as LBModelConfig
@@ -148,7 +148,7 @@ def test_openai_backend_generate_with_logprobs_passes_think_false(monkeypatch):
     backend = OpenAICompatibleBackend(cfg)
     backend.generate_with_logprobs("What is 2+2?", ["A", "B", "C", "D"])
 
-    assert captured.get("options", {}).get("think") is False
+    assert captured.get("think") is False  # top-level, not in options
 
 
 def test_infer_sync_passes_seed_into_payload(monkeypatch):

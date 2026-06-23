@@ -1274,7 +1274,7 @@ models:
     role: llm_intel_win_igpu_qwen3_large
     task_type: text_only
     translation_capable: true
-    notes: "TPS=11.79±0.10 tok/s（3-seed 2026-06-23）；翻译 FAIL：zh→en BLEU=3.86±0.77/chrF=28.52±3.19（阈值18/38），en→zh BLEU=4.98±0.28/chrF=7.49±0.39（near-random，阈值18/38）；术语率 zh→en=73%/en→zh=85%（均过72%）；根因：Qwen3-4B thinking mode 污染翻译输出（en→zh chrF=7.5≈随机，模型输出英文思考token而非中文翻译）；Intel Arc iGPU OV batch非流式TTFT=0ms；OV_INTEL_QWEN3_4B_BASE_URL=http://192.168.100.116:8084/v1"
+    notes: "TPS=11.79±0.10 tok/s（3-seed 2026-06-23）；翻译 FAIL：zh→en BLEU=3.86±0.77/chrF=28.52±3.19（阈值18/38），en→zh BLEU=4.98±0.28/chrF=7.49±0.39（near-random，阈值18/38）；术语率 zh→en=73%/en→zh=85%（均过72%）；根因：Qwen3-4B thinking mode 污染翻译输出（en→zh chrF=7.5≈随机，模型输出英文思考token而非中文翻译）；Intel Arc iGPU OV batch非流式TTFT=0ms；GA PENDING（harness fix 2026-06-23：think→顶层/max_tokens=512；GA harness通过<think>剥离后解析答案）；OV_INTEL_QWEN3_4B_BASE_URL=http://192.168.100.116:8084/v1"
     benchmarks:
       ttft:
         samples: 3
@@ -1285,13 +1285,18 @@ models:
         duration_s: 20
         thresholds:
           tps_min: 9               # 实测11.79±0.10 tok/s（3-seed 2026-06-23）；78%阈值=9.2→取9
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.55          # 3-7B tier；GA PENDING-VERIFY (harness fix 2026-06-23)
+          mmlu_min: 0.55           # 3-7B tier
+          hellaswag_min: 0.60      # 3-7B tier
       translation:
         max_pairs: 10
         thresholds:
           bleu_min: 18.0           # 生产门槛（实测4.3→FAIL；thinking mode根因，不降阈值）
           chrf_min: 38.0           # 生产门槛（实测zh→en=30.3/en→zh=7.9→均FAIL）
           term_match_rate_min: 0.72 # 生产门槛（实测73%/85%→均PASS）
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
 
   - name: qwen2.5-7b-intel-win
     provider: ollama

@@ -113,7 +113,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "stream": False,
         }
         if not self.config.extra.get("ollama_think", True):
-            payload["options"] = {"think": False}
+            payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
         resp = httpx.post(
             f"{self._base_url}/chat/completions",
             headers=self._headers,
@@ -199,7 +199,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "stream": False,
         }
         if not self.config.extra.get("ollama_think", True):
-            payload["options"] = {"think": False}
+            payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
         resp = httpx.post(
             f"{self._base_url}/chat/completions",
             headers=self._headers,
