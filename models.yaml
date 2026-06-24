@@ -495,6 +495,38 @@ models:
           term_match_rate_min: 0.75 # 生产门槛；3-seed FAIL: zh→en term=64%；en→zh term=54%
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
 
+  - name: qwen3nt-4b-amd
+    provider: ollama
+    target: amd-win-x86
+    base_url_env: OLLAMA_AMD_BASE_URL
+    model_id: qwen3nt:latest             # Qwen3-4B-NoThink：系统提示 /no_think 禁用 thinking，GGUF Q4_K_M 2.5GB
+    port: 11434
+    role: llm_lightweight_nothink
+    task_type: text_only
+    translation_capable: true
+    notes: "AMD 780M Vulkan — Qwen3-4B（NoThink variant，ollama model qwen3nt:latest）；系统提示 /no_think 真正禁用 thinking tokens，与 ollama_think: false 不同（后者对 AMD 无效）；预期 TTFT ~1s，TPS ~30；GA PENDING-VERIFY 3-seed 2026-06-24；若 MCQ 格式遵从则有望 PASS（non-thinking 4B 应优于 1.7B/0.6B 同类 FAIL）"
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 2000          # 预期与 qwen3:4b 相近但无 thinking 前缀，实测校准后更新
+          p95_ttft_ms_max: 6000
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 20                    # 同 qwen3:4b 底线
+      general_ability:
+        thresholds:
+          gsm8k_min: 0.60               # 4B non-think 预期；校准后按实测调整
+          mmlu_min: 0.50
+          hellaswag_min: 0.65
+      translation:
+        max_pairs: 10
+        thresholds:
+          chrf_min: 35.0
+          term_match_rate_min: 0.75
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
+
   - name: bge-reranker-base-amd-win
     provider: local_reranker
     target: amd-win-x86
