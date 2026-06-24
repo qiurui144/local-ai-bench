@@ -98,7 +98,7 @@ def test_schema_and_metadata_present(tmp_path):
     rows = M.parse_matrix(_write_fixture(tmp_path))
     cat = M.build_model_catalog(rows, "matrix.en.md")
     assert cat["schema_version"] == M.SCHEMA_VERSION
-    assert cat["source_repo"] == "vlm-llm-benchmark"
+    assert cat["source_repo"] == "local-ai-bench"
     assert cat["generated_at"].endswith("Z")
 
 

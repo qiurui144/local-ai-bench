@@ -7,10 +7,10 @@
 #   3. Install vLLM offline from ./wheels (or fall back to online install)
 #   4. Symlink ./models/* into the HuggingFace cache layout
 #
-# Prerequisites: vlm-llm-benchmark/ unpacked at $PKG_ROOT, Python 3.10+ available.
+# Prerequisites: local-ai-bench/ unpacked at $PKG_ROOT, Python 3.10+ available.
 #
 # Usage:
-#   cd vlm-llm-benchmark
+#   cd local-ai-bench
 #   sudo bash scripts/bootstrap.sh
 
 set -euo pipefail

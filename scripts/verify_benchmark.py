@@ -114,7 +114,7 @@ def main():
     scenario_count = len(all_results)
 
     print("=" * 60)
-    print("vlm-llm-benchmark Dataset Verification Report")
+    print("local-ai-bench Dataset Verification Report")
     print("=" * 60)
 
     for r in all_results:

@@ -1,6 +1,6 @@
 # Release Notes
 
-> This file is the **single source of truth for release notes and version history** of vlm-llm-benchmark. Release notes are written here, per version section — never in separate `v*-release-notes.md` files.
+> This file is the **single source of truth for release notes and version history** of local-ai-bench. Release notes are written here, per version section — never in separate `v*-release-notes.md` files.
 
 ---
 

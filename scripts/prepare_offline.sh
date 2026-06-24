@@ -3,7 +3,7 @@
 #   1. vLLM and its dependencies as wheels → wheels/
 #   2. Reference Qwen model weights → models/
 #
-# After this, tar up the whole vlm-llm-benchmark/ directory and ship it to your
+# After this, tar up the whole local-ai-bench/ directory and ship it to your
 # air-gapped GPU host.
 #
 # Note: the 235B-FP8 model is ~240 GB; skip it via MODEL_SET unless you have disk.
@@ -104,4 +104,4 @@ echo " 完成"
 echo "====================================="
 echo "总体积: $(du -sh "$PKG_ROOT" | awk '{print $1}')"
 echo "Bundle command:"
-echo "  cd $(dirname "$PKG_ROOT") && tar czf vlm-llm-benchmark.tar.gz $(basename "$PKG_ROOT")/"
+echo "  cd $(dirname "$PKG_ROOT") && tar czf local-ai-bench.tar.gz $(basename "$PKG_ROOT")/"

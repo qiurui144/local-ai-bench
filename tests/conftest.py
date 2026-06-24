@@ -1,4 +1,4 @@
-"""Pytest conftest for vlm-llm-benchmark tests.
+"""Pytest conftest for local-ai-bench tests.
 
 Adds the repo root to sys.path so `import benchmark.rigor.*` etc. works
 without installing the package.

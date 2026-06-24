@@ -2,16 +2,16 @@
 
 ## How to cite this framework
 
-If you use the vlm-llm-benchmark validation framework in academic
+If you use the local-ai-bench validation framework in academic
 work, please cite it as:
 
 ```bibtex
 @software{vlm_llm_benchmark_2026,
-  title  = {vlm-llm-benchmark: A reproducible RAG / VLM / LLM
+  title  = {local-ai-bench: A reproducible RAG / VLM / LLM
             validation framework},
   author = {qiurui144 and contributors},
   year   = {2026},
-  url    = {https://github.com/qiurui144/vlm-llm-benchmark},
+  url    = {https://github.com/qiurui144/local-ai-bench},
   note   = {Apache-2.0}
 }
 ```

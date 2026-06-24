@@ -1,6 +1,6 @@
 # DEPLOY_TARGETS — Multi-Platform Deployment SOP
 
-Step-by-step runbook for deploying and running the vlm-llm-benchmark harness on all supported
+Step-by-step runbook for deploying and running the local-ai-bench harness on all supported
 remote target platforms. Covers SSH prerequisites, runtime startup, model pull, benchmark
 invocation, and per-platform skip-dimension recommendations.
 
@@ -323,7 +323,7 @@ scp qwen2.5-0.5b.rknn $RK3588_USER@$RK3588_HOST:/home/pi/models/
 
 ```bash
 rsync -az --exclude='output/' --exclude='__pycache__/' \
-  ./ $RK3588_USER@$RK3588_HOST:/home/pi/vlm-llm-benchmark/
+  ./ $RK3588_USER@$RK3588_HOST:/home/pi/local-ai-bench/
 ```
 
 Or use the harness sync helper if `--target` + `--sync-only` is wired:
@@ -339,7 +339,7 @@ The adapter (`benchmark/backends/rknn_adapter.py`) exposes a minimal OpenAI-comp
 
 ```bash
 sshpass -p "$RK3588_PASS" ssh -o ServerAliveInterval=30 $RK3588_USER@$RK3588_HOST \
-  "nohup python3 /home/pi/vlm-llm-benchmark/benchmark/backends/rknn_adapter.py \
+  "nohup python3 /home/pi/local-ai-bench/benchmark/backends/rknn_adapter.py \
    --model /home/pi/models/qwen2.5-0.5b.rknn \
    --port 8080 \
    > /tmp/rknn_adapter.log 2>&1 &"
@@ -616,7 +616,7 @@ targets:
     runtime_port: 11434
     accelerator: vulkan
     npu: amd-xdna
-    remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
+    remote_workdir: "C:\\Users\\happy\\local-ai-bench"
     python_cmd: "C:\\Users\\happy\\py311\\python.exe"
 
   rk3588-linux:
@@ -629,7 +629,7 @@ targets:
     runtime: rknn
     accelerator: rknn-npu
     mali_gpu: mali-g610
-    remote_workdir: "/home/pi/vlm-llm-benchmark"
+    remote_workdir: "/home/pi/local-ai-bench"
     python_cmd: "python3"
 
   k3-riscv:
@@ -641,7 +641,7 @@ targets:
     ssh_pass_env: K3_PASS
     runtime: llama_cpp
     runtime_port: 8080
-    remote_workdir: "/home/user/vlm-llm-benchmark"
+    remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
 
   jetson-agx:
@@ -654,7 +654,7 @@ targets:
     runtime: ollama
     runtime_port: 11434
     accelerator: cuda
-    remote_workdir: "/home/user/vlm-llm-benchmark"
+    remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
 
   intel-win-x86:
@@ -667,7 +667,7 @@ targets:
     runtime: ollama
     runtime_port: 11434
     accelerator: cpu
-    remote_workdir: "C:\\Users\\user\\vlm-llm-benchmark"
+    remote_workdir: "C:\\Users\\user\\local-ai-bench"
     python_cmd: "python.exe"
 
   intel-linux:
@@ -680,7 +680,7 @@ targets:
     runtime: vllm
     runtime_port: 8000
     accelerator: cpu
-    remote_workdir: "/home/user/vlm-llm-benchmark"
+    remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
 ```
 

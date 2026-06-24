@@ -18,7 +18,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "═══════════════════════════════════════════════"
-echo "  vlm-llm-benchmark  (vLLM serving harness)"
+echo "  local-ai-bench  (vLLM serving harness)"
 echo "═══════════════════════════════════════════════"
 
 # ── 1. 环境自检 ────────────────────────────────

@@ -1,9 +1,9 @@
 > [中文文档](./README.zh.md)
 
-# vlm-llm-benchmark
+# local-ai-bench
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml)
+[![CI](https://github.com/qiurui144/local-ai-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/local-ai-bench/actions/workflows/ci.yml)
 
 A reproducible **performance × model-quality benchmark platform** for AI-box model selection. It evaluates **VLM** (vision-language) and **LLM** (text) models served via **vLLM** (or any OpenAI-compatible endpoint) across **13 registered dimensions** — latency, throughput, concurrency and stability on the performance axis; accuracy, translation, embedding/rerank retrieval, ASR, **general ability** (gsm8k / mmlu / hellaswag) and real-scenario quality on the model-quality axis; plus **conditioned** capability curves (context-length ladder + prefix-cache cold/warm) — and ships a **complete RAG / LLM validation framework** for production deployments.
 
@@ -361,8 +361,8 @@ The harness talks HTTP to any OpenAI-compatible endpoint. Supported `provider:` 
 
 ```bash
 # 1. On a machine with internet — download all artifacts
-git clone https://github.com/qiurui144/vlm-llm-benchmark.git
-cd vlm-llm-benchmark
+git clone https://github.com/qiurui144/local-ai-bench.git
+cd local-ai-bench
 MODEL_SET=standard bash scripts/prepare_offline.sh
 # MODEL_SET options:
 #   minimal  (~16 GB) — VLM primary only
@@ -370,11 +370,11 @@ MODEL_SET=standard bash scripts/prepare_offline.sh
 #   full    (~320 GB) — all 4 models including 235B
 
 # 2. (Optional) bundle for offline transfer to an air-gapped GPU host
-tar czf vlm-llm-benchmark-bundle.tar.gz vlm-llm-benchmark/
-scp vlm-llm-benchmark-bundle.tar.gz dgx:/data/
+tar czf local-ai-bench-bundle.tar.gz local-ai-bench/
+scp local-ai-bench-bundle.tar.gz dgx:/data/
 
 # 3. On the GPU host
-cd /path/to/vlm-llm-benchmark
+cd /path/to/local-ai-bench
 sudo bash scripts/bootstrap.sh   # installs vLLM, links models to HF cache
 bash run.sh                      # default: VLM primary, skips 30-min stability
 ```
@@ -414,7 +414,7 @@ The shipped `golden/expectations.json` is a synthetic 9-case demo. Replace it wi
 ## Repository layout
 
 ```
-vlm-llm-benchmark/
+local-ai-bench/
 ├── run.sh                    # one-liner entry point
 ├── run_benchmark.py          # main scheduler
 ├── models.yaml               # model matrix (edit this to add/remove models)

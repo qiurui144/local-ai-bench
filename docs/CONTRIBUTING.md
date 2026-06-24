@@ -1,4 +1,4 @@
-# Contributing to vlm-llm-benchmark
+# Contributing to local-ai-bench
 
 Thanks for your interest in improving this benchmark. The project is two
 things at once: a small, reproducible **benchmark harness** (the 11

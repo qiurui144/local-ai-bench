@@ -21,7 +21,7 @@ targets:
     env_overrides:
       OLLAMA_AMD_BASE_URL: http://localhost:11434/v1
       LEMONADE_AMD_BASE_URL: http://localhost:8000/v1  # Lemonade NPU LLM server（lemonade-server serve）
-    remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
+    remote_workdir: "C:\\Users\\happy\\local-ai-bench"
     python_cmd: "C:\\Users\\happy\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
 
   rk3588-linux:
@@ -36,7 +36,7 @@ targets:
     accelerator: rknn-npu
     mali_gpu: mali-g610
     npu: rk3588-npu                  # 内置 RKNPU3（3×2 TOPS = 6 TOPS）；仅运行 embedding
-    remote_workdir: "/home/linaro/vlm-llm-benchmark"
+    remote_workdir: "/home/linaro/local-ai-bench"
     python_cmd: "python3"
     notes: "Rock 5B / OrangePi 5+；RK3588 内置 RKNPU3（3×2 TOPS）运行 embedding（port 18080）；RK1820 PCIe NPU 运行 LLM/ASR/TTS（port 18001/18002/18003）；16GB LPDDR5"
 
@@ -50,7 +50,7 @@ targets:
     runtime: rkllm3                  # RK1820 PCIe NPU 独立 rkllm3-server；LLM/ASR/TTS 端口分别 18001/18002/18003
     runtime_port: 18001              # rkllm3-server LLM 端口（-c 768 --n_predict 512 --top-k 1 --qwenvl）
     accelerator: rk1820-npu          # PCI 182a = Rockchip RK1820 NPU（Device 0003:31:00.0）；官方名: RK1820（RKNN3 SDK V0.3.0b0）
-    remote_workdir: "/home/linaro/vlm-llm-benchmark"
+    remote_workdir: "/home/linaro/local-ai-bench"
     python_cmd: "python3"
     notes: "Rockchip RK1820 PCIe NPU（lspci: 0003:31:00.0 Device 182a；系统别名 rk1828）；官方 SDK 名 RK1820（RKNN3 SDK V0.3.0b0 2025-09-12）；与 RK3588 共机器（同 IP/SSH）；LLM via rkllm3-server port 18001；ASR port 18002（POST /asr/transcribe）；TTS port 18003；embedding 由 RK3588 RKNPU3 提供（port 18080）"
 
@@ -64,7 +64,7 @@ targets:
     runtime: llama_cpp
     runtime_port: 11434
     accelerator: cpu
-    remote_workdir: "/root/vlm-llm-benchmark"
+    remote_workdir: "/root/local-ai-bench"
     python_cmd: "python3"
     notes: "进迭时空 SpacemiT K3（X100+A100 异构，8核 RISC-V RVV 0.7.1 + IME2 NPU，16GB）；Bianbu Linux；llama-server v8355（/usr/bin/llama-server）RVV+IME2 编译；port 11434 = llama-server 3B，port 8081 = llama-server 1.5B，port 8080 = nginx NAS（禁用）"
 
@@ -78,7 +78,7 @@ targets:
     runtime: llama_cpp
     runtime_port: 8081               # 与 K3 端口区分，便于同机跑两实例
     accelerator: cpu
-    remote_workdir: "/home/bianbu/vlm-llm-benchmark-k1"
+    remote_workdir: "/home/bianbu/local-ai-bench-k1"
     python_cmd: "python3"
     notes: "进迭时空 SpacemiT K1（BPI-F3/Muse-Pi，8核 RISC-V RVV 0.7.1）；同 K3 架构但配置 / 频率不同"
 
@@ -92,7 +92,7 @@ targets:
     runtime: ollama
     runtime_port: 11434
     accelerator: cuda
-    remote_workdir: "/home/user/vlm-llm-benchmark"
+    remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
 
   intel-win-x86:
@@ -107,7 +107,7 @@ targets:
     accelerator: cpu
     env_overrides:
       OLLAMA_INTEL_WIN_BASE_URL: http://localhost:11434/v1
-    remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
+    remote_workdir: "C:\\Users\\happy\\local-ai-bench"
     python_cmd: "python.exe"
 
   intel-linux:
@@ -120,5 +120,5 @@ targets:
     runtime: ollama           # CPU 模式；如有 GPU 可改 vllm + port: 8000
     runtime_port: 11434
     accelerator: cpu
-    remote_workdir: "/home/user/vlm-llm-benchmark"
+    remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"

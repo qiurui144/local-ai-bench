@@ -229,7 +229,7 @@ def build_model_catalog(rows: list[Row], matrix_rel: str) -> dict:
         "schema_version": SCHEMA_VERSION,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "harness_version": _harness_version(),
-        "source_repo": "vlm-llm-benchmark",
+        "source_repo": "local-ai-bench",
         "tiers": tiers,
     }
 

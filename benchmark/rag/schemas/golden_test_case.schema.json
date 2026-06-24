@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/golden_test_case.json",
+  "$id": "https://github.com/qiurui144/local-ai-bench/schemas/golden_test_case.json",
   "title": "Golden Test Case",
   "description": "A single golden case used in regression CI and judge calibration.",
   "type": "object",

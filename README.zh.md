@@ -1,9 +1,9 @@
 > [English](./README.md)
 
-# vlm-llm-benchmark
+# local-ai-bench
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![CI](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/vlm-llm-benchmark/actions/workflows/ci.yml)
+[![CI](https://github.com/qiurui144/local-ai-bench/actions/workflows/ci.yml/badge.svg)](https://github.com/qiurui144/local-ai-bench/actions/workflows/ci.yml)
 
 一个可复现的 **性能 × 模型质量综合评测平台**，用于 AI-box 模型选型。通过 **vLLM**（或任意 OpenAI 兼容端点）对 **VLM**（视觉语言）和 **LLM**（纯文本）模型进行 **13 个注册维度** 的评测——性能轴涵盖延迟、吞吐量、并发与稳定性；模型质量轴涵盖准确率、翻译、embedding/rerank 检索、ASR、**通用能力**（gsm8k / mmlu / hellaswag）和真实场景质量；另有 **conditioned** 能力曲线（上下文长度梯度 + prefix-cache 冷/热状态 A/B）——并附带面向生产部署的完整 **RAG / LLM 验证框架**。
 
@@ -296,8 +296,8 @@ harness 通过 HTTP 与任意 OpenAI 兼容端点通信。支持的 `provider:` 
 
 ```bash
 # 1. 在有网络的机器上——下载所有制品
-git clone https://github.com/qiurui144/vlm-llm-benchmark.git
-cd vlm-llm-benchmark
+git clone https://github.com/qiurui144/local-ai-bench.git
+cd local-ai-bench
 MODEL_SET=standard bash scripts/prepare_offline.sh
 # MODEL_SET 选项：
 #   minimal  (~16 GB) — 仅 VLM 主力
@@ -305,11 +305,11 @@ MODEL_SET=standard bash scripts/prepare_offline.sh
 #   full    (~320 GB) — 全部 4 个模型，含 235B
 
 # 2. （可选）打包以离线传输到气隙 GPU 主机
-tar czf vlm-llm-benchmark-bundle.tar.gz vlm-llm-benchmark/
-scp vlm-llm-benchmark-bundle.tar.gz dgx:/data/
+tar czf local-ai-bench-bundle.tar.gz local-ai-bench/
+scp local-ai-bench-bundle.tar.gz dgx:/data/
 
 # 3. 在 GPU 主机上
-cd /path/to/vlm-llm-benchmark
+cd /path/to/local-ai-bench
 sudo bash scripts/bootstrap.sh   # 安装 vLLM，链接模型到 HF cache
 bash run.sh                      # 默认：VLM 主力，跳过 30 分钟稳定性测试
 ```
@@ -349,7 +349,7 @@ python run_benchmark.py --model qwen3-235b-a22b-instruct-2507-fp8 \
 ## 仓库结构
 
 ```
-vlm-llm-benchmark/
+local-ai-bench/
 ├── run.sh                    # 一行入口
 ├── run_benchmark.py          # 主调度器
 ├── models.yaml               # 模型矩阵（编辑此文件添加/移除模型）

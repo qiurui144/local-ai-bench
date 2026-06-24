@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/rag_trace.json",
+  "$id": "https://github.com/qiurui144/local-ai-bench/schemas/rag_trace.json",
   "title": "RAG Trace",
   "description": "Per-request execution trace covering all 8 RAG stages. Each stage emits a sub-record so failure attribution can target the right layer.",
   "type": "object",

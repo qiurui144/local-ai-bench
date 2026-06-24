@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/qiurui144/vlm-llm-benchmark/schemas/judge_output.json",
+  "$id": "https://github.com/qiurui144/local-ai-bench/schemas/judge_output.json",
   "title": "Judge Output",
   "description": "Strict-JSON schema for LLM-as-judge replies. Used to constrain prompts and validate parses.",
   "oneOf": [
