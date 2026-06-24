@@ -132,17 +132,20 @@ class ModelConfig:
     # Ollama qwen3 thinking mode: set False to inject options.think=false, disabling chain-of-thought
     # tokens that otherwise fill max_tokens before any content is emitted (empty hyp/answer bug).
     ollama_think: bool = True
+    # Custom readiness check URL; overrides the default /v1/models poll.
+    # Use for services (e.g. ASR) that expose /health instead of /v1/models.
+    readiness_url: Optional[str] = None
 
     @property
     def base_url(self) -> str:
         # 1. env-var (设备 IP 可配置): OLLAMA_AMD_BASE_URL=http://192.168.x.x:11434/v1
         if self.base_url_env:
-            url = os.environ.get(self.base_url_env, "")
+            url = os.environ.get(self.base_url_env, "").strip()
             if url:
                 return url.rstrip("/")
         # 2. explicit override (models.yaml 文档化默认值，可被 env-var 覆盖)
         if self.base_url_override:
-            return self.base_url_override.rstrip("/")
+            return self.base_url_override.strip().rstrip("/")
         if self.provider == "deepseek":
             return "https://api.deepseek.com/v1"
         if self.provider == "dashscope":
@@ -668,13 +671,27 @@ _LOCAL_PROVIDERS = {"local_vllm", "llama_cpp", "ollama", "generic"}
 
 
 def wait_model_ready(model_cfg: ModelConfig, timeout_s: float = 300.0) -> bool:
-    """等本地 server 的 /v1/models 返回 200。云端 provider 直接视为就绪。
+    """等本地 server 就绪。云端 provider 直接视为就绪。
 
     本地 provider 包括：local_vllm / llama_cpp / ollama / generic。
     云端 provider（openai / deepseek / dashscope 等）直接返回 True，不轮询。
+    若 model_cfg.readiness_url 设置，则轮询该 URL（用于自定义 API 如 ASR /health）。
     """
     if model_cfg.provider not in _LOCAL_PROVIDERS:
         return True  # cloud endpoints are always "ready"
+    if model_cfg.readiness_url:
+        # Custom readiness URL (e.g. ASR services that expose /health, not /v1/models)
+        check_url = model_cfg.readiness_url
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            try:
+                r = httpx.get(check_url, timeout=5.0)
+                if r.status_code == 200:
+                    return True
+            except Exception:
+                pass
+            time.sleep(5)
+        return False
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
         try:

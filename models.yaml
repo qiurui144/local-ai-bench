@@ -986,6 +986,8 @@ models:
     provider: generic
     port: 18002
     base_url_env: RKLLM3_ASR_BASE_URL
+    base_url_override: "http://localhost:18002"    # ASR uses /asr/transcribe, not /v1/*
+    readiness_url: "http://localhost:18002/health" # custom health endpoint (not /v1/models)
     target: rk182x-linux
     model_id: rk-asr                               # Qwen3-based ASR on RK1820
     capabilities: [asr]
@@ -994,12 +996,13 @@ models:
     hardware_min: rk1820-npu
     benchmarks:
       asr:
+        manifest: "datasets/asr/manifest_rk_asr.jsonl"  # 5-sample 5-lang manifest (zh/en/ja/ko/yue)
         max_samples: 20
         thresholds:
           cer_max: 0.08                             # 校准值：实测 CER=4.73%（5语言/5样本）；2× margin → 8%
           rtf_max: 0.10                             # 校准值：实测 RTF mean=0.084；阈值 0.10（20% margin）
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, embedding, rerank, ocr, stability, concurrency]
-    notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；实测 CER=4.73%/RTF_mean=0.084（5语言：zh/en/ja/ko/yue，2026-06-20）；zh CER 高因繁简字集差异；en/ko/yue=0% CER；阈值已校准"
+    notes: "RK1820 PCIe NPU ASR（rk-asr service）；API: POST /asr/transcribe（Content-Type: audio/wav）；port 18002；3-seed 2026-06-24 PASS：CER=4.73%±0（零方差），RTF=0.0768±0.0045，WER=7.69%，p50=319ms，5语言（zh/en/ja/ko/yue），零空输出零错误；zh CER 高因繁简字集差异；en/ko/yue=0% CER；阈值已校准"
 
   # ═══ Intel Windows（Ollama CPU + OpenVINO iGPU/NPU，x86_64）═══
   # 硬件：Core Ultra 7 155H + Intel Arc iGPU（8 Xe-核，1GB 独显+32GB 共享）+ AI Boost NPU
