@@ -1,7 +1,7 @@
 # AMD Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU (Hawk Point), Windows 11  
-**Last calibrated:** 2026-06-23. This file is updated in place.
+**Last calibrated:** 2026-06-24. This file is updated in place.
 
 ---
 
@@ -251,24 +251,26 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | 2026-06-21 | qwen2.5-14b perf recalibrated (TPS 8.6); AMD 7B translation threshold recalibrated (chrF 40→35, term 80%→75%); translation PASS confirmed 3-seed |
 | 2026-06-22 | Added qwen3:1.7b (TPS 63.5, TTFT P50 497ms) and qwen3:4b (TPS 30.7, TTFT P50 867ms); perf thresholds calibrated; GA/translation PENDING-VERIFY; llama3.2-3b documented as model-level GA FAIL; corrected XDNA 1 vs XDNA 2 hardware description (per official AMD docs); clarified NPU LLM NOT supported on 8845H; ASR moved from NPU to iGPU DirectML |
 | 2026-06-23 | qwen3-1.7b GA 3-seed v2 (think=false) confirmed FAIL: gsm8k=0.293±0.015/FAIL (worst seed 0.280<0.30), mmlu=0.033±0.006/FAIL, hellaswag=0.007±0.006/FAIL; v1 (no think=false) had gsm8k=0.300/PASS but mmlu=0.000/FAIL, hellaswag=0.000/FAIL; think=false marginally improved mmlu/hellaswag but worsened gsm8k below threshold; root cause: model ignores MCQ "just letter" instruction regardless of thinking mode; v2 TTFT: P50=6646ms/P95=6962ms; TPS=60.0 tok/s |
+| 2026-06-23 | bge-base-en-v1.5-igpu-amd-win 3-seed PASS: hit@1=1.000, nDCG@10=0.987, P50=2750ms (ORT+DirectML). bge-reranker-base-igpu-amd-win 3-seed PASS: nDCG@10=1.000, MRR=1.000, pair P50=697ms. qwen3-4b translation 3-seed FAIL: l1_flores empty_rate=87–100% (thinking tokens exhaust max_tokens=2048); l3_term en→zh chrF=32.2<35 |
+| 2026-06-24 | Launched AMD full 3-seed verification: qwen3-embedding-0.6b, bge-m3, bge-reranker-base CPU, bge-reranker-v2-m3 CPU, sensevoice-small, rapidocr×3 — all pending 3-seed. Added qwen3nt-4b-amd (Qwen3-4B /no_think variant) for GA+translation — expected to fix max_tokens exhaustion issue |
 
 ---
 
 ## 中文摘要
 
 **平台：** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU（Hawk Point），Windows 11  
-**最后校准：** 2026-06-22。本文件原地更新。
+**最后校准：** 2026-06-24。本文件原地更新。
 
 ### 硬件画像
 
 | 计算单元 | 芯片 | 规格 | TDP | 角色 |
 |---|---|---|---|---|
 | **CPU** | AMD Ryzen 8845H | 4P+4E Zen4 核，16 线程，3.8–5.1 GHz | 35 W（基础）/ 54 W（最大） | ONNX CPU — OCR 基线、Reranker |
-| **iGPU** | Radeon 780M | RDNA3，12 CU，2800 MHz，17.9 GiB 共享显存 | SoC TDP 内 | Ollama Vulkan — LLM/Embedding；ONNX DirectML — OCR/ASR |
+| **iGPU** | Radeon 780M | RDNA3，12 CU，2800 MHz，17.9 GiB 共享显存 | SoC TDP 内 | Ollama Vulkan — LLM/Embedding；ONNX DirectML — OCR/ASR/Embedding INT8/Reranker INT8 |
 | **NPU** | AMD XDNA 1（Hawk Point） | 16 TOPS INT8；**非 "AI 300 Series"（XDNA 2）** | ~2–5 W | ONNX VitisAI — OCR 批处理（CNN/非生成式）；**LLM 不支持**（需 XDNA 2） |
 | **RAM** | LPDDR5x | 32 GB | ~3–5 W | — |
 
-> ⚠️ **重要澄清（官方文档）：** Ryzen 8845H 为 XDNA 1（Hawk Point），**不是** Ryzen AI 300 的 XDNA 2。LLM 推理不支持 XDNA 1 NPU，只能用 iGPU（Radeon 780M，Ollama Vulkan）。ASR 走 iGPU DirectML，不走 NPU VitisAI。
+> ⚠️ **重要澄清（官方文档）：** Ryzen 8845H 为 XDNA 1（Hawk Point），**不是** Ryzen AI 300 的 XDNA 2。LLM 推理不支持 XDNA 1 NPU，只能用 iGPU（Radeon 780M，Ollama Vulkan）。ASR 走 **iGPU DirectML**，不走 NPU VitisAI。
 
 ### 执行模式对比
 
@@ -276,61 +278,71 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 |---|---|---|---|
 | LLM 7B | ~3–5 TPS（估算） | **13.33 TPS** ✓ | **不支持**（XDNA 2 才可） |
 | LLM 3B | ~8–12 TPS（估算） | **28.99 TPS** ✓ | **不支持** |
+| Embedding INT8（BGE-base，DML） | — | **2750 ms p50** ✓ DirectML（3-seed PASS 2026-06-23）| — |
 | OCR 文字 p50 | 1593 ms | **469 ms** ✓ 最快 | 2031 ms（CNN 模型，VitisAI） |
-| ASR RTF | — | **0.073** ✓（DirectML） | — |
-| Reranker base p50 | **78 ms** ✓ | — | — |
+| ASR RTF | — | **0.073** ✓（DirectML；非 NPU） | — |
+| Reranker base p50/pair | **78 ms** ✓ | **697 ms** ✓ DirectML（3-seed PASS） | — |
 
 **AMD 8845H LLM 推理路径（唯一实用路径）：** Ollama Vulkan iGPU（Radeon 780M），已校准 13.33–91 TPS。Lemonade FLM/OGA NPU 路径在 8845H 上**不可用**，需 Ryzen AI 300（XDNA 2）。
 
-**→ 详细模式文档：**
-- [iGPU（Vulkan + DirectML）— LLM、Embedding、OCR 最快路径](./amd-windows-igpu.en.md)
-- [NPU（VitisAI）— OCR 批处理（CNN/非生成式）](./amd-windows-npu.en.md)
-- [CPU ONNX — OCR 基线、Reranker](./amd-windows-cpu.en.md)
+### 综合性能 + 模型效果（已校准 / 已验证）
 
-### 综合性能 + 模型效果
+| 模型 | 执行模式 | TPS/p50 | GSM8K | MMLU | HellaSwag | 翻译 | 综合 |
+|---|---|---|---|---|---|---|---|
+| `qwen2.5-7b-amd-win` | iGPU Vulkan | 13.33 TPS / 953 ms | 0.880 | 0.600 | 0.790 | **PASS**（3-seed 2026-06-21） | **GA PASS** |
+| `qwen3nt-4b-amd` | iGPU Vulkan | ~30 TPS（预期）| 待验证 | 待验证 | 待验证 | 待验证 | **PENDING**（3-seed 2026-06-24 进行中） |
+| `qwen3-4b-amd` | iGPU Vulkan | 29–30.7 TPS / 867 ms | GA skip | GA skip | GA skip | **FAIL**（thinking tokens 耗尽 max_tokens，3-seed 2026-06-23）| **FAIL** |
+| `llama3.2-3b-amd-win` | iGPU Vulkan | 28.99 TPS / 890 ms | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | FAIL | **GA FAIL**（模型固有局限） |
+| `qwen3-1.7b-amd` | iGPU Vulkan | 60.0 TPS / 6646 ms | 0.293/**FAIL** | 0.033/**FAIL** | 0.007/**FAIL** | skip | **GA FAIL**（MCQ 格式，3-seed） |
+| `qwen3-0.6b-amd` | iGPU Vulkan | 91.09 TPS / 1781 ms | 0.390/PASS | 0.000/**FAIL** | 0.000/**FAIL** | FAIL | **GA FAIL**（0.6B 能力不足） |
+| `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms | — | — | — | — | **PASS**（hit@1=1.000；3-seed PENDING 2026-06-24） |
+| `bge-m3-amd` | iGPU Vulkan | 914 ms | — | — | — | — | **PASS**（hit@1=1.000；3-seed PENDING 2026-06-24） |
+| `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | 2750 ms | — | — | — | — | **PASS**（hit@1=1.000，nDCG=0.987；**3-seed 2026-06-23**） |
+| `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | 697 ms/pair | — | — | — | — | **PASS**（nDCG=1.000，MRR=1.000；**3-seed 2026-06-23**） |
+| `bge-reranker-base-amd-win` | CPU ONNX | 78 ms | — | — | — | — | **PASS**（nDCG=1.000；3-seed PENDING 2026-06-24） |
+| `bge-reranker-v2-m3-amd-win` | CPU ONNX | 289 ms | — | — | — | — | **PASS**（nDCG=1.000；3-seed PENDING 2026-06-24） |
+| `rapidocr-amd-directml` | iGPU DirectML | 469 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
+| `rapidocr-amd-npu` | NPU VitisAI | 2031 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
+| `rapidocr-cpu` | CPU ONNX | 1593 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
+| `sensevoice-small-amd-win` | iGPU DirectML | RTF 0.073 | — | — | — | — | **PASS**（CER 7.69%；3-seed PENDING 2026-06-24） |
 
-| 模型 | TPS | TTFT p50 | PP/TG (t/s) | GSM8K | MMLU | HellaSwag | 翻译 | 综合 |
-|---|---|---|---|---|---|---|---|---|
-| qwen2.5-7b（iGPU） | 13.33 | 953 ms | 116/16 | **0.880** | **0.600** | **0.790** | FAIL（term/chrF） | **GA PASS** |
-| llama3.2-3b（iGPU） | 28.99 | 890 ms | 124/39 | 0.710/PASS | 0.390/FAIL | 0.320/FAIL | FAIL | **GA FAIL** |
-| qwen3-0.6b（iGPU） | 91.09 | 1781 ms | —/— | 0.390/PASS | 0.000/FAIL | 0.000/FAIL | FAIL | **GA FAIL** |
-| qwen3-embed-0.6b | — | 875 ms | — | — | — | — | — | **PASS**（hit@1=1.000） |
-| rapidocr-directml | — | 469 ms | — | — | — | — | — | **PASS**（CER 7.04%） |
-| sensevoice（NPU） | — | — | — | — | — | — | — | **PASS**（RTF 0.073） |
-| bge-reranker-base | — | 78 ms | — | — | — | — | — | **PASS**（nDCG=1.000） |
+### qwen3-4b vs qwen3nt-4b 区别
 
-**唯一 GA PASS 的 LLM：** `qwen2.5-7b-amd-win`（建议生产使用）。
+| | `qwen3-4b-amd` | `qwen3nt-4b-amd` |
+|---|---|---|
+| Ollama model | `qwen3:4b` | `qwen3nt:latest` |
+| thinking 控制 | `options.think=false`（**无效**，AMD 上未真正禁用）| 系统提示 `/no_think`（**有效**，ollama show 确认）|
+| l1_flores 空输出率 | 87–100%（thinking tokens 耗尽 max_tokens=2048） | 预期 0%（无 thinking 前缀） |
+| MCQ GA 测试 | 跳过（每题 ~68s 不实际） | 待验证（预期 ~1–2s/题） |
 
 ### 功耗参考
 
-| 场景 | 估算功耗 | 依据 |
-|---|---|---|
-| 空闲 | ~8–12 W | AMD 笔电桌面待机 |
-| LLM 0.6B（91 TPS） | **~30–35 W** | 轻度 iGPU，低 TDP |
-| LLM 3B（29 TPS） | **~38–45 W** | iGPU Vulkan，持续 |
-| LLM 7B（13 TPS） | **~42–50 W** | iGPU 持续高负载 |
-| OCR iGPU DirectML | **~25–35 W** | iGPU 激活，CPU 闲置 |
-| ASR NPU | **~15–20 W** | 主要 NPU，CPU+iGPU 低负载 |
+| 场景 | 估算功耗 |
+|---|---|
+| 空闲 | ~8–12 W |
+| LLM 0.6B（91 TPS） | ~30–35 W |
+| LLM 3B/4B（29–31 TPS） | ~38–45 W |
+| LLM 7B（13 TPS） | ~42–50 W |
+| OCR iGPU DirectML | ~25–35 W |
+| ASR iGPU DirectML | ~15–20 W |
 
-> **PENDING-VERIFY（实测功耗）：** 使用 `rocm-smi --showpower --json` 或 AMD μProf / HWiNFO64 在基准测试期间测量。
+> **能效对比（3B）：** AMD iGPU 28.99 TPS / ~42 W = **0.69 TPS/W**；Intel CPU 19.47 TPS / ~42 W = 0.46 TPS/W（AMD 高效 50%）。
 
-**能效对比（3B 模型）：**
-- AMD iGPU：28.99 TPS / ~42 W = **0.69 TPS/W**
-- Intel CPU：19.47 TPS / ~42 W = 0.46 TPS/W（AMD iGPU 高效 50%）
-
-### 选型摘要
+### 选型摘要（2026-06-24 当前状态）
 
 | 角色 | 推荐模型 | 执行模式 | 备注 |
 |---|---|---|---|
-| LLM 质量首选 | `qwen2.5-7b-amd-win` | iGPU Vulkan | **GA PASS**；TTFT 953ms 可交互 |
-| LLM 轻量（待修复） | `qwen3-4b-amd` | iGPU Vulkan | 29–30.7 TPS；翻译 **FAIL**（Ollama thinking mode：max_tokens=2048不足，l1_flores空输出）；修复方案：max_tokens≥4096；GA暂skip（每题~68s）；修复前请用 qwen2.5-7b |
-| LLM 轻量（旧版） | `llama3.2-3b-amd-win` | iGPU Vulkan | 29 TPS；**GA FAIL（模型固有局限，非平台问题**：MMLU=0.39/HellaSwag=0.32）；仅 32k 上下文或工具调用场景保留 |
-| LLM 纳米 | `qwen3-1.7b-amd` | iGPU Vulkan | 60 TPS；TTFT 6646ms（think=false）；**GA FAIL**（MCQ 答案格式问题；think=false 不修复；同 0.6B 模式） |
-| LLM 极速纳米 | `qwen3-0.6b-amd` | iGPU Vulkan | 91 TPS；MCQ 能力不足，不推荐 GA 场景 |
-| Embedding（首选） | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | hit@1=1.000；875 ms |
-| Embedding（多语言） | `bge-m3-amd` | iGPU Vulkan | 同质量，914 ms |
-| Reranker（默认） | `bge-reranker-base-amd-win` | CPU ONNX | 78 ms 最快 |
-| OCR（交互首选） | `rapidocr-amd-directml` | iGPU DirectML | 469 ms 最快 |
-| **OCR（后台批处理）** | `rapidocr-amd-npu` | **NPU VitisAI** | 2031 ms；**释放 iGPU 供 LLM 并发使用**；适合文档索引批量任务 |
-| **ASR（常驻后台）** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073；iGPU DirectML 路径（不是 NPU VitisAI），适合与 LLM 并行的后台语音转写 |
-| **向量库构建** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms/chunk；建议错峰或与 LLM 负载协调调度 |
+| **LLM 质量首选** | `qwen2.5-7b-amd-win` | iGPU Vulkan | **GA PASS**（MMLU 0.60 / HellaSwag 0.79 / 翻译 PASS 3-seed） |
+| **LLM 轻量候选** | `qwen3nt-4b-amd` | iGPU Vulkan | **3-seed GA+翻译验证进行中（2026-06-24）**；若 PASS 则替代 qwen2.5-7b 用于速度优先场景 |
+| LLM 轻量（旧，有局限） | `qwen3-4b-amd` | iGPU Vulkan | 翻译 FAIL；GA skip；thinking tokens 问题待 Ollama 修复 |
+| LLM 轻量（旧，FAIL） | `llama3.2-3b-amd-win` | iGPU Vulkan | GA FAIL（模型固有局限）；仅 32k 上下文场景保留 |
+| LLM 极速纳米 | `qwen3-0.6b-amd` | iGPU Vulkan | 91 TPS；MCQ 能力不足 |
+| **Embedding 首选** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | hit@1=1.000；875 ms（3-seed 进行中） |
+| Embedding 多语言 | `bge-m3-amd` | iGPU Vulkan | hit@1=1.000；914 ms（3-seed 进行中） |
+| **Embedding 厂商专属** | `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | hit@1=1.000；**3-seed PASS 2026-06-23** |
+| **Reranker 默认（最快）** | `bge-reranker-base-amd-win` | CPU ONNX | **78 ms**；nDCG=1.000（3-seed 进行中） |
+| Reranker 厂商专属 | `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | nDCG=1.000；**3-seed PASS 2026-06-23**；697 ms（DirectML） |
+| Reranker 高质量 | `bge-reranker-v2-m3-amd-win` | CPU ONNX | nDCG=1.000；289 ms（3-seed 进行中） |
+| **OCR 交互首选** | `rapidocr-amd-directml` | iGPU DirectML | **469 ms** 最快（3-seed 进行中） |
+| **OCR 后台批处理** | `rapidocr-amd-npu` | NPU VitisAI | 2031 ms；**释放 iGPU 供 LLM 并发**（3-seed 进行中） |
+| **ASR 常驻后台** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073；**iGPU DirectML 路径**（非 NPU），适合与 LLM 并行（3-seed 进行中） |
