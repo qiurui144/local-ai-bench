@@ -2,7 +2,7 @@
 
 **Platform:** intel-win-x86 | Lenovo ThinkPad 21LE, Windows 11  
 **Chip:** Intel Core Ultra 7 155H · Intel Arc iGPU · Intel AI Boost NPU  
-**Last calibrated:** 2026-06-25. This file is updated in place.
+**Last calibrated:** 2026-06-26. This file is updated in place.
 
 ---
 
@@ -23,7 +23,7 @@
 | Workload | CPU path (Ollama 100% CPU) | iGPU / OpenVINO (optimum-intel) | NPU |
 |---|---|---|---|
 | **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.1 TPS** (OVModelForCausalLM GPU, 115s load) ✓ — *8.4 TPS via LLMPipeline when fixed* | not tested |
-| **LLM 4B (qwen3-4b)** | **FAIL** — 15.7 TPS; TTFT 110–144 s (>>2500ms; Ollama think=false ineffective at 4B; terminated 2026-06-23) | **FAIL** — 11.9 TPS; GA FAIL 3-seed 2026-06-24 (gsm8k worst 0.390, mmlu worst 0.190/err 5.67%, hellaswag worst 0.190; all below 0.55/0.55/0.60; thinking mode OV can't follow MCQ format); translation FAIL (zh→en chrF=28.5<38, en→zh chrF=7.5<38; 3-seed 2026-06-23) | not tested |
+| **LLM 4B (qwen3-4b)** | **FAIL** — 15.7 TPS; TTFT 110–144 s (>>2500ms; Ollama think=false ineffective at 4B; terminated 2026-06-23) | **FAIL** — 10.0 TPS; GA FAIL confirmed 2-run 3-seed (2026-06-24/25): gsm8k=0.380±0.010, mmlu=0.173±0.006 (below 25% random; err_rate=0.000 post harness-fix 1c5c656), hellaswag=0.200±0.010; all below 0.55/0.55/0.60; thinking mode OV pollutes MCQ output; translation FAIL (zh→en l1_flores chrF=30.5, l3_term chrF=24.6; en→zh l1_flores chrF=7.2, l3_term chrF=5.3; all <38.0; empty_rate=0.000; 3-seed 2026-06-25) | not tested |
 | **LLM 7B (qwen2.5-7b iGPU)** | — | **GA PASS + Translation FAIL** — 6.3 TPS; GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0, hellaswag=0.840±0); Translation FAIL (en→zh l1_flores chrF=32.3<38.0, l3_term chrF=37.9<38.0 borderline; zh→en PASS; 3-seed 2026-06-25) | not tested |
 | **LLM 1.7B** | 33 TPS (GGUF CPU) | **FAIL** — 13.9 TPS; translation FAIL (zh→en chrF=24.3; en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) | not tested |
 | **LLM 1.5B (OV)** | — | **10.6 TPS** (OVModelForCausalLM GPU, 54s load) ✓; *34 TPS via LLMPipeline when fixed* | not tested |
@@ -95,7 +95,7 @@ docker run -p 8000:8000 openvino/model_server \
 | `qwen3-4b-intel-win` | NOT RUN | NOT RUN | NOT RUN | **FAIL** (TTFT 110–144 s; GA/translation impractical at 200 s/req) | NOT RUN | NOT RUN |
 | `qwen2.5-3b-intel-win` | **0.740** (n=100) | **0.530** (n=100) | **0.760** (n=100) | **PASS** | **PASS** (chrF 57.0; 3-seed) | **PASS** (chrF 33.44±0.08≥30.0; 3-seed) |
 | `qwen3-1.7b-intel-win` | 0.270 (n=100) | 0.000 (n=100) | 0.000 (n=100) | **FAIL** (gsm8k 0.270<0.30; MCQ format; think=false does not fix; 3-seed 2026-06-23; zero variance) | — (translation_capable: false) | — |
-| `qwen3-4b-igpu-intel-win` | 0.377±0.015/worst 0.390 | 0.167±0.021/worst 0.190 | 0.200±0.010/worst 0.190 | **FAIL** (gsm8k<0.55, mmlu<0.55/err_rate 5.67%, hellaswag<0.60; thinking mode OV can't follow MCQ format; 3-seed 2026-06-24) | **FAIL** (zh→en BLEU=3.86/chrF=28.5; en→zh BLEU=4.98/chrF=7.5≈random; term zh→en=73%/en→zh=85% PASS; same thinking mode root cause; 3-seed 2026-06-23) | — |
+| `qwen3-4b-igpu-intel-win` | 0.380±0.010 | 0.173±0.006 (below random 25%; err_rate=0.000 post-fix) | 0.200±0.010 | **FAIL** (gsm8k<0.55, mmlu<0.55/err_rate=0.000 (harness fix 1c5c656 applied; accuracy still near-random), hellaswag<0.60; 2-run 3-seed confirmed 2026-06-24/25; thinking mode OV pollutes MCQ format) | **FAIL** (zh→en l1_flores BLEU=4.3/chrF=30.5, l3_term chrF=24.6; en→zh l1_flores chrF=7.2, l3_term chrF=5.3≈random; empty_rate=0.000; all <38.0 threshold; 3-seed 2026-06-25) | — |
 | `qwen3-1.7b-igpu-intel-win` | — | — | — | SKIP (GA dims skipped) | **FAIL** (zh→en chrF=24.3<38; en→zh chrF=6.6<38; 3-seed 2026-06-23; INT4 quality degraded) | — |
 | `qwen3-0.6b-igpu-intel-win` | — | — | — | SKIP (GA dims skipped) | **FAIL** (zh→en BLEU=7<15, en→zh chrF=23.9<35; 3-seed 2026-06-23) | — |
 | `llama3.2-1b-intel-win` | — | — | — | SKIPPED | SKIPPED | SKIPPED |
@@ -205,7 +205,7 @@ docker run -p 8000:8000 openvino/model_server \
 | `rapidocr-intel-directml` | iGPU DirectML | ocr_directml | **FAIL** | CER 202.35% — not usable |
 | `qwen3-0.6b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_small | **FAIL** | TPS 15.9; TTFT OV-batch (non-streaming); translation FAIL (zh→en BLEU=7.1<15, en→zh chrF=23.9<35; 3-seed 2026-06-23); GA dims skipped |
 | `qwen3-1.7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_mid | **FAIL** | TPS 13.9 (3-seed 12.76±0.30); OV batch non-streaming (TTFT=0ms, error_rate=100%); translation FAIL (zh→en chrF=24.3, en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) |
-| `qwen3-4b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_large | **FAIL** | TPS 11.9 (3-seed 11.79±0.10); GA FAIL 3-seed 2026-06-24 (gsm8k worst 0.390/mean 0.377±0.015, mmlu worst 0.190/mean 0.167±0.021/err_rate 5.67%, hellaswag worst 0.190/mean 0.200±0.010; all below 0.55/0.55/0.60; root cause: Qwen3-4B OV batch thinking mode can't follow MCQ format); translation FAIL (zh→en BLEU=3.86±0.77/chrF=28.52±3.19; en→zh BLEU=4.98±0.28/chrF=7.49±0.39≈random; term zh→en=73%/en→zh=85% PASS; same root cause; 3-seed 2026-06-23) |
+| `qwen3-4b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_large | **FAIL** | TPS 10.0 (3-seed 2026-06-25); **GA FAIL confirmed 2-run 3-seed 2026-06-24/25**: gsm8k=0.380±0.010 (<0.55), mmlu=0.173±0.006 (<0.55; below 25% random; err_rate=0.000 after harness fix 1c5c656), hellaswag=0.200±0.010 (<0.60); root cause: Qwen3-4B OV batch thinking mode pollutes MCQ answer → extracted letter is wrong or absent; thresholds not lowered; **Translation FAIL** (zh→en l1_flores BLEU=4.3/chrF=30.5, l3_term chrF=24.6; en→zh l1_flores chrF=7.2, l3_term chrF=5.3≈random; empty_rate=0.000; all <38.0; 3-seed 2026-06-25; harness fix reduced empty_rate from 1.0→0.0 but accuracy still near-random) |
 | `qwen2.5-7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_7b | **GA PASS + Translation FAIL** | TPS 6.3; GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0.000, hellaswag=0.840±0.000; 3-seed 2026-06-25); Translation FAIL (zh→en PASS; en→zh l1_flores chrF=32.3±0<38.0, l3_term chrF=37.9±0<38.0 borderline 0.1 gap; all std=0.000 = systematic) |
 | `bge-base-en-v1.5-igpu-intel-win` | iGPU OpenVINO GPU | embedding_igpu | **PASS** | hit@1 0.833; nDCG@10 0.949; MRR 0.917; P50 ~2500ms isolated (9945ms 3-seed under GPU sharing); 3-seed confirmed 2026-06-23 |
 | `bge-reranker-base-igpu-intel-win` | iGPU OpenVINO GPU | reranker_igpu | **PASS** | nDCG@10 1.0; MRR 1.0; pair P50 4369ms (sharing); ~2714ms isolated; 3-seed confirmed 2026-06-23 |
@@ -299,7 +299,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 ## Known Limitations
 
 - **All iGPU LLM translation FAIL (3-seed 2026-06-23): 0.6B + 1.7B + 4B** — No OV INT4 model qualifies for production translation. 0.6B: too small. 1.7B: INT4 quality degraded (en→zh chrF=6.6). 4B: Qwen3 thinking mode contaminates output (en→zh chrF=7.5 ≈ random baseline; zh→en chrF=28.5 vs threshold 38.0). Root cause for 4B: OV batch mode has no equivalent of `ollama_think: false`; Qwen3-4B generates thinking tokens that flood the translation output. Term match rate PASS (73%/85% ≥ 72%) but BLEU/chrF both FAIL. **iGPU LLM translation not viable at any tested size.**
-- **`qwen3-4b-igpu-intel-win` GA FAIL confirmed (3-seed 2026-06-24)** — gsm8k worst 0.390 (<0.55), mmlu worst 0.190 (<0.55)/error_rate 5.67%, hellaswag worst 0.190 (<0.60). Same root cause as translation FAIL: OV batch mode + Qwen3-4B thinking mode → model outputs reasoning tokens before MCQ answer → parser fails to extract single letter → accuracy appears near-zero. Not a threshold issue; thinking mode incompatibility with MCQ format.
+- **`qwen3-4b-igpu-intel-win` GA FAIL confirmed (2-run 3-seed 2026-06-24/25)** — Run 1 (2026-06-24): gsm8k=0.377±0.015, mmlu=0.167±0.021/err_rate 5.67%, hellaswag=0.200±0.010. Run 2 (2026-06-25, post harness-fix 1c5c656): gsm8k=0.380±0.010, mmlu=0.173±0.006/err_rate **0.000** (fix worked), hellaswag=0.200±0.010. All below 0.55/0.55/0.60 thresholds; mmlu/hellaswag below 25% random chance. Root cause: Qwen3-4B OV batch thinking mode → model uses token budget on reasoning before MCQ answer → when max_tokens hit mid-think, stripped content is empty; when full think+answer present, extracted letter is still frequently wrong (Qwen3-4B INT4 MCQ format compliance gap). Harness fix reduced err_rate to 0% but did not improve accuracy. Not a threshold issue. Translation FAIL confirmed same run (empty_rate=0.000 post-fix; chrF near-random).
 - **`qwen2.5-7b-igpu-intel-win` GA PENDING (iGPU OV)** — 3-seed benchmark launched 2026-06-24, in progress. Qwen2.5-7B non-thinking model (no MCQ format issue). Port 8085. Estimated completion: ~90 min.
 - **`qwen3-4b-intel-win` FAIL (CPU, 2026-06-23)** — TTFT measured 110–144 s (threshold 2500 ms); root cause: Ollama buffers all Qwen3-4B thinking tokens before emitting first content token; `think=false` option ineffective at 4B scale (only works for 1.7B). GA and translation NOT RUN (200 s/req × 120 req = impractical). Recommend `qwen2.5-3b-intel-win` (TTFT 781 ms, GA PASS) as replacement.
 - **`qwen3-0.6b-intel-win` GA PENDING** — MCQ gap expected (same pattern as 1.7B); not yet confirmed.
@@ -328,7 +328,8 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 | 2026-06-23 | CPU LLM qwen3-1.7b GA 3-seed confirmed FAIL: gsm8k=0.270/FAIL (<0.30 threshold; Intel slightly worse than AMD 0.300), mmlu=0.000/FAIL, hellaswag=0.000/FAIL; TPS=25.9 tok/s (3-seed burst)/33 tok/s (20s sustained); TTFT=0ms (streaming thinking, no think=false in this run); zero variance (std=0.0000 all tasks); root cause: Qwen3 1.7B does not follow MCQ single-letter instruction; think=false confirmed NOT the fix (AMD v2 same result) |
 | 2026-06-24 | **iGPU qwen3-4b GA 3-seed confirmed FAIL** (10.8h wall-clock): gsm8k=0.377±0.015/worst 0.390 (<0.55), mmlu=0.167±0.021/worst 0.190 (<0.55, error_rate=5.67%), hellaswag=0.200±0.010/worst 0.190 (<0.60). Root cause: Qwen3-4B OV batch thinking mode pollutes MCQ answer parsing (same as translation FAIL). Thresholds NOT lowered. **Verdict: Qwen3-4B OV iGPU NOT qualified for GA. Recommended: qwen2.5-7b-igpu-intel-win (port 8085, GA PENDING) or qwen2.5-7b-intel-win (CPU GA PASS).** |
 | 2026-06-24 | **qwen2.5-7b-igpu-intel-win 3-seed GA benchmark launched** (port 8085, Qwen2.5-7B INT4 OV iGPU, non-thinking model). Active connection confirmed. Results PENDING. |
-| 2026-06-25 | **qwen2.5-7b-igpu-intel-win 3-seed COMPLETE** (5h 19m, 11:46–17:05): GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0.000, hellaswag=0.840±0.000 — all above threshold); Translation FAIL (zh→en both dirs PASS; en→zh l1_flores chrF=32.3±0<38.0, l3_term chrF=37.9±0<38.0 borderline; std=0.000 = systematic deficit). TPS=6.3. TTFT 100% error (OpenVINO non-streaming, platform limitation). **qwen3-4b-igpu-intel-win 3-seed started** 17:05:40 (in progress; expected FAIL — same thinking mode format issue as 2026-06-24). |
+| 2026-06-25 | **qwen2.5-7b-igpu-intel-win 3-seed COMPLETE** (5h 19m, 11:46–17:05): GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0.000, hellaswag=0.840±0.000 — all above threshold); Translation FAIL (zh→en both dirs PASS; en→zh l1_flores chrF=32.3±0<38.0, l3_term chrF=37.9±0<38.0 borderline; std=0.000 = systematic deficit). TPS=6.3. TTFT 100% error (OpenVINO non-streaming, platform limitation). **qwen3-4b-igpu-intel-win 3-seed started** 17:05:40 (11h 15m run). |
+| 2026-06-26 | **qwen3-4b-igpu-intel-win 3-seed COMPLETE** (11h 15m wall-clock, 17:05–04:20; report qwen3-4b-igpu-intel-win_20260625_170507): **GA FAIL confirmed** — gsm8k=0.380±0.010 (<0.55), mmlu=0.173±0.006 (<0.55; below random 25%), hellaswag=0.200±0.010 (<0.60); err_rate=0.000 (harness fix 1c5c656 applied — unclosed `<think>` stripping worked, reduced err_rate from 5.67%→0%, but accuracy still near-random). **Translation FAIL confirmed** — zh→en l1_flores chrF=30.5, l3_term chrF=24.6; en→zh l1_flores chrF=7.2, l3_term chrF=5.3; empty_rate=0.000 (fix applied). Consistent with 2026-06-24 run. Root cause unchanged: Qwen3-4B OV batch thinking mode MCQ format incompatibility. Raw reports archived to `/mnt/hdd/vlm-llm-benchmark/benchmark-runs/intel-win/`. |
 
 ---
 
@@ -336,7 +337,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 
 **平台：** intel-win-x86 | Lenovo ThinkPad 21LE，Windows 11  
 **芯片：** Intel Core Ultra 7 155H · Intel Arc iGPU · Intel AI Boost NPU  
-**最后校准：** 2026-06-25。本文件原地更新。
+**最后校准：** 2026-06-26。本文件原地更新。
 
 ### 硬件画像
 
@@ -352,7 +353,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 | 任务 | CPU 路径（Ollama） | iGPU（OpenVINO GPU） | NPU（VPUX） |
 |---|---|---|---|
 | LLM 7B | 8.25 TPS；TTFT 4820 ms | **GA PASS + 翻译 FAIL** — 6.3 TPS；GA PASS (gsm8k=0.733, mmlu=0.740, hellaswag=0.840)；翻译 FAIL (en→zh chrF=32.3/37.9 < 38.0；**3-seed 2026-06-25**) | 未测试 |
-| LLM 4B | 15.7 TPS；TTFT 1539 ms | **FAIL** — GA FAIL 3-seed（2026-06-24）；翻译 FAIL（思维模式污染输出；3-seed 2026-06-23） | — |
+| LLM 4B | 15.7 TPS；TTFT 1539 ms | **FAIL** — 10.0 TPS；GA FAIL 2轮3-seed 确认（2026-06-24/25）：gsm8k=0.380±0.010, mmlu=0.173±0.006（低于随机基准25%；err_rate=0.000，harness修复已生效但准确率仍近随机），hellaswag=0.200±0.010；翻译 FAIL（zh→en l1 chrF=30.5，l3 chrF=24.6；en→zh l1 chrF=7.2，l3 chrF=5.3；均低于阈值38.0；empty_rate=0.000；3-seed 2026-06-25） | — |
 | **LLM 1.7B** | 33 TPS；TTFT 833 ms | **FAIL** — 13.9 TPS；翻译 FAIL（INT4 退化：en→zh chrF=6.6；3-seed 2026-06-23） | 未测试 |
 | LLM 3B | 19.47 TPS；TTFT 781 ms | OpenVINO 官方无 3B 模型 | — |
 | **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（已验证）** | — |
@@ -419,5 +420,5 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 - **生产推理建议（Intel 官方文档）** — OVMS（OpenVINO Model Server）是 Intel 官方推荐的 LLM 生产部署路径，提供 OpenAI 兼容 REST API（`/v3/chat/completions`），支持持续批处理 + 分页注意力机制，自动从 HF 下载 OpenVINO 模型。
 - **Intel AI Boost NPU：OCR + Whisper 编码器已确认（2026-06-22 reshape 验证）** — PP-OCRv4 全部三个子模型通过静态 reshape 在 NPU 上运行：det [640×640] 33ms、rec [48×320] 11ms（必须 H=48；H=32 因 AvgPool kernel=3 > 特征高度=2 而失败）、cls [48×192] 3ms。Whisper 编码器 [1,80,3000] NPU PASS（115ms；比 CPU 快 11.5×）；解码器为动态形状，在 CPU 运行（PASS，编译 1s）。Embedding/Reranker FAIL（动态注意力形状）。SenseVoice FAIL（动态自注意力掩码，需重导出）。**attune 部署建议：OCR 放 NPU，LLM/Embedding/Reranker 放 iGPU，零资源竞争。**
 - **iGPU 非 LLM 任务已验证（2026-06-23 3-seed）** — BGE-base INT8 embedding harness P50 ~2500ms isolated（服务器侧推理 22–27ms，差异为 OV 首次请求编译开销²）；BGE-reranker-base INT8 harness pair P50 ~4369ms（与 LLM iGPU 共享时 GPU 争用；isolated ~2714ms）；Whisper-base INT8 ASR=567 ms。三项均 PASS（质量指标：embedding hit@1=0.833/nDCG@10=0.949，reranker nDCG@10=1.000）。模型存放于 `drivers/intel-win/ov_models/`。
-- **qwen3 iGPU 翻译 FAIL（2026-06-23 3-seed 已确认）** — 0.6B（模型过小）和 1.7B（INT4 量化严重退化：en→zh chrF=6.6；zh→en chrF=24.3）均 FAIL。iGPU LLM 翻译最低要求 ≥4B OV 模型（Qwen3-4B-int4-ov 待测试）。
-- **qwen3 系列 GA PENDING-VERIFY（CPU Ollama 路径）** — 0.6B/1.7B/4B 性能已校准（2026-06-22）；CPU 质量测试进行中（qwen3-4b benchmark 待运行）。
+- **qwen3 iGPU 翻译全尺寸 FAIL（3-seed 已确认）** — 0.6B（模型过小）、1.7B（INT4 量化退化：en→zh chrF=6.6；zh→en chrF=24.3；3-seed 2026-06-23）、**4B（思维模式污染：zh→en l1 chrF=30.5，l3 chrF=24.6；en→zh l1 chrF=7.2，l3 chrF=5.3≈随机基准；empty_rate=0.000；3-seed 2026-06-25）** 均 FAIL。**所有测试尺寸（0.6B/1.7B/4B）的 iGPU OV LLM 翻译均不合格。**
+- **`qwen3-4b-igpu-intel-win` GA FAIL 已确认（2轮3-seed 2026-06-24/25）** — gsm8k=0.380±0.010, mmlu=0.173±0.006（低于随机基准25%；harness修复1c5c656将err_rate从5.67%降至0%，但准确率仍近随机）, hellaswag=0.200±0.010。根因：Qwen3-4B OV批量思维模式在输出MCQ答案前耗尽token，解析失败。不是阈值问题。
