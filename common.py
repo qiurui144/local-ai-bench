@@ -337,14 +337,15 @@ class InferResult:
 
 
 def _strip_think_tags(text: str) -> str:
-    """Remove <think>...</think> blocks from model output (vLLM Qwen3 thinking mode).
+    """Remove <think>...</think> blocks from model output (vLLM/OpenVINO Qwen3 thinking mode).
 
-    Strips the entire block including the tags and trims surrounding whitespace.
-    If the text is entirely a think block with nothing after, returns empty string
-    so empty_rate correctly counts it as empty rather than masking the failure.
+    Strips complete <think>...</think> blocks and any unclosed <think> block
+    (model hit max_tokens during reasoning, leaving no closing tag).
     """
     import re
     stripped = re.sub(r"<think>[\s\S]*?</think>", "", text, flags=re.IGNORECASE)
+    # Also strip unclosed <think> (no </think> because max_tokens hit during reasoning)
+    stripped = re.sub(r"<think>[\s\S]*", "", stripped, flags=re.IGNORECASE)
     return stripped.strip()
 
 
@@ -424,9 +425,36 @@ def infer_sync(
             latency_ms=elapsed,
         )
     choice = data.get("choices", [{}])[0]
-    content = choice.get("message", {}).get("content", "") or ""
-    # vLLM Qwen3 thinking mode puts <think>...</think> blocks in content.
-    # Strip them so BLEU/accuracy evaluation sees only the actual answer.
+    msg = choice.get("message", {}) or {}
+    content = msg.get("content", "") or ""
+    # Ollama 0.30+ Qwen3 thinking models put reasoning in a separate 'reasoning' field
+    # and leave 'content' empty when max_tokens was exhausted during thinking.
+    # Retry once with 4× max_tokens so the model has room to emit the actual answer.
+    if not content and (msg.get("reasoning") or msg.get("thinking")):
+        bumped = min(max(max_tokens * 4, 2048), 4096)
+        if bumped > max_tokens:
+            logger.debug("Ollama thinking model returned empty content (reasoning-only); "
+                         "retrying with max_tokens=%d", bumped)
+            retry_payload = dict(payload)
+            retry_payload["max_tokens"] = bumped
+            try:
+                r2 = _post_with_retry(
+                    url, retry_payload,
+                    headers={"Authorization": model_cfg.auth_header},
+                    timeout_s=timeout_s,
+                    is_cloud=model_cfg.provider in _CLOUD_PROVIDERS,
+                )
+                if r2.status_code == 200:
+                    d2 = r2.json()
+                    c2 = (d2.get("choices", [{}])[0].get("message", {}) or {}).get("content", "") or ""
+                    if c2:
+                        content = c2
+                        data = d2
+                        choice = d2.get("choices", [{}])[0]
+            except Exception:
+                pass  # keep original empty content on retry failure
+    # vLLM/OpenVINO Qwen3 thinking mode puts <think>...</think> blocks in content.
+    # Strip them (including unclosed blocks when model hit max_tokens during reasoning).
     content = _strip_think_tags(content)
     usage = data.get("usage", {}) or {}
     input_tokens = int(usage.get("prompt_tokens", 0))
