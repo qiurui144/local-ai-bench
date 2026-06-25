@@ -2,7 +2,7 @@
 
 **Platform:** intel-win-x86 | Lenovo ThinkPad 21LE, Windows 11  
 **Chip:** Intel Core Ultra 7 155H · Intel Arc iGPU · Intel AI Boost NPU  
-**Last calibrated:** 2026-06-23. This file is updated in place.
+**Last calibrated:** 2026-06-25. This file is updated in place.
 
 ---
 
@@ -24,6 +24,7 @@
 |---|---|---|---|
 | **LLM 7B** | 8.25 TPS; TTFT 4820 ms | **8.1 TPS** (OVModelForCausalLM GPU, 115s load) ✓ — *8.4 TPS via LLMPipeline when fixed* | not tested |
 | **LLM 4B (qwen3-4b)** | **FAIL** — 15.7 TPS; TTFT 110–144 s (>>2500ms; Ollama think=false ineffective at 4B; terminated 2026-06-23) | **FAIL** — 11.9 TPS; GA FAIL 3-seed 2026-06-24 (gsm8k worst 0.390, mmlu worst 0.190/err 5.67%, hellaswag worst 0.190; all below 0.55/0.55/0.60; thinking mode OV can't follow MCQ format); translation FAIL (zh→en chrF=28.5<38, en→zh chrF=7.5<38; 3-seed 2026-06-23) | not tested |
+| **LLM 7B (qwen2.5-7b iGPU)** | — | **GA PASS + Translation FAIL** — 6.3 TPS; GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0, hellaswag=0.840±0); Translation FAIL (en→zh l1_flores chrF=32.3<38.0, l3_term chrF=37.9<38.0 borderline; zh→en PASS; 3-seed 2026-06-25) | not tested |
 | **LLM 1.7B** | 33 TPS (GGUF CPU) | **FAIL** — 13.9 TPS; translation FAIL (zh→en chrF=24.3; en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) | not tested |
 | **LLM 1.5B (OV)** | — | **10.6 TPS** (OVModelForCausalLM GPU, 54s load) ✓; *34 TPS via LLMPipeline when fixed* | not tested |
 | **LLM 1B** | 25.26 TPS (GGUF CPU) | No OV 1B in hub | not tested |
@@ -165,7 +166,8 @@ docker run -p 8000:8000 openvino/model_server \
 
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
-| LLM quality | `qwen2.5-7b-intel-win` | CPU | Best confirmed quality; GA PASS (MMLU 0.719 / HellaSwag 0.767 / translation PASS 3-seed) |
+| LLM quality (CPU) | `qwen2.5-7b-intel-win` | CPU | Best confirmed quality; GA PASS (MMLU 0.719 / HellaSwag 0.767 / translation PASS 3-seed) |
+| LLM iGPU (GA-only) | `qwen2.5-7b-igpu-intel-win` | iGPU OpenVINO | GA PASS (gsm8k=0.733, mmlu=0.740, hellaswag=0.840; 3-seed 2026-06-25); Translation FAIL (en→zh borderline chrF=37.9); use for GA-only workloads |
 | LLM daily use | `qwen2.5-3b-intel-win` | CPU | Interactive TTFT 781 ms; GA PASS; 8-concurrency verified |
 | LLM lightweight | `qwen3-4b-intel-win` | CPU | **NOT RECOMMENDED** — TTFT FAIL (110–144 s >> 2500 ms; Ollama think=false ineffective at 4B); use `qwen2.5-3b-intel-win` instead |
 | LLM nano | `qwen3-1.7b-intel-win` | CPU | 25.9 TPS; GA FAIL (gsm8k 0.270<0.30; MCQ format; 3-seed 2026-06-23) |
@@ -204,7 +206,7 @@ docker run -p 8000:8000 openvino/model_server \
 | `qwen3-0.6b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_small | **FAIL** | TPS 15.9; TTFT OV-batch (non-streaming); translation FAIL (zh→en BLEU=7.1<15, en→zh chrF=23.9<35; 3-seed 2026-06-23); GA dims skipped |
 | `qwen3-1.7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_mid | **FAIL** | TPS 13.9 (3-seed 12.76±0.30); OV batch non-streaming (TTFT=0ms, error_rate=100%); translation FAIL (zh→en chrF=24.3, en→zh chrF=6.6; 3-seed 2026-06-23; INT4 quality degraded) |
 | `qwen3-4b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_large | **FAIL** | TPS 11.9 (3-seed 11.79±0.10); GA FAIL 3-seed 2026-06-24 (gsm8k worst 0.390/mean 0.377±0.015, mmlu worst 0.190/mean 0.167±0.021/err_rate 5.67%, hellaswag worst 0.190/mean 0.200±0.010; all below 0.55/0.55/0.60; root cause: Qwen3-4B OV batch thinking mode can't follow MCQ format); translation FAIL (zh→en BLEU=3.86±0.77/chrF=28.52±3.19; en→zh BLEU=4.98±0.28/chrF=7.49±0.39≈random; term zh→en=73%/en→zh=85% PASS; same root cause; 3-seed 2026-06-23) |
-| `qwen2.5-7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_7b | **GA PENDING** | Qwen2.5-7B INT4 OV; port 8085; non-thinking model; 3-seed GA benchmark launched 2026-06-24 (in progress) |
+| `qwen2.5-7b-igpu-intel-win` | iGPU OpenVINO GPU | llm_igpu_7b | **GA PASS + Translation FAIL** | TPS 6.3; GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0.000, hellaswag=0.840±0.000; 3-seed 2026-06-25); Translation FAIL (zh→en PASS; en→zh l1_flores chrF=32.3±0<38.0, l3_term chrF=37.9±0<38.0 borderline 0.1 gap; all std=0.000 = systematic) |
 | `bge-base-en-v1.5-igpu-intel-win` | iGPU OpenVINO GPU | embedding_igpu | **PASS** | hit@1 0.833; nDCG@10 0.949; MRR 0.917; P50 ~2500ms isolated (9945ms 3-seed under GPU sharing); 3-seed confirmed 2026-06-23 |
 | `bge-reranker-base-igpu-intel-win` | iGPU OpenVINO GPU | reranker_igpu | **PASS** | nDCG@10 1.0; MRR 1.0; pair P50 4369ms (sharing); ~2714ms isolated; 3-seed confirmed 2026-06-23 |
 | `whisper-base-npu-intel-win` | iGPU/NPU OpenVINO | asr | **FAIL** | CER 53.85% (>12%); WER 100%; RTF 3.64 (>0.5); 3-seed 2026-06-23 |
@@ -326,6 +328,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 | 2026-06-23 | CPU LLM qwen3-1.7b GA 3-seed confirmed FAIL: gsm8k=0.270/FAIL (<0.30 threshold; Intel slightly worse than AMD 0.300), mmlu=0.000/FAIL, hellaswag=0.000/FAIL; TPS=25.9 tok/s (3-seed burst)/33 tok/s (20s sustained); TTFT=0ms (streaming thinking, no think=false in this run); zero variance (std=0.0000 all tasks); root cause: Qwen3 1.7B does not follow MCQ single-letter instruction; think=false confirmed NOT the fix (AMD v2 same result) |
 | 2026-06-24 | **iGPU qwen3-4b GA 3-seed confirmed FAIL** (10.8h wall-clock): gsm8k=0.377±0.015/worst 0.390 (<0.55), mmlu=0.167±0.021/worst 0.190 (<0.55, error_rate=5.67%), hellaswag=0.200±0.010/worst 0.190 (<0.60). Root cause: Qwen3-4B OV batch thinking mode pollutes MCQ answer parsing (same as translation FAIL). Thresholds NOT lowered. **Verdict: Qwen3-4B OV iGPU NOT qualified for GA. Recommended: qwen2.5-7b-igpu-intel-win (port 8085, GA PENDING) or qwen2.5-7b-intel-win (CPU GA PASS).** |
 | 2026-06-24 | **qwen2.5-7b-igpu-intel-win 3-seed GA benchmark launched** (port 8085, Qwen2.5-7B INT4 OV iGPU, non-thinking model). Active connection confirmed. Results PENDING. |
+| 2026-06-25 | **qwen2.5-7b-igpu-intel-win 3-seed COMPLETE** (5h 19m, 11:46–17:05): GA PASS (gsm8k=0.733±0.006, mmlu=0.740±0.000, hellaswag=0.840±0.000 — all above threshold); Translation FAIL (zh→en both dirs PASS; en→zh l1_flores chrF=32.3±0<38.0, l3_term chrF=37.9±0<38.0 borderline; std=0.000 = systematic deficit). TPS=6.3. TTFT 100% error (OpenVINO non-streaming, platform limitation). **qwen3-4b-igpu-intel-win 3-seed started** 17:05:40 (in progress; expected FAIL — same thinking mode format issue as 2026-06-24). |
 
 ---
 
@@ -333,7 +336,7 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 
 **平台：** intel-win-x86 | Lenovo ThinkPad 21LE，Windows 11  
 **芯片：** Intel Core Ultra 7 155H · Intel Arc iGPU · Intel AI Boost NPU  
-**最后校准：** 2026-06-23。本文件原地更新。
+**最后校准：** 2026-06-25。本文件原地更新。
 
 ### 硬件画像
 
@@ -348,8 +351,8 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 
 | 任务 | CPU 路径（Ollama） | iGPU（OpenVINO GPU） | NPU（VPUX） |
 |---|---|---|---|
-| LLM 7B | 8.25 TPS；TTFT 4820 ms | 待测（7B INT4 下载中） | 未测试 |
-| LLM 4B | 15.7 TPS；TTFT 1539 ms | 待测（Qwen3-4B-int4-ov 下载中） | — |
+| LLM 7B | 8.25 TPS；TTFT 4820 ms | **GA PASS + 翻译 FAIL** — 6.3 TPS；GA PASS (gsm8k=0.733, mmlu=0.740, hellaswag=0.840)；翻译 FAIL (en→zh chrF=32.3/37.9 < 38.0；**3-seed 2026-06-25**) | 未测试 |
+| LLM 4B | 15.7 TPS；TTFT 1539 ms | **FAIL** — GA FAIL 3-seed（2026-06-24）；翻译 FAIL（思维模式污染输出；3-seed 2026-06-23） | — |
 | **LLM 1.7B** | 33 TPS；TTFT 833 ms | **FAIL** — 13.9 TPS；翻译 FAIL（INT4 退化：en→zh chrF=6.6；3-seed 2026-06-23） | 未测试 |
 | LLM 3B | 19.47 TPS；TTFT 781 ms | OpenVINO 官方无 3B 模型 | — |
 | **LLM 1.5B（OV）** | — | **34 TPS；TTFT 192 ms ✓（已验证）** | — |
@@ -390,7 +393,8 @@ Models stored at `drivers/intel-win/ov_models/` (synced 2026-06-22).
 
 | 角色 | 推荐模型 | 执行模式 | 备注 |
 |---|---|---|---|
-| LLM 质量首选 | `qwen2.5-7b-intel-win` | CPU | GA PASS（MMLU 0.719/HellaSwag 0.767/翻译 PASS 3-seed）；TTFT 4820 ms 适合非交互 |
+| LLM 质量首选（CPU） | `qwen2.5-7b-intel-win` | CPU | GA PASS（MMLU 0.719/HellaSwag 0.767/翻译 PASS 3-seed）；TTFT 4820 ms 适合非交互 |
+| LLM iGPU（仅 GA） | `qwen2.5-7b-igpu-intel-win` | iGPU OpenVINO | **GA PASS**（gsm8k=0.733/mmlu=0.740/hellaswag=0.840；**3-seed 2026-06-25**）；翻译 FAIL（en→zh borderline chrF=37.9<38.0）；适合 GA-only 场景 |
 | LLM 日常首选 | `qwen2.5-3b-intel-win` | CPU | TTFT 781 ms 可交互；GA PASS；c8 并发验证 |
 | LLM 轻量 | `qwen3-4b-intel-win` | CPU | 15.7 TPS；GA PENDING-VERIFY；预期优于 3B |
 | LLM 纳米 | `qwen3-1.7b-intel-win` | CPU | 25.9 TPS；GA FAIL（gsm8k=0.270<0.30；MCQ 格式；3-seed 2026-06-23）|

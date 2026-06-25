@@ -75,7 +75,15 @@ class RemoteExecutor:
         Windows target: 先在目标机建目录，再 scp -r 推送（避免 rsync Windows 路径问题）
         """
         t = self.target
-        excl = ["output/", ".git/", "__pycache__/", "*.pyc", ".pytest_cache/"]
+        excl = [
+            "output/", ".git/", "__pycache__/", "*.pyc", ".pytest_cache/", ".venv/",
+            # Do not push checked-in/generated model artifacts to small edge
+            # filesystems; targets keep these under their own model hubs.
+            "datasets/asr/models/*.tar.bz2",
+            "drivers/*/ov_models/",
+            "drivers/*/ort_models/",
+            "drivers/rk182x-linux/RKNN3_SDK/",
+        ]
 
         if t.platform == "windows":
             # Step 1: 确保目标目录存在

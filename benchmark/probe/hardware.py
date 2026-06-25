@@ -36,6 +36,7 @@ class HardwareProbe:
             "rocm": _RocmProbe,
             "vulkan": _VulkanProbe,
             "rknn-npu": _RKNNProbe,
+            "rk1820-npu": _RK182xProbe,
             "amd-xdna": _XDNAProbe,
             "cpu": _CpuOnlyProbe,
         }
@@ -49,6 +50,12 @@ class HardwareProbe:
         profile = HardwareProfile()
         profile.hostname_hash = hashlib.sha256(socket.gethostname().encode()).hexdigest()[:12]
         profile.arch = _detect_arch()
+        profiles = getattr(self.target_cfg, "accelerator_profiles", None)
+        if profiles:
+            profile.extra["accelerator_profiles"] = list(profiles)
+        npu = getattr(self.target_cfg, "npu", None)
+        if npu:
+            profile.extra["npu"] = npu
         self._fill(profile)
         return profile.to_dict()
 
@@ -105,6 +112,9 @@ class _VulkanProbe(HardwareProbe):
             profile.gpu = "AMD Radeon (Vulkan)"
         except Exception:
             profile.gpu = "AMD GPU (Vulkan, probe unavailable)"
+        profile.extra.setdefault("gpu_runtime", "vulkan")
+        if getattr(self.target_cfg, "npu", None):
+            profile.extra.setdefault("npu_runtime", self.target_cfg.npu)
 
 
 class _RKNNProbe(HardwareProbe):
@@ -136,6 +146,25 @@ class _RKNNProbe(HardwareProbe):
             pass
 
 
+class _RK182xProbe(HardwareProbe):
+    """RK1820/RK182x PCIe NPU — RKNN3/rkllm3 runtime on the RK3588 host."""
+
+    def _fill(self, profile):
+        profile.accelerator = "rk1820-npu"
+        profile.arch = "aarch64"
+        profile.extra["runtime_family"] = "rknn3"
+        profile.extra["pcie_device"] = "182a"
+        profile.extra["host_soc"] = "rk3588"
+        try:
+            out = subprocess.check_output(["lspci", "-nn"], text=True, timeout=5)
+            for line in out.splitlines():
+                if "182a" in line.lower() or "rockchip" in line.lower():
+                    profile.extra["lspci"] = line.strip()
+                    break
+        except Exception:
+            pass
+
+
 class _XDNAProbe(HardwareProbe):
     """AMD XDNA NPU（RyzenAI）—— Windows only，通过 WMI 探测。"""
     def _fill(self, profile):
@@ -147,6 +176,10 @@ class _XDNAProbe(HardwareProbe):
 class _CpuOnlyProbe(HardwareProbe):
     def _fill(self, profile):
         profile.accelerator = "cpu"
+        if getattr(self.target_cfg, "platform", "") == "windows":
+            profile.extra.setdefault("gpu_runtime", "directml/openvino-if-configured")
+            if getattr(self.target_cfg, "npu", None):
+                profile.extra.setdefault("npu_runtime", self.target_cfg.npu)
         try:
             with open("/proc/cpuinfo") as f:
                 for line in f:

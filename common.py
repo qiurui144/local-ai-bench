@@ -54,13 +54,20 @@ class TargetConfig:
     ssh_pass_env: Optional[str] = None
     runtime: str = "vllm"            # vllm | ollama | llama_cpp | rknn | generic
     runtime_port: int = 0
-    accelerator: str = "cpu"         # cpu | cuda | vulkan | rocm | rknn-npu | amd-xdna
+    accelerator: str = "cpu"         # primary/default accelerator for legacy callers
+    accelerator_profiles: tuple = () # advertised execution engines, e.g. cpu/gpu/npu
     npu: Optional[str] = None
     mali_gpu: Optional[str] = None
     env_overrides: dict = field(default_factory=dict)
     remote_workdir: Optional[str] = None
     python_cmd: str = "python3"
     notes: str = ""
+
+    def supports_accelerator(self, accelerator: str) -> bool:
+        """Return whether this target advertises an execution engine."""
+        profiles = set(self.accelerator_profiles or ())
+        profiles.add(self.accelerator)
+        return accelerator in profiles
 
     @property
     def ip(self) -> str:

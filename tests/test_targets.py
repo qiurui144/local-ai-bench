@@ -24,3 +24,25 @@ def test_ip_missing_env_returns_empty():
 def test_local_target_is_local():
     cfg = TargetConfig(name="local", platform="linux", arch="x86_64", connection="local")
     assert cfg.is_local()
+
+
+def test_windows_targets_advertise_cpu_gpu_npu():
+    targets = load_targets()
+    amd = targets["amd-win-x86"]
+    intel = targets["intel-win-x86"]
+
+    assert amd.supports_accelerator("cpu")
+    assert amd.supports_accelerator("vulkan")
+    assert amd.supports_accelerator("directml")
+    assert amd.supports_accelerator("amd-xdna")
+
+    assert intel.supports_accelerator("cpu")
+    assert intel.supports_accelerator("directml")
+    assert intel.supports_accelerator("openvino-gpu")
+    assert intel.supports_accelerator("intel-ai-boost-npu")
+
+
+def test_rockchip_targets_split_rk3588_and_rk182x():
+    targets = load_targets()
+    assert targets["rk3588-linux"].supports_accelerator("rknn-npu")
+    assert targets["rk182x-linux"].supports_accelerator("rk1820-npu")

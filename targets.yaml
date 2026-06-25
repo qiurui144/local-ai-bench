@@ -17,11 +17,13 @@ targets:
     runtime: ollama
     runtime_port: 11434
     accelerator: vulkan           # 780M iGPU via Ollama Vulkan backend
+    accelerator_profiles: [cpu, vulkan, directml, amd-xdna]
     npu: amd-xdna                 # XDNA NPU; driver v32.0.20101.3760 已就绪; onnxruntime-vitisai 依赖闭源 vai_rt，不可自编译，需从 AMD 开发者门户下载 RyzenAI SDK; 替代: onnxruntime-directml 1.24.4 (GPU DirectX 12) 已安装 (2026-06-17)
     env_overrides:
       OLLAMA_AMD_BASE_URL: http://localhost:11434/v1
       LEMONADE_AMD_BASE_URL: http://localhost:8000/v1  # Lemonade NPU LLM server（lemonade-server serve）
-    remote_workdir: "C:\\Users\\happy\\local-ai-bench"
+      ORT_AMD_EXTRAS_BASE_URL: http://localhost:8091/v1
+    remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
     python_cmd: "C:\\Users\\happy\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
 
   rk3588-linux:
@@ -34,9 +36,10 @@ targets:
     runtime: rknn                    # RK3588 内置 RKNPU3；embedding 服务 uvicorn port 18080
     runtime_port: 18080              # embedding 服务端口（/userdata/model_hub/embedding/server.py）
     accelerator: rknn-npu
+    accelerator_profiles: [cpu, mali-g610, rknn-npu]
     mali_gpu: mali-g610
     npu: rk3588-npu                  # 内置 RKNPU3（3×2 TOPS = 6 TOPS）；仅运行 embedding
-    remote_workdir: "/home/linaro/local-ai-bench"
+    remote_workdir: "/userdata/vlm-llm-benchmark"
     python_cmd: "python3"
     notes: "Rock 5B / OrangePi 5+；RK3588 内置 RKNPU3（3×2 TOPS）运行 embedding（port 18080）；RK1820 PCIe NPU 运行 LLM/ASR/TTS（port 18001/18002/18003）；16GB LPDDR5"
 
@@ -50,7 +53,8 @@ targets:
     runtime: rkllm3                  # RK1820 PCIe NPU 独立 rkllm3-server；LLM/ASR/TTS 端口分别 18001/18002/18003
     runtime_port: 18001              # rkllm3-server LLM 端口（-c 768 --n_predict 512 --top-k 1 --qwenvl）
     accelerator: rk1820-npu          # PCI 182a = Rockchip RK1820 NPU（Device 0003:31:00.0）；官方名: RK1820（RKNN3 SDK V0.3.0b0）
-    remote_workdir: "/home/linaro/local-ai-bench"
+    accelerator_profiles: [cpu, rk1820-npu, rknn3]
+    remote_workdir: "/userdata/vlm-llm-benchmark"
     python_cmd: "python3"
     notes: "Rockchip RK1820 PCIe NPU（lspci: 0003:31:00.0 Device 182a；系统别名 rk1828）；官方 SDK 名 RK1820（RKNN3 SDK V0.3.0b0 2025-09-12）；与 RK3588 共机器（同 IP/SSH）；LLM via rkllm3-server port 18001；ASR port 18002（POST /asr/transcribe）；TTS port 18003；embedding 由 RK3588 RKNPU3 提供（port 18080）"
 
@@ -105,9 +109,17 @@ targets:
     runtime: ollama
     runtime_port: 11434
     accelerator: cpu
+    accelerator_profiles: [cpu, directml, openvino-gpu, intel-ai-boost-npu]
+    npu: intel-ai-boost
     env_overrides:
       OLLAMA_INTEL_WIN_BASE_URL: http://localhost:11434/v1
-    remote_workdir: "C:\\Users\\happy\\local-ai-bench"
+      OV_INTEL_BASE_URL: http://localhost:8080/v1
+      OV_EXTRAS_INTEL_BASE_URL: http://localhost:8081/v1
+      OV_INTEL_QWEN3_06B_BASE_URL: http://localhost:8082/v1
+      OV_INTEL_QWEN3_17B_BASE_URL: http://localhost:8083/v1
+      OV_INTEL_QWEN3_4B_BASE_URL: http://localhost:8084/v1
+      OV_INTEL_QWEN25_7B_BASE_URL: http://localhost:8085/v1
+    remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
     python_cmd: "python.exe"
 
   intel-linux:

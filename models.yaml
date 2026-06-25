@@ -845,7 +845,7 @@ models:
     capabilities: [chat]
     task_type: text_only
     translation_capable: true
-    hardware_min: rk3588-npu
+    hardware_min: rk1820-npu
     benchmarks:
       ttft:
         prompt_tokens: 64
