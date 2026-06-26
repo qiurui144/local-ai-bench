@@ -71,13 +71,14 @@ OCR quality (CER 7.04%) is identical across all three paths.
 |---|---|---|---|---|---|
 | `qwen2.5-7b` | **0.880** | **0.600** | **0.790** | **PASS** | **PASS** (zh→en term 79%≥75%; en→zh chrF 36.4≥35.0; recal 2026-06-21) |
 | `qwen3-4b` | — | — | — | SKIP (each Q ~68s; GA not run) | **FAIL** (zh→en l1_flores empty=87%; l3_term chrF=63.6/term=64%<75%; en→zh l1_flores empty=100%; l3_term chrF=32.2<35; 3-seed 2026-06-23) |
-| `qwen3nt-4b-amd` | 0.030±0 | 0.110±0 | 0.000±0 | **FAIL** (format compliance — MCQ scores below random; 3-seed 2026-06-25) | **FAIL** (empty_rate=1.000±0 all dirs; 3-seed 2026-06-25) |
+| `qwen3nt-4b-amd` | 0.030±0 | 0.110±0 | 0.000±0 | **FAIL** (MCQ below random; std=0.000; rerun4 2026-06-26 w/ harness fix) | **FAIL** (zh→en l1 chrF=11.4<35, l3 term=64%<75%; en→zh l1 empty_rate=1.000, l3 chrF=35.5 borderline; rerun4 2026-06-26) |
 | `llama3.2-3b` | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | **FAIL** ⚠️ model-level | FAIL (zh→en term 55%; en→zh chrF 27.6) |
 | `qwen3-1.7b` | 0.293±0.015/**FAIL** | 0.033±0.006/**FAIL** | 0.007±0.006/**FAIL** | **FAIL** (MCQ answer format; think=false does not fix) | — (skip) |
 | `qwen3-0.6b` | 0.390/PASS | 0.000/**FAIL** | 0.000/**FAIL** | **FAIL** | FAIL (MCQ capability gap) |
 
 **Best confirmed quality:** `qwen2.5-7b-amd-win`.  
 **`qwen3-4b` translation FAIL root cause:** Ollama `think=false` option does not disable thinking mode. Model generates 1500–2000 thinking tokens before content; `max_tokens=2048` exhausted on l1_flores long prompts → empty outputs. Fix requires `max_tokens≥4096` or an Ollama version that fully disables thinking.  
+**`qwen3nt-4b-amd` rerun4 confirmed FAIL (2026-06-26 w/ harness fix 1c5c656):** Fix extracted zh→en L1 content (chrF=11.4) but quality far below threshold (35.0). en→zh L1 still empty (empty_rate=1.000 — model generates tokens that harness strips to empty). GA unchanged (0.030/0.110/0.000, std=0.000 = 100% systematic). Root cause: model-level MCQ format compliance failure + en→zh free-form output incompatible with extraction — not a harness parser issue.  
 **`llama3.2-3b` ⚠️ model weakness:** GA FAIL is a model-family issue (MMLU 0.39, HellaSwag 0.32 — LLaMA 3.2-3B inherent knowledge gap), not platform degradation. Recommend `qwen3-4b-amd` only after translation is fixed.
 
 ### Non-LLM Performance
@@ -142,7 +143,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
 | LLM primary | `qwen2.5-7b-amd-win` | iGPU (Vulkan) | Best confirmed quality; GA PASS (MMLU 0.60 / HellaSwag 0.79 / translation PASS 3-seed) |
-| LLM lightweight (new variant — parser fix needed) | `qwen3nt-4b-amd` | iGPU (Vulkan) | 24.1 TPS; **FAIL** (format compliance — MCQ/translation parser cannot extract output; 3-seed 2026-06-25); harness parser update required |
+| LLM lightweight (NT — confirmed FAIL) | `qwen3nt-4b-amd` | iGPU (Vulkan) | 24.1 TPS; **FAIL confirmed** (rerun4 2026-06-26 w/ harness fix): zh→en l1 chrF=11.4, en→zh l1 empty_rate=1.000, GA 0.030/0.110/0.000 below random; model-level format compliance failure |
 | LLM lightweight (**thinking tokens fix pending**) | `qwen3-4b-amd` | iGPU (Vulkan) | 29–30.7 TPS; translation **FAIL** (Ollama thinking mode: max_tokens=2048 insufficient for l1_flores, fix: ≥4096); GA skipped (too slow); use `qwen2.5-7b` until fixed |
 | LLM lightweight (legacy) | `llama3.2-3b-amd-win` | iGPU (Vulkan) | 29 TPS, 32k context; **GA FAIL — model-family weakness** (LLaMA 3.2-3B MMLU=0.39/HellaSwag=0.32 inherent gap, not platform issue); keep only for 32k-context or tool-use |
 | LLM nano | `qwen3-1.7b-amd` | iGPU (Vulkan) | 60 TPS, TTFT 6646ms (think=false); GA FAIL (MCQ instruction not followed; same as 0.6B pattern) |
@@ -171,7 +172,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 | `qwen3-1.7b-amd` | iGPU Vulkan | llm_nano_plus | **FAIL** | TPS 60.0 (3-seed v2 2026-06-23); TTFT P50=6646ms/P95=6962ms (think=false warm); GA FAIL (gsm8k=0.300/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL; 3-seed zero variance; root cause: Qwen3 1.7B does not follow "answer with just A/B/C/D" MCQ instruction → parser fails; think=false confirmed not the fix — v1 and v2 identical FAIL); translation skip (1.7B insufficient) |
 | `qwen3-0.6b-amd` | iGPU Vulkan | llm_nano | **FAIL** | TPS 91.09; TTFT p50 1781 ms; GA FAIL (mmlu=0.000/hellaswag=0.000 — 0.6B MCQ gap, confirmed 2026-06-20) |
 | `qwen2.5-14b-amd-win` | iGPU Vulkan | llm_parameter_uplift | **MEASURED** | TPS 8.6; TTFT p50/p95 7718/14395 ms; PP/TG 94/9 t/s; max-ctx 16k; GA/translation skipped by design |
-| `qwen3nt-4b-amd` | iGPU Vulkan | llm_nt_4b | **FAIL** | TPS 24.1; GA FAIL (gsm8k=0.030±0, mmlu=0.110±0, hellaswag=0.000±0; below random chance); translation FAIL (empty_rate=1.000±0 all dirs; 3-seed 2026-06-25); root cause: harness parser cannot extract qwen3nt response format (format compliance, not capability) |
+| `qwen3nt-4b-amd` | iGPU Vulkan | llm_nt_4b | **FAIL** | TPS 24.1; GA FAIL (gsm8k=0.030±0, mmlu=0.110±0, hellaswag=0.000±0; below random; std=0.000; rerun4 2026-06-26 w/ harness fix); translation FAIL (zh→en l1 BLEU=0/chrF=11.4, l3 chrF=66.4/term=64%<75%; en→zh l1 empty_rate=1.000, l3 chrF=35.5 borderline; rerun4 2026-06-26); root cause: MCQ format compliance failure (model generates wrong format, not parser issue); en→zh L1 output stripped to empty by extraction |
 | `llava-7b-amd-win` | iGPU Vulkan | vlm_baseline | **FAIL** | TPS 16.84; TTFT p50 890 ms; accuracy FAIL |
 | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | embedding_primary | **PASS** | hit@1 1.000; nDCG 1.000; p50 875 ms |
 | `bge-m3-amd` | iGPU Vulkan | embedding_bge | **PASS** | hit@1 1.000; nDCG 1.000; p50 914 ms |
@@ -256,7 +257,8 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | 2026-06-23 | qwen3-1.7b GA 3-seed v2 (think=false) confirmed FAIL: gsm8k=0.293±0.015/FAIL (worst seed 0.280<0.30), mmlu=0.033±0.006/FAIL, hellaswag=0.007±0.006/FAIL; v1 (no think=false) had gsm8k=0.300/PASS but mmlu=0.000/FAIL, hellaswag=0.000/FAIL; think=false marginally improved mmlu/hellaswag but worsened gsm8k below threshold; root cause: model ignores MCQ "just letter" instruction regardless of thinking mode; v2 TTFT: P50=6646ms/P95=6962ms; TPS=60.0 tok/s |
 | 2026-06-23 | bge-base-en-v1.5-igpu-amd-win 3-seed PASS: hit@1=1.000, nDCG@10=0.987, P50=2750ms (ORT+DirectML). bge-reranker-base-igpu-amd-win 3-seed PASS: nDCG@10=1.000, MRR=1.000, pair P50=697ms. qwen3-4b translation 3-seed FAIL: l1_flores empty_rate=87–100% (thinking tokens exhaust max_tokens=2048); l3_term en→zh chrF=32.2<35 |
 | 2026-06-24 | Launched AMD full 3-seed verification: qwen3-embedding-0.6b, bge-m3, bge-reranker-base CPU, bge-reranker-v2-m3 CPU, sensevoice-small, rapidocr×3 — all pending 3-seed. Added qwen3nt-4b-amd (Qwen3-4B /no_think variant) for GA+translation — expected to fix max_tokens exhaustion issue |
-| 2026-06-25 | **qwen3nt-4b-amd 3-seed FAIL** (format compliance): TPS=24.1 (confirmed GPU active). GA: gsm8k=0.030±0/mmlu=0.110±0/hellaswag=0.000±0 — all below random chance (25%). Translation: empty_rate=1.000±0 all directions. std=0.000 across all 3 seeds = 100% systematic failure. Root cause: harness parser cannot extract qwen3nt response format (MCQ letter extraction and translation text extraction both fail); model generates tokens but output format differs from what parsers expect. Not a model capability issue (TPS=24.1 confirms generation). **8 non-LLM models all confirmed 3-seed PASS** with std=0.000 (embedding ×2, rerank ×2, ASR, OCR ×3) — deterministic across all seeds. |
+| 2026-06-25 | **qwen3nt-4b-amd initial 3-seed run** (pre-fix): TPS=24.1. GA: gsm8k=0.030±0/mmlu=0.110±0/hellaswag=0.000±0 — all below random (25%). Translation: empty_rate=1.000±0 ALL directions. std=0.000 = 100% systematic. Initial root cause hypothesis: harness parser cannot extract qwen3nt format → harness fix 1c5c656 applied → re-run scheduled. **8 non-LLM models 3-seed PASS** (embedding ×2, rerank ×2, ASR, OCR ×3, std=0.000 deterministic). |
+| 2026-06-26 | **qwen3nt-4b-amd rerun4 (harness fix 1c5c656)**: GA identical — gsm8k=0.030±0/mmlu=0.110±0/hellaswag=0.000±0 (harness fix did NOT improve accuracy). Translation: zh→en l1 chrF=11.4/BLEU=0 (content extracted but far below threshold 35); zh→en l3 chrF=66.4/term=64%<75%; en→zh l1 empty_rate=1.000 (fix did NOT help en→zh L1); en→zh l3 chrF=35.5/BLEU=32.9/term=77%. **Root cause confirmed: model-level failure** (MCQ format compliance + en→zh free-form output incompatible with extraction), not parser issue. Harness fix is necessary but not sufficient. Report: `qwen3nt-4b-amd_20260626_004430.md` (archived to `benchmark-runs/amd-win/`). |
 
 ---
 
@@ -294,7 +296,7 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | 模型 | 执行模式 | TPS/p50 | GSM8K | MMLU | HellaSwag | 翻译 | 综合 |
 |---|---|---|---|---|---|---|---|
 | `qwen2.5-7b-amd-win` | iGPU Vulkan | 13.33 TPS / 953 ms | 0.880 | 0.600 | 0.790 | **PASS**（3-seed 2026-06-21） | **GA PASS** |
-| `qwen3nt-4b-amd` | iGPU Vulkan | 24.1 TPS | 0.030 | 0.110 | 0.000 | FAIL（empty_rate=1.000，所有方向） | **FAIL**（格式合规性失败；3-seed 2026-06-25；解析器需适配 qwen3nt 输出格式） |
+| `qwen3nt-4b-amd` | iGPU Vulkan | 24.1 TPS | 0.030 | 0.110 | 0.000 | FAIL（zh→en l1 chrF=11.4<35；en→zh l1 empty_rate=1.000；3-seed rerun4 2026-06-26） | **FAIL**（MCQ 格式合规性失败 + en→zh L1 输出被提取为空；rerun4 harness fix 1c5c656 后确认为模型层面问题，非解析器问题） |
 | `qwen3-4b-amd` | iGPU Vulkan | 29–30.7 TPS / 867 ms | GA skip | GA skip | GA skip | **FAIL**（thinking tokens 耗尽 max_tokens，3-seed 2026-06-23）| **FAIL** |
 | `llama3.2-3b-amd-win` | iGPU Vulkan | 28.99 TPS / 890 ms | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | FAIL | **GA FAIL**（模型固有局限） |
 | `qwen3-1.7b-amd` | iGPU Vulkan | 60.0 TPS / 6646 ms | 0.293/**FAIL** | 0.033/**FAIL** | 0.007/**FAIL** | skip | **GA FAIL**（MCQ 格式，3-seed） |
@@ -337,7 +339,7 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | 角色 | 推荐模型 | 执行模式 | 备注 |
 |---|---|---|---|
 | **LLM 质量首选** | `qwen2.5-7b-amd-win` | iGPU Vulkan | **GA PASS**（MMLU 0.60 / HellaSwag 0.79 / 翻译 PASS 3-seed） |
-| LLM 轻量候选（解析器待修复） | `qwen3nt-4b-amd` | iGPU Vulkan | **FAIL（2026-06-25 3-seed 确认）**：24.1 TPS 确认 GPU 正常；GA 分数低于随机基线；翻译 empty_rate=1.000；根因：harness 解析器不兼容 qwen3nt 输出格式，非模型能力问题，需更新解析器 |
+| LLM 轻量 NT（确认 FAIL） | `qwen3nt-4b-amd` | iGPU Vulkan | **FAIL 确认（rerun4 2026-06-26，harness fix 后）**：GA 不变（0.030/0.110/0.000）；zh→en l1 chrF=11.4（有内容但极低）；en→zh l1 仍全空（empty_rate=1.000）；根因确认为**模型层面** MCQ 格式合规失败 + en→zh 自由输出被提取为空，非解析器问题 |
 | LLM 轻量（旧，有局限） | `qwen3-4b-amd` | iGPU Vulkan | 翻译 FAIL；GA skip；thinking tokens 问题待 Ollama 修复 |
 | LLM 轻量（旧，FAIL） | `llama3.2-3b-amd-win` | iGPU Vulkan | GA FAIL（模型固有局限）；仅 32k 上下文场景保留 |
 | LLM 极速纳米 | `qwen3-0.6b-amd` | iGPU Vulkan | 91 TPS；MCQ 能力不足 |
