@@ -1,7 +1,7 @@
 # AMD Windows Platform — Model Selection & Benchmark Report
 
 **Platform:** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU (Hawk Point), Windows 11  
-**Last calibrated:** 2026-06-25. This file is updated in place.
+**Last calibrated:** 2026-06-26. This file is updated in place.
 
 ---
 
@@ -85,16 +85,16 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Model | Role | p50 | Key Metric | Status |
 |---|---|---|---|---|
-| `qwen3-embedding-0.6b-amd` | Embedding | 875 ms | hit@1=1.000, nDCG=1.000 | **PASS** |
-| `bge-m3-amd` | Embedding | 914 ms | hit@1=1.000, nDCG=1.000 | **PASS** |
-| `rapidocr-amd-directml` | OCR iGPU | 468.5 ms | CER 7.04%, struct 92.86% | **PASS** |
-| `rapidocr-amd-npu` | OCR NPU | 2031 ms | CER 7.04% | **PASS** |
-| `rapidocr-cpu` | OCR CPU | 1592.5 ms | CER 7.04% | **PASS** |
-| `bge-base-en-v1.5-igpu-amd-win` | **Embedding DirectML** | 2750 ms p50¹ | hit@1=1.000, nDCG=0.987 | **PASS** |
-| `bge-reranker-base-igpu-amd-win` | **Reranker DirectML** | 697 ms/pair p50¹ | nDCG=1.000, MRR=1.000 | **PASS** |
-| `bge-reranker-base-amd-win` | Reranker CPU | 78 ms | nDCG=1.000 | **PASS** |
-| `bge-reranker-v2-m3-amd-win` | Reranker CPU | 289 ms | nDCG=1.000 | **PASS** |
-| `sensevoice-small-amd-win` | ASR NPU | — | CER 7.69%, RTF 0.073 | **PASS** |
+| `qwen3-embedding-0.6b-amd` | Embedding | 875 ms | hit@1=1.000, nDCG=1.000; 3-seed 2026-06-25 | **PASS** |
+| `bge-m3-amd` | Embedding | 914 ms | hit@1=1.000, nDCG=1.000; 3-seed 2026-06-25 | **PASS** |
+| `rapidocr-amd-directml` | OCR iGPU | 468.5 ms | CER 7.04%, struct 92.86%; 3-seed 2026-06-25 | **PASS** |
+| `rapidocr-amd-npu` | OCR NPU | 2031 ms | CER 7.04%; 3-seed 2026-06-25 | **PASS** |
+| `rapidocr-cpu` | OCR CPU | 1592.5 ms | CER 7.04%; 3-seed 2026-06-25 | **PASS** |
+| `bge-base-en-v1.5-igpu-amd-win` | **Embedding DirectML** | 2750 ms p50¹ | hit@1=1.000, nDCG=0.987; 3-seed 2026-06-23 | **PASS** |
+| `bge-reranker-base-igpu-amd-win` | **Reranker DirectML** | 697 ms/pair p50¹ | nDCG=1.000, MRR=1.000; 3-seed 2026-06-23 | **PASS** |
+| `bge-reranker-base-amd-win` | Reranker CPU | 78 ms | nDCG=1.000; 3-seed 2026-06-25 | **PASS** |
+| `bge-reranker-v2-m3-amd-win` | Reranker CPU | 289 ms | nDCG=1.000; 3-seed 2026-06-25 | **PASS** |
+| `sensevoice-small-amd-win` | ASR DirectML | — | CER 7.69%, RTF 0.073; 3-seed 2026-06-25 | **PASS** |
 
 ---
 
@@ -265,7 +265,7 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 ## 中文摘要
 
 **平台：** amd-win-x86 | Ryzen 8845H + Radeon 780M iGPU + AMD XDNA 1 NPU（Hawk Point），Windows 11  
-**最后校准：** 2026-06-25。本文件原地更新。
+**最后校准：** 2026-06-26。本文件原地更新。
 
 ### 硬件画像
 
@@ -301,16 +301,16 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | `llama3.2-3b-amd-win` | iGPU Vulkan | 28.99 TPS / 890 ms | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | FAIL | **GA FAIL**（模型固有局限） |
 | `qwen3-1.7b-amd` | iGPU Vulkan | 60.0 TPS / 6646 ms | 0.293/**FAIL** | 0.033/**FAIL** | 0.007/**FAIL** | skip | **GA FAIL**（MCQ 格式，3-seed） |
 | `qwen3-0.6b-amd` | iGPU Vulkan | 91.09 TPS / 1781 ms | 0.390/PASS | 0.000/**FAIL** | 0.000/**FAIL** | FAIL | **GA FAIL**（0.6B 能力不足） |
-| `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms | — | — | — | — | **PASS**（hit@1=1.000；3-seed PENDING 2026-06-24） |
-| `bge-m3-amd` | iGPU Vulkan | 914 ms | — | — | — | — | **PASS**（hit@1=1.000；3-seed PENDING 2026-06-24） |
+| `qwen3-embedding-0.6b-amd` | iGPU Vulkan | 875 ms | — | — | — | — | **PASS**（hit@1=1.000；**3-seed 2026-06-25**） |
+| `bge-m3-amd` | iGPU Vulkan | 914 ms | — | — | — | — | **PASS**（hit@1=1.000；**3-seed 2026-06-25**） |
 | `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | 2750 ms | — | — | — | — | **PASS**（hit@1=1.000，nDCG=0.987；**3-seed 2026-06-23**） |
 | `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | 697 ms/pair | — | — | — | — | **PASS**（nDCG=1.000，MRR=1.000；**3-seed 2026-06-23**） |
-| `bge-reranker-base-amd-win` | CPU ONNX | 78 ms | — | — | — | — | **PASS**（nDCG=1.000；3-seed PENDING 2026-06-24） |
-| `bge-reranker-v2-m3-amd-win` | CPU ONNX | 289 ms | — | — | — | — | **PASS**（nDCG=1.000；3-seed PENDING 2026-06-24） |
-| `rapidocr-amd-directml` | iGPU DirectML | 469 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
-| `rapidocr-amd-npu` | NPU VitisAI | 2031 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
-| `rapidocr-cpu` | CPU ONNX | 1593 ms | — | — | — | — | **PASS**（CER 7.04%；3-seed PENDING 2026-06-24） |
-| `sensevoice-small-amd-win` | iGPU DirectML | RTF 0.073 | — | — | — | — | **PASS**（CER 7.69%；3-seed PENDING 2026-06-24） |
+| `bge-reranker-base-amd-win` | CPU ONNX | 78 ms | — | — | — | — | **PASS**（nDCG=1.000；**3-seed 2026-06-25**） |
+| `bge-reranker-v2-m3-amd-win` | CPU ONNX | 289 ms | — | — | — | — | **PASS**（nDCG=1.000；**3-seed 2026-06-25**） |
+| `rapidocr-amd-directml` | iGPU DirectML | 469 ms | — | — | — | — | **PASS**（CER 7.04%；**3-seed 2026-06-25**） |
+| `rapidocr-amd-npu` | NPU VitisAI | 2031 ms | — | — | — | — | **PASS**（CER 7.04%；**3-seed 2026-06-25**） |
+| `rapidocr-cpu` | CPU ONNX | 1593 ms | — | — | — | — | **PASS**（CER 7.04%；**3-seed 2026-06-25**） |
+| `sensevoice-small-amd-win` | iGPU DirectML | RTF 0.073 | — | — | — | — | **PASS**（CER 7.69%；**3-seed 2026-06-25**） |
 
 ### qwen3-4b vs qwen3nt-4b 区别
 
@@ -343,12 +343,12 @@ AMD XDNA 1 NPU excels at **CNN-based batch workloads** (e.g., OCR via RapidOCR) 
 | LLM 轻量（旧，有局限） | `qwen3-4b-amd` | iGPU Vulkan | 翻译 FAIL；GA skip；thinking tokens 问题待 Ollama 修复 |
 | LLM 轻量（旧，FAIL） | `llama3.2-3b-amd-win` | iGPU Vulkan | GA FAIL（模型固有局限）；仅 32k 上下文场景保留 |
 | LLM 极速纳米 | `qwen3-0.6b-amd` | iGPU Vulkan | 91 TPS；MCQ 能力不足 |
-| **Embedding 首选** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | hit@1=1.000；875 ms（3-seed 进行中） |
-| Embedding 多语言 | `bge-m3-amd` | iGPU Vulkan | hit@1=1.000；914 ms（3-seed 进行中） |
+| **Embedding 首选** | `qwen3-embedding-0.6b-amd` | iGPU Vulkan | hit@1=1.000；875 ms；**3-seed PASS 2026-06-25** |
+| Embedding 多语言 | `bge-m3-amd` | iGPU Vulkan | hit@1=1.000；914 ms；**3-seed PASS 2026-06-25** |
 | **Embedding 厂商专属** | `bge-base-en-v1.5-igpu-amd-win` | iGPU DirectML (ORT) | hit@1=1.000；**3-seed PASS 2026-06-23** |
-| **Reranker 默认（最快）** | `bge-reranker-base-amd-win` | CPU ONNX | **78 ms**；nDCG=1.000（3-seed 进行中） |
+| **Reranker 默认（最快）** | `bge-reranker-base-amd-win` | CPU ONNX | **78 ms**；nDCG=1.000；**3-seed PASS 2026-06-25** |
 | Reranker 厂商专属 | `bge-reranker-base-igpu-amd-win` | iGPU DirectML (ORT) | nDCG=1.000；**3-seed PASS 2026-06-23**；697 ms（DirectML） |
-| Reranker 高质量 | `bge-reranker-v2-m3-amd-win` | CPU ONNX | nDCG=1.000；289 ms（3-seed 进行中） |
-| **OCR 交互首选** | `rapidocr-amd-directml` | iGPU DirectML | **469 ms** 最快（3-seed 进行中） |
-| **OCR 后台批处理** | `rapidocr-amd-npu` | NPU VitisAI | 2031 ms；**释放 iGPU 供 LLM 并发**（3-seed 进行中） |
-| **ASR 常驻后台** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073；**iGPU DirectML 路径**（非 NPU），适合与 LLM 并行（3-seed 进行中） |
+| Reranker 高质量 | `bge-reranker-v2-m3-amd-win` | CPU ONNX | nDCG=1.000；289 ms；**3-seed PASS 2026-06-25** |
+| **OCR 交互首选** | `rapidocr-amd-directml` | iGPU DirectML | **469 ms** 最快；**3-seed PASS 2026-06-25** |
+| **OCR 后台批处理** | `rapidocr-amd-npu` | NPU VitisAI | 2031 ms；**释放 iGPU 供 LLM 并发**；**3-seed PASS 2026-06-25** |
+| **ASR 常驻后台** | `sensevoice-small-amd-win` | **iGPU DirectML** | RTF 0.073；**iGPU DirectML 路径**（非 NPU），适合与 LLM 并行；**3-seed PASS 2026-06-25** |
