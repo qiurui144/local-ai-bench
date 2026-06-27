@@ -55,7 +55,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Model | TPS | TTFT p50 | TTFT p95 | PP t/s | TG t/s | Max ctx |
 |---|---|---|---|---|---|---|
-| `qwen2.5-7b-amd-win` | **13.33** | 953 ms | 6241 ms | 116 | 16 | 16k |
+| `qwen2.5-7b-amd-win` | **13.6** | 484 ms (warm) | 8261 ms | 204 | 14.9 | 16k |
 | `qwen3-4b-amd` | **30.7** | 867 ms | 4287 ms | — | — | — |
 | `llama3.2-3b-amd-win` | 28.99 | 890 ms | 5207 ms | 124 | 39 | 32k |
 | `qwen3-1.7b-amd` | **60.0** | 6646 ms¹ | 6962 ms¹ | — | — | — |
@@ -65,11 +65,11 @@ OCR quality (CER 7.04%) is identical across all three paths.
 > PP/TG not available for qwen3 series — Ollama qwen3 does not return `eval_count`/`eval_duration` for prefill separately.
 > ¹ qwen3-1.7b TTFT with `ollama_think: false` (v2, 3-seed 2026-06-23): P50=6646ms, P95=6962ms (warm; internal thinking not streamed). Without think=false, TTFT=0ms (thinking streams immediately as first chunk); total request time ≈3.4s.
 
-### LLM Quality Scores (2026-06-20/21 calibrated; qwen3-4b translation 3-seed 2026-06-23)
+### LLM Quality Scores (2026-06-20/21 calibrated; qwen3-4b translation 3-seed 2026-06-23; qwen2.5-7b formal 3-seed 2026-06-26)
 
 | Model | GSM8K | MMLU | HellaSwag | GA Verdict | Translation |
 |---|---|---|---|---|---|
-| `qwen2.5-7b` | **0.880** | **0.600** | **0.790** | **PASS** | **PASS** (zh→en term 79%≥75%; en→zh chrF 36.4≥35.0; recal 2026-06-21) |
+| `qwen2.5-7b` | **0.873±0.006** | **0.690±0** | **0.790±0** | **PASS** | **FAIL** (en→zh l1_flores chrF=33.88±0.30 <35.0; zh→en PASS; en→zh l3_term chrF=41.7 PASS; 3-seed 2026-06-26) |
 | `qwen3-4b` | — | — | — | SKIP (each Q ~68s; GA not run) | **FAIL** (zh→en l1_flores empty=87%; l3_term chrF=63.6/term=64%<75%; en→zh l1_flores empty=100%; l3_term chrF=32.2<35; 3-seed 2026-06-23) |
 | `qwen3nt-4b-amd` | 0.030±0 | 0.110±0 | 0.000±0 | **FAIL** (MCQ below random; std=0.000; rerun4 2026-06-26 w/ harness fix) | **FAIL** (zh→en l1 chrF=11.4<35, l3 term=64%<75%; en→zh l1 empty_rate=1.000, l3 chrF=35.5 borderline; rerun4 2026-06-26) |
 | `llama3.2-3b` | 0.710/PASS | 0.390/**FAIL** | 0.320/**FAIL** | **FAIL** ⚠️ model-level | FAIL (zh→en term 55%; en→zh chrF 27.6) |
@@ -142,7 +142,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Role | Selected Model | Execution mode | Rationale |
 |---|---|---|---|
-| LLM primary | `qwen2.5-7b-amd-win` | iGPU (Vulkan) | Best confirmed quality; GA PASS (MMLU 0.60 / HellaSwag 0.79 / translation PASS 3-seed) |
+| LLM primary | `qwen2.5-7b-amd-win` | iGPU (Vulkan) | Best confirmed quality; GA PASS (gsm8k=0.873/mmlu=0.690/hellaswag=0.790; 3-seed 2026-06-26); **translation FAIL** (en→zh l1_flores chrF=33.88 <35.0; same INT4 degradation as Intel 7B; zh→en and l3_term PASS) |
 | LLM lightweight (NT — confirmed FAIL) | `qwen3nt-4b-amd` | iGPU (Vulkan) | 24.1 TPS; **FAIL confirmed** (rerun4 2026-06-26 w/ harness fix): zh→en l1 chrF=11.4, en→zh l1 empty_rate=1.000, GA 0.030/0.110/0.000 below random; model-level format compliance failure |
 | LLM lightweight (**thinking tokens fix pending**) | `qwen3-4b-amd` | iGPU (Vulkan) | 29–30.7 TPS; translation **FAIL** (Ollama thinking mode: max_tokens=2048 insufficient for l1_flores, fix: ≥4096); GA skipped (too slow); use `qwen2.5-7b` until fixed |
 | LLM lightweight (legacy) | `llama3.2-3b-amd-win` | iGPU (Vulkan) | 29 TPS, 32k context; **GA FAIL — model-family weakness** (LLaMA 3.2-3B MMLU=0.39/HellaSwag=0.32 inherent gap, not platform issue); keep only for 32k-context or tool-use |
@@ -166,7 +166,7 @@ OCR quality (CER 7.04%) is identical across all three paths.
 
 | Model | Execution | Role | Status | Key Metrics |
 |---|---|---|---|---|
-| `qwen2.5-7b-amd-win` | iGPU Vulkan | llm_primary | **PASS** | TPS 13.33; TTFT p50/p95 953/6241 ms; PP/TG 116/16 t/s; GA PASS (gsm8k=0.880/mmlu=0.600/hellaswag=0.790); translation PASS (recal 2026-06-21) |
+| `qwen2.5-7b-amd-win` | iGPU Vulkan | llm_primary | **GA PASS / Translation FAIL** | TPS 13.6; TTFT p50/p95 484/8261 ms (warm 3-seed); PP/TG 204/14.9 t/s; GA PASS (gsm8k=0.873±0.006/mmlu=0.690±0/hellaswag=0.790±0; 3-seed 2026-06-26); translation FAIL (en→zh l1_flores chrF=33.88±0.30 <35.0; zh→en PASS; en→zh l3_term chrF=41.7 PASS; 3-seed 2026-06-26) |
 | `qwen3-4b-amd` | iGPU Vulkan | llm_lightweight | **FAIL** | TPS 29–30.7; TTFT p50/p95 867/4287 ms; GA SKIPPED (each Q ~68s impractical); translation FAIL (3-seed 2026-06-23: l1_flores empty=87-100%; l3_term en→zh chrF=32.2<35; root cause: Ollama think=false ineffective, max_tokens=2048 exhausted by thinking tokens) |
 | `llama3.2-3b-amd-win` | iGPU Vulkan | llm_baseline | **FAIL** ⚠️ | TPS 28.99; TTFT p50/p95 890/5207 ms; PP/TG 124/39 t/s; max ctx 32k; GA FAIL (mmlu=0.390/FAIL, hellaswag=0.320/FAIL — model-level weakness); translation FAIL |
 | `qwen3-1.7b-amd` | iGPU Vulkan | llm_nano_plus | **FAIL** | TPS 60.0 (3-seed v2 2026-06-23); TTFT P50=6646ms/P95=6962ms (think=false warm); GA FAIL (gsm8k=0.300/PASS, mmlu=0.000/FAIL, hellaswag=0.000/FAIL; 3-seed zero variance; root cause: Qwen3 1.7B does not follow "answer with just A/B/C/D" MCQ instruction → parser fails; think=false confirmed not the fix — v1 and v2 identical FAIL); translation skip (1.7B insufficient) |
