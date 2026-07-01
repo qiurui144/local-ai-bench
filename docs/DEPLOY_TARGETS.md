@@ -7,10 +7,10 @@ invocation, and per-platform skip-dimension recommendations.
 **Priority order** (reflects typical hardware availability):
 
 1. [AMD Windows](#1-amd-windows--ryzen-8845h--radeon-780m-vulkan)
-2. [Intel Windows](#2-intel-windows--ollama-cpu-mode)
+2. [Intel Windows](#2-intel-windows--openvinoigpu-primary-cpu-baseline-explicit-only)
 3. [Rockchip RK3588 Linux](#3-rockchip-rk3588-linux--rknn-npu)
 4. [SpacemiT K3 Linux / RISC-V](#4-spacemit-k3-linux--risc-v-riscv64)
-5. [Intel Linux](#5-intel-linux--vllm--ollama-cpu)
+5. [Intel Linux](#5-intel-linux--openvinovllm-accelerated-runtime-cpu-baseline-explicit-only)
 6. [Other ARM / macOS / Jetson](#6-other-arm--macos--jetson-brief)
 
 ---
@@ -57,6 +57,10 @@ Full variable table:
 | AMD Windows | `AMD_SSH_USER` | SSH username (Microsoft account: `email@domain`) |
 | AMD Windows | `AMD_SSH_PASS` | SSH password |
 | AMD Windows | `OLLAMA_AMD_BASE_URL` | Ollama endpoint seen from controller, e.g. `http://$AMD_HOST:11434/v1` |
+| AMD Linux | `AMD_LINUX_HOST` | IP/hostname of the AMD Linux machine |
+| AMD Linux | `AMD_LINUX_SSH_USER` | SSH username |
+| AMD Linux | `AMD_LINUX_SSH_PASS` | SSH password |
+| AMD Linux | `OLLAMA_AMD_LINUX_BASE_URL` | Target-local Ollama endpoint, normally `http://localhost:11434/v1` |
 | Intel Windows | `INTEL_WIN_HOST` | IP/hostname of the Intel Windows machine |
 | Intel Windows | `INTEL_WIN_SSH_USER` | SSH username |
 | Intel Windows | `INTEL_WIN_SSH_PASS` | SSH password |
@@ -72,7 +76,8 @@ Full variable table:
 | Intel Linux | `INTEL_LINUX_HOST` | IP/hostname of the Intel Linux machine |
 | Intel Linux | `INTEL_LINUX_SSH_USER` | SSH username |
 | Intel Linux | `INTEL_LINUX_SSH_PASS` | SSH password |
-| Intel Linux | `INTEL_LINUX_BASE_URL` | vLLM or Ollama endpoint |
+| Intel Linux | `OV_INTEL_LINUX_BASE_URL` | Target-local OpenVINO/OpenAI-compatible endpoint, normally `http://localhost:8080/v1` |
+| Intel Linux | `OLLAMA_INTEL_LINUX_BASE_URL` | Target-local Ollama endpoint for explicit CPU baselines, normally `http://localhost:11434/v1` |
 | Jetson | `JETSON_HOST` | IP/hostname of the Jetson board |
 | Jetson | `JETSON_USER` | SSH username |
 | Jetson | `JETSON_PASS` | SSH password |
@@ -202,23 +207,31 @@ python run_benchmark.py \
 |---|---|---|
 | `HSA_STATUS_ERROR_INVALID_AGENT` | 780M gfx version not detected | Set `HSA_OVERRIDE_GFX_VERSION=gfx1102` in environment |
 | Ollama says `0 GPU layers` | OLLAMA_HOST not set or Vulkan init failed | Restart with `OLLAMA_HOST=0.0.0.0` and confirm `ollama ps` shows `gpu` |
-| Very low throughput (~2 tok/s) | Falling back to CPU | Check `ollama ps` — confirm `100%` GPU offload |
+| Very low throughput (~2 tok/s) | Falling back to CPU | Stop the run and fix acceleration; continue only for an explicit CPU baseline |
 | `Connection refused` on port 11434 | Firewall blocking | Check `netstat -ano | findstr 11434` on Windows |
 
 ---
 
-## 2. Intel Windows — Ollama CPU Mode
+## 2. Intel Windows — OpenVINO/iGPU Primary, CPU Baseline Explicit Only
 
 **Target ID**: `intel-win-x86`  
-**Runtime**: Ollama in CPU-only mode (no discrete GPU assumed)  
-**Use case**: x86 Windows machines without AMD/NVIDIA GPU, or low-VRAM setups
+**Runtime**: OpenVINO/iGPU services for normal LLM/embedding/rerank runs; Ollama CPU only for
+explicit CPU baseline or diagnostics
+**Use case**: Core Ultra / Arc iGPU Windows machines
 
 ### 2.1 Prerequisites (Windows side — one-time)
 
 Same OpenSSH Server setup as AMD Windows (see §1.1 steps 1–3). Skip the GPU-specific
 `HSA_OVERRIDE_GFX_VERSION` variable.
 
-### 2.2 Start Ollama (CPU mode)
+### 2.2 CPU baseline path (explicit only)
+
+Normal Intel Windows LLM/VLM calibration should use the `*-igpu-intel-win` OpenVINO models.
+Do not run Ollama CPU LLM/VLM as part of the normal model matrix. If a CPU baseline is
+requested, label the report as CPU baseline and exclude it from accelerator performance
+conclusions.
+
+Start Ollama only for that explicit CPU baseline:
 
 ```bash
 # Start Ollama on the Intel Windows machine from the controller
@@ -235,9 +248,9 @@ until curl -sf "http://$INTEL_WIN_HOST:11434/api/version" > /dev/null; do
 done
 ```
 
-### 2.3 Pull a model (CPU-sized)
+### 2.3 Pull a CPU-baseline model
 
-On Intel CPU-only Windows, prefer small quantized models:
+For CPU baseline only, prefer small quantized models:
 
 ```bash
 sshpass -p "$INTEL_WIN_SSH_PASS" ssh "$INTEL_WIN_SSH_USER@$INTEL_WIN_HOST" \
@@ -250,7 +263,7 @@ sshpass -p "$INTEL_WIN_SSH_PASS" ssh "$INTEL_WIN_SSH_USER@$INTEL_WIN_HOST" \
 | 16 GB | llama3.2:3b (Q4) | ~3–8 tok/s |
 | 32 GB | qwen2.5:7b (Q4) | ~1–4 tok/s |
 
-### 2.4 Run the benchmark
+### 2.4 Run a CPU-baseline benchmark
 
 ```bash
 export OLLAMA_INTEL_WIN_BASE_URL="http://$INTEL_WIN_HOST:11434/v1"
@@ -272,8 +285,13 @@ python run_benchmark.py \
   --skip stability,concurrency,conditioned,scenarios
 ```
 
-CPU-mode throughput is significantly lower; skip `stability` (the 20-minute soak) and
-`conditioned` (multi-turn, CPU-sensitive) unless you have time budget.
+CPU-mode LLM/VLM throughput is not a normal production signal for this target. Skip long
+dimensions such as `stability`, `concurrency`, `conditioned`, and `scenarios` unless the
+baseline request explicitly requires them.
+
+For target-local single-model runs, `scenarios` must not auto-load another same-machine model
+as the L2 judge. Use L1-only scenarios by default; enable L2 only when the judge is served by
+separate hardware or an external endpoint.
 
 ---
 
@@ -481,21 +499,43 @@ python run_benchmark.py \
 
 ---
 
-## 5. Intel Linux — vLLM / Ollama CPU
+## 5. Intel Linux — OpenVINO/vLLM Accelerated Runtime, CPU Baseline Explicit Only
 
 **Target ID**: `intel-linux`  
-**Runtime**: vLLM (default) or Ollama (fallback if no CUDA)  
-**Use case**: x86 Linux servers without GPU, or Intel GPU (future Arc/Xe path)
+**Runtime**: OpenVINO, vLLM, or another accelerated OpenAI-compatible runtime by default;
+Ollama CPU only for explicit CPU baseline or diagnostics
+**Use case**: x86 Linux servers with accelerator-backed inference, or labeled CPU baselines
+
+AMD Linux and Intel Linux post-Windows sequencing is maintained in
+[`docs/AMD_INTEL_LINUX_TEST_PLAN.md`](AMD_INTEL_LINUX_TEST_PLAN.md).
 
 ### 5.1 Runtime choice
 
 | Scenario | Recommended runtime | Notes |
 |---|---|---|
+| Intel Arc/Xe GPU | OpenVINO OpenAI-compatible service | Preferred Intel Linux LLM/VLM path |
 | NVIDIA GPU available | vLLM | Full benchmark support, best performance |
-| No GPU (CPU-only) | Ollama | Simpler setup, limited throughput |
-| Intel Arc/Xe GPU | Ollama with OpenVINO backend | Experimental |
+| No GPU (CPU-only) | Ollama | CPU baseline only; not a normal LLM/VLM matrix path |
 
-### 5.2 vLLM setup (NVIDIA GPU path)
+### 5.2 OpenVINO setup (Intel GPU path)
+
+```bash
+# On the Intel Linux machine
+export OV_INTEL_LINUX_BASE_URL=http://localhost:8080/v1
+export OV_INTEL_LINUX_MODEL_ROOT=/path/to/openvino-models
+export OV_INTEL_LINUX_LLM_DEVICE=GPU
+
+python scripts/serve_ov_intel.py \
+  --llm "$OV_INTEL_LINUX_MODEL_ROOT/qwen3-0.6b-int4-ov" \
+  --llm-device GPU \
+  --host 0.0.0.0 \
+  --port 8080
+```
+
+The Linux runner can also restart this service per model when the matching
+model directory exists under `OV_INTEL_LINUX_MODEL_ROOT`.
+
+### 5.3 vLLM setup (NVIDIA GPU path)
 
 ```bash
 # On the Intel Linux machine
@@ -517,7 +557,7 @@ until curl -sf "http://$INTEL_LINUX_HOST:8000/v1/models" > /dev/null; do
 done
 ```
 
-### 5.3 Ollama setup (CPU-only path)
+### 5.4 Ollama setup (explicit CPU baseline only)
 
 ```bash
 # On the Intel Linux machine
@@ -526,20 +566,30 @@ OLLAMA_HOST=0.0.0.0 ollama serve &
 ollama pull llama3.2:3b
 ```
 
-### 5.4 Run the benchmark
+### 5.5 Run the benchmark
 
 ```bash
-export INTEL_LINUX_BASE_URL="http://$INTEL_LINUX_HOST:8000/v1"    # vLLM
-# or: export INTEL_LINUX_BASE_URL="http://$INTEL_LINUX_HOST:11434/v1"  # Ollama
-
-python run_benchmark.py \
+python scripts/run_linux_full_matrix.py \
   --target intel-linux \
-  --model qwen2.5-7b-intel-linux \
+  --models qwen3-0.6b-openvino-intel-linux \
   --seeds 3 \
-  --skip stability,asr
+  --tag intel-linux-YYYYMMDD-qwen3-06b-ov \
+  --detach
 ```
 
-CPU-only: add `--skip conditioned` to save time; throughput expectations are ~2–8 tok/s.
+CPU-only LLM/VLM baselines must be explicit:
+
+```bash
+python scripts/run_linux_full_matrix.py \
+  --target intel-linux \
+  --models qwen2.5-7b-intel-linux \
+  --seeds 3 \
+  --tag intel-linux-YYYYMMDD-q25-7b-cpu-baseline \
+  --allow-cpu-llm-vlm \
+  --detach
+```
+
+Keep CPU-baseline reports out of accelerator performance conclusions.
 
 ---
 
@@ -677,9 +727,14 @@ targets:
     ip_env: INTEL_LINUX_HOST
     ssh_user_env: INTEL_LINUX_SSH_USER
     ssh_pass_env: INTEL_LINUX_SSH_PASS
-    runtime: vllm
-    runtime_port: 8000
-    accelerator: cpu
+    runtime: generic
+    runtime_port: 8080
+    accelerator: openvino-gpu
+    accelerator_profiles: [openvino-gpu, openvino-cpu, cpu]
+    env_overrides:
+      OLLAMA_INTEL_LINUX_BASE_URL: http://localhost:11434/v1
+      OV_INTEL_LINUX_BASE_URL: http://localhost:8080/v1
+      INTEL_LINUX_BASE_URL: http://localhost:8080/v1
     remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
 ```
@@ -730,7 +785,10 @@ Recommended `--skip` combinations. "●" = run, "–" = skip (not supported or i
 | `scenarios` | ● | ● | ● | ● | – | ● | ● |
 
 Notes:
-- `concurrency` / `stability`: require sustained throughput; skip on CPU-only and low-RAM targets.
+- `concurrency` / `stability`: require sustained throughput; skip on CPU-only baselines and
+  low-RAM targets.
+- `scenarios`: L2 judge must not run on the same target machine as the model under test during
+  target-local single-model runs. Use L1-only or an external/independent judge.
 - `embedding` / `rerank` / `asr`: require dedicated model capabilities; only run when the model
   is `embedding_capable` / `rerank_capable` / `asr_capable` in `models.yaml`.
 - `general_ability`: requires HuggingFace dataset download; skip on air-gapped boards.
@@ -754,7 +812,7 @@ Notes:
 | Platform | Symptom | Fix |
 |---|---|---|
 | AMD Windows | `0 GPU layers` in Ollama | Set `HSA_OVERRIDE_GFX_VERSION=gfx1102` before `ollama serve` |
-| AMD Windows | Low throughput despite GPU | Run `ollama ps` — confirm `100%` GPU column |
+| AMD Windows | Low throughput despite GPU | Run `ollama ps`; stop and fix acceleration unless this is an explicit CPU baseline |
 | RK3588 | NPU `cur_freq` = 0 | Send one inference request to wake the NPU; check devfreq governor |
 | Jetson | CUDA not detected | Verify CUDA toolkit installed; `nvidia-smi` should show the Jetson GPU |
 | Intel Arc | No acceleration | Arc support via OpenVINO is experimental; fallback to CPU |

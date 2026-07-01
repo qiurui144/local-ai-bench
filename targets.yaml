@@ -26,6 +26,23 @@ targets:
     remote_workdir: "C:\\Users\\happy\\vlm-llm-benchmark"
     python_cmd: "C:\\Users\\happy\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
 
+  amd-linux-x86:
+    platform: linux
+    arch: x86_64
+    connection: ssh
+    ip_env: AMD_LINUX_HOST
+    ssh_user_env: AMD_LINUX_SSH_USER
+    ssh_pass_env: AMD_LINUX_SSH_PASS
+    runtime: ollama
+    runtime_port: 11434
+    accelerator: vulkan
+    accelerator_profiles: [cpu, vulkan]
+    env_overrides:
+      OLLAMA_AMD_LINUX_BASE_URL: http://localhost:11434/v1
+    remote_workdir: "/home/qiurui/vlm-llm-benchmark"
+    python_cmd: "/home/qiurui/vlm-llm-benchmark/.venv/bin/python"
+    notes: "AMD Ryzen 7 8845H + Radeon 780M Linux target; Ollama local endpoint on 127.0.0.1:11434."
+
   rk3588-linux:
     platform: linux
     arch: aarch64
@@ -68,9 +85,42 @@ targets:
     runtime: llama_cpp
     runtime_port: 11434
     accelerator: cpu
+    accelerator_profiles: [cpu, rvv, ime2]
     remote_workdir: "/root/local-ai-bench"
     python_cmd: "python3"
-    notes: "进迭时空 SpacemiT K3（X100+A100 异构，8核 RISC-V RVV 0.7.1 + IME2 NPU，16GB）；Bianbu Linux；llama-server v8355（/usr/bin/llama-server）RVV+IME2 编译；port 11434 = llama-server 3B，port 8081 = llama-server 1.5B，port 8080 = nginx NAS（禁用）"
+    notes: "兼容别名：进迭时空 SpacemiT K3 16GB；新增模型必须使用 k3-riscv-16g 或 k3-riscv-8g，避免不同内存容量混跑。"
+
+  k3-riscv-16g:
+    platform: linux
+    arch: riscv64
+    connection: ssh
+    ip_env: K3_HOST                  # 192.168.100.215
+    ssh_user_env: K3_USER            # root
+    ssh_pass_env: K3_PASS            # bianbu
+    runtime: llama_cpp
+    runtime_port: 11434
+    accelerator: cpu
+    accelerator_profiles: [cpu, rvv, ime2]
+    remote_workdir: "/root/local-ai-bench"
+    python_cmd: "python3"
+    notes: "进迭时空 SpacemiT K3（X100+A100 异构，8核 RISC-V RVV 0.7.1 + IME2 NPU，16GB）；Bianbu Linux；llama-server v8355（/usr/bin/llama-server）RVV+IME2 编译；port 11434=3B，8081=1.5B，8082=0.5B，11435=7B。"
+
+  k3-riscv-8g:
+    platform: linux
+    arch: riscv64
+    connection: ssh
+    ip_env: K3_8G_HOST
+    ssh_user_env: K3_8G_USER
+    ssh_pass_env: K3_8G_PASS
+    runtime: llama_cpp
+    runtime_port: 11434
+    accelerator: cpu
+    accelerator_profiles: [cpu, rvv, ime2]
+    env_overrides:
+      K3_8G_LLM_BASE_URL: http://localhost:11434/v1
+    remote_workdir: "/root/local-ai-bench"
+    python_cmd: "python3"
+    notes: "进迭时空 SpacemiT K3 8GB 内存档；仅登记 0.5B/1B/1.5B 等低内存 GGUF，避免与 16GB 的 3B/7B 配置混用。"
 
   k1-riscv:
     platform: linux
@@ -129,8 +179,14 @@ targets:
     ip_env: INTEL_LINUX_HOST
     ssh_user_env: INTEL_LINUX_SSH_USER
     ssh_pass_env: INTEL_LINUX_SSH_PASS
-    runtime: ollama           # CPU 模式；如有 GPU 可改 vllm + port: 8000
-    runtime_port: 11434
-    accelerator: cpu
+    runtime: generic          # OpenAI-compatible accelerated runtime by default; Ollama CPU is explicit baseline only
+    runtime_port: 8080
+    accelerator: openvino-gpu
+    accelerator_profiles: [openvino-gpu, openvino-cpu, cpu]
+    env_overrides:
+      OLLAMA_INTEL_LINUX_BASE_URL: http://localhost:11434/v1
+      OV_INTEL_LINUX_BASE_URL: http://localhost:8080/v1
+      INTEL_LINUX_BASE_URL: http://localhost:8080/v1
     remote_workdir: "/home/user/local-ai-bench"
     python_cmd: "python3"
+    notes: "Intel x86_64 Linux target; normal LLM/VLM runs use an accelerator-backed OpenAI-compatible endpoint such as OpenVINO/vLLM. Ollama CPU LLM/VLM runs require explicit CPU-baseline labeling."

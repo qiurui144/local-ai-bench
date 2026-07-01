@@ -17,9 +17,12 @@ without shipping a model.
 from __future__ import annotations
 
 import logging
+import json
+import subprocess
+import sys
 import time
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from common import ModelConfig, summarize_latencies
 
@@ -28,8 +31,9 @@ from .metrics import corpus_cer, corpus_wer, rtf, validate_transcript
 
 logger = logging.getLogger(__name__)
 
-# A transcriber takes an audio Path and returns the decoded text.
-Transcriber = Callable[[Path], str]
+# A transcriber takes an audio Path and returns the decoded text. Subprocess
+# helpers may return their JSON body so runtime/provider metadata can be kept.
+Transcriber = Callable[[Path], str | dict[str, Any]]
 
 _DEFAULT_THRESHOLDS = {
     "cer_max": 0.15,     # 15 % CER ceiling for clean Chinese speech
@@ -54,7 +58,7 @@ def _http_transcriber(base_url: str) -> Transcriber:
             endpoint,
             content=data,
             headers={"Content-Type": "audio/wav"},
-            timeout=30.0,
+            timeout=180.0,
         )
         resp.raise_for_status()
         body = resp.json()
@@ -122,6 +126,139 @@ def _try_whisper_ov_transcriber(
     return _transcribe
 
 
+def _try_whisper_ov_subprocess_transcriber(
+    model_dir: Path | str | None,
+    *,
+    device: str = "CPU",
+) -> Optional[Transcriber]:
+    """Whisper OV in a child process.
+
+    This is slower than a warm in-process model, but robust on Windows targets
+    where OpenVINO/optimum speech generation can terminate the interpreter in
+    native code. A child-process crash becomes a per-sample error; the benchmark
+    process and report generation continue.
+    """
+    if not model_dir:
+        return None
+    model_dir = Path(model_dir)
+    if not (model_dir / "config.json").exists():
+        return None
+    helper = Path(__file__).resolve().parents[2] / "scripts" / "whisper_ov_transcribe.py"
+    if not helper.exists():
+        logger.info("Whisper OV subprocess helper missing: %s", helper)
+        return None
+
+    def _transcribe(path: Path) -> str:  # pragma: no cover - needs model + OV
+        proc = subprocess.run(
+            [
+                sys.executable,
+                str(helper),
+                "--model-dir", str(model_dir),
+                "--wav", str(path),
+                "--device", device,
+                "--language", "zh",
+                "--task", "transcribe",
+            ],
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=300,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"whisper_ov_subprocess failed rc={proc.returncode}: {proc.stderr[-1000:]}"
+            )
+        lines = [line for line in proc.stdout.splitlines() if line.strip()]
+        if not lines:
+            raise RuntimeError(f"whisper_ov_subprocess produced no output: {proc.stderr[-1000:]}")
+        body = json.loads(lines[-1])
+        if proc.stderr.strip():
+            body["_stderr_tail"] = proc.stderr[-2000:]
+        return body
+
+    return _transcribe
+
+
+def _infer_whisper_model_type(model_cfg: ModelConfig) -> str:
+    explicit = getattr(model_cfg, "asr_model_type", None)
+    if explicit:
+        return explicit
+    haystack = " ".join(
+        str(v or "")
+        for v in (
+            getattr(model_cfg, "name", ""),
+            getattr(model_cfg, "model_id", ""),
+            getattr(model_cfg, "hf_repo", ""),
+        )
+    ).lower()
+    if "large" in haystack and "turbo" in haystack:
+        return "whisper-large-v3-turbo"
+    for size in ("tiny", "base", "small", "medium"):
+        if size in haystack:
+            return f"whisper-{size}"
+    return "whisper-base"
+
+
+def _try_whisper_amd_npu_subprocess_transcriber(model_cfg: ModelConfig) -> Optional[Transcriber]:
+    """AMD RyzenAI Whisper ONNX NPU helper in a child process.
+
+    This backend is intentionally strict. If a model declares
+    ``asr_backend: whisper_amd_npu_subprocess`` it must not silently fall back
+    to sherpa/SenseVoice CPU, because that would produce a false NPU result.
+    """
+    helper = Path(__file__).resolve().parents[2] / "scripts" / "whisper_amd_npu_transcribe.py"
+    if not helper.exists():
+        logger.info("AMD Whisper NPU subprocess helper missing: %s", helper)
+        return None
+    device = str(getattr(model_cfg, "asr_device", "") or "npu").lower()
+    if device == "auto":
+        device = "npu"
+    config_file = getattr(model_cfg, "asr_config_file", None)
+    if device == "npu" and not (config_file and Path(config_file).exists()):
+        logger.info("AMD Whisper NPU config missing: %s", config_file)
+        return None
+
+    py = getattr(model_cfg, "asr_python", None) or sys.executable
+    model_dir = getattr(model_cfg, "asr_model_dir", None)
+    model_type = _infer_whisper_model_type(model_cfg)
+
+    def _transcribe(path: Path) -> str:  # pragma: no cover - needs RyzenAI runtime
+        cmd = [
+            py,
+            str(helper),
+            "--wav", str(path),
+            "--model-type", model_type,
+            "--device", device,
+            "--language", "zh",
+        ]
+        if model_dir:
+            cmd.extend(["--model-dir", str(model_dir)])
+        if config_file:
+            cmd.extend(["--config-file", str(config_file)])
+        proc = subprocess.run(
+            cmd,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=600,
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"whisper_amd_npu_subprocess failed rc={proc.returncode}: {proc.stderr[-1000:]}"
+            )
+        lines = [line for line in proc.stdout.splitlines() if line.strip()]
+        if not lines:
+            raise RuntimeError(f"whisper_amd_npu_subprocess produced no output: {proc.stderr[-1000:]}")
+        body = json.loads(lines[-1])
+        if proc.stderr.strip():
+            body["_stderr_tail"] = proc.stderr[-2000:]
+        return body
+
+    return _transcribe
+
+
 def _try_sherpa_transcriber(model_dir: Path | str | None) -> Optional[Transcriber]:
     """Build a sherpa-onnx SenseVoice transcriber if the dep + model exist."""
     if not model_dir:
@@ -176,30 +313,71 @@ def run_asr(
                 "reason": "no dataset (manifest missing or empty)",
                 "verdict": "SKIP"}
 
+    backend = getattr(model_cfg, "asr_backend", "") or "auto"
     # HTTP backend: if base_url is configured, use remote HTTP transcription
     http_base = getattr(model_cfg, "base_url", None)
-    # Whisper OV backend: asr_backend=whisper_ov + ov_model_dir in model config
+    # Whisper OV backend: asr_backend=whisper_ov/subprocess + ov_model_dir in model config
     whisper_ov_dir = (
         getattr(model_cfg, "ov_model_dir", None)
-        if getattr(model_cfg, "asr_backend", "") == "whisper_ov"
+        if backend in {"whisper_ov", "whisper_ov_subprocess"}
         else None
     )
-    transcriber = (
-        transcribe_fn
-        or (
-            _http_transcriber(http_base)
-            if (http_base and (
-                getattr(model_cfg, "task_type", None) == "asr"
-                or "asr" in (getattr(model_cfg, "capabilities", ()) or ())
-            ))
-            else None
+    if transcribe_fn is not None:
+        transcriber = transcribe_fn
+    elif backend in {"whisper_amd_npu", "whisper_amd_npu_subprocess"}:
+        transcriber = _try_whisper_amd_npu_subprocess_transcriber(model_cfg)
+        if transcriber is None:
+            return {
+                "benchmark": "asr",
+                "model": model_cfg.name,
+                "status": "blocked",
+                "reason": "AMD Whisper NPU backend unavailable (helper/config/model files or RyzenAI VitisAIExecutionProvider not ready)",
+                "num_samples": len(samples),
+                "verdict": "SKIP",
+            }
+    elif backend in {"whisper_ov", "whisper_ov_subprocess"}:
+        device = str(getattr(model_cfg, "asr_device", "") or "CPU")
+        transcriber = (
+            _try_whisper_ov_subprocess_transcriber(whisper_ov_dir, device=device)
+            if backend == "whisper_ov_subprocess"
+            else _try_whisper_ov_transcriber(whisper_ov_dir)
         )
-        or _try_whisper_ov_transcriber(whisper_ov_dir)
-        or _try_sherpa_transcriber(asr_model_dir)
-    )
+        if transcriber is None:
+            return {
+                "benchmark": "asr",
+                "model": model_cfg.name,
+                "status": "blocked",
+                "reason": "Whisper OpenVINO backend unavailable (ov_model_dir/helper/runtime not ready)",
+                "num_samples": len(samples),
+                "verdict": "SKIP",
+            }
+    elif backend == "sherpa":
+        transcriber = _try_sherpa_transcriber(asr_model_dir)
+        if transcriber is None:
+            return {
+                "benchmark": "asr",
+                "model": model_cfg.name,
+                "status": "blocked",
+                "reason": "sherpa-onnx ASR backend unavailable",
+                "num_samples": len(samples),
+                "verdict": "SKIP",
+            }
+    else:
+        transcriber = (
+            (
+                _http_transcriber(http_base)
+                if (http_base and (
+                    getattr(model_cfg, "task_type", None) == "asr"
+                    or "asr" in (getattr(model_cfg, "capabilities", ()) or ())
+                ))
+                else None
+            )
+            or _try_whisper_ov_transcriber(whisper_ov_dir)
+            or _try_sherpa_transcriber(asr_model_dir)
+        )
     if transcriber is None:
         return {"benchmark": "asr", "model": model_cfg.name, "status": "blocked",
-                "reason": "no asr backend (set base_url_env for HTTP, or asr_backend: whisper_ov + ov_model_dir, or provide sherpa-onnx model)",
+                "reason": "no asr backend (set base_url_env for HTTP, asr_backend: whisper_ov + ov_model_dir, asr_backend: whisper_amd_npu_subprocess + asr_config_file, or provide sherpa-onnx model)",
                 "num_samples": len(samples), "verdict": "SKIP"}
 
     refs: list[str] = []
@@ -215,11 +393,23 @@ def run_asr(
         total_audio_s += dur
         t0 = time.monotonic()
         try:
-            hyp = transcriber(s.audio)
+            raw = transcriber(s.audio)
+            sample_extra: dict[str, Any] = {}
+            if isinstance(raw, dict):
+                hyp = str(raw.get("result", "") or "")
+                if isinstance(raw.get("_runtime"), dict):
+                    sample_extra["runtime"] = raw["_runtime"]
+                if isinstance(raw.get("_perf"), dict):
+                    sample_extra["backend_perf"] = raw["_perf"]
+                if raw.get("_stderr_tail"):
+                    sample_extra["backend_stderr_tail"] = str(raw["_stderr_tail"])
+            else:
+                hyp = raw
         except Exception as e:
             errors += 1
             logger.info("  [asr] %s transcribe failed: %s", s.uid, e)
             hyp = ""
+            sample_extra = {}
         proc_s = time.monotonic() - t0
         latencies.append(proc_s * 1000)
         if dur > 0:
@@ -236,7 +426,7 @@ def run_asr(
             "duration_s": dur,
             "latency_ms": proc_s * 1000,
             "rtf": rtf(proc_s, dur) if dur > 0 else 0.0,
-        })
+        } | sample_extra)
 
     overall_cer = corpus_cer(refs, hyps)
     overall_wer = corpus_wer(refs, hyps)

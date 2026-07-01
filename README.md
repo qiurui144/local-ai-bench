@@ -43,11 +43,20 @@ Each dimension has a PASS / WARN / FAIL verdict with configurable thresholds. Th
 |---|---|---|
 | AMD Windows (Ryzen 8845H + 780M iGPU) | ✅ Calibrated | [amd-windows.en.md](reports/amd-windows.en.md) |
 | Intel Windows (Core Ultra 7 155H + Arc iGPU) | ✅ Calibrated | [intel-windows.en.md](reports/intel-windows.en.md) |
+| AMD Linux (Ryzen 8845H + 780M iGPU) | 🔧 In progress | [amd-linux.en.md](reports/amd-linux.en.md) |
+| Intel Linux (OpenVINO/vLLM; CPU baseline explicit) | 🔧 In progress | — |
 | RK3588 Linux (RKNN3 NPU) | 🔧 In progress | — |
 | K3 RISC-V | 🔧 In progress | — |
 | vLLM server (Linux + NVIDIA GPU) | ✅ Supported | — |
 
 Any **OpenAI-compatible endpoint** works — vLLM, Ollama, llama.cpp server, OpenAI, DashScope, DeepSeek.
+
+Project run policy:
+
+- Run one model at a time on the same target machine. Different physical targets can run in parallel.
+- LLM/VLM CPU-only runs are special-case CPU baselines only; normal LLM/VLM benchmark runs must use the target accelerator.
+- Scenario L2 judges must run on separate hardware or an external service. Target-local single-model runs use L1-only scenarios by default.
+- Windows and Linux target-local full-matrix runners enforce these rules: `scripts/run_windows_full_matrix.py` and `scripts/run_linux_full_matrix.py`.
 
 ---
 
@@ -90,6 +99,7 @@ Models are declared in `models.yaml`. The minimum required fields are `name`, `p
 | [RELEASE.md](RELEASE.md) | Version history, breaking changes, migration notes |
 | [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows benchmark results — calibrated thresholds and model selection recommendations |
 | [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows benchmark results |
+| [docs/AMD_INTEL_LINUX_TEST_PLAN.md](docs/AMD_INTEL_LINUX_TEST_PLAN.md) | AMD/Intel Linux post-Windows execution plan and CPU-baseline policy |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to add models, dimensions, and hardware targets |
 | [docs/ACADEMIC-RIGOR.md](docs/ACADEMIC-RIGOR.md) | Statistical rigor principles (multi-seed, effect sizes, calibration) |
 

@@ -408,11 +408,20 @@ def _resolve_judge(judge_name: str | None, model_cfg: ModelConfig):
             m for m in models
             if m.name != model_cfg.name and m.port and _is_chat_capable(m)
         ]
+        target = getattr(model_cfg, "target", None)
+        if target:
+            target_pool = [m for m in pool if getattr(m, "target", None) == target]
+            if target_pool:
+                pool = target_pool
+        ready_pool = [m for m in pool if wait_model_ready(m, timeout_s=2.0)]
+        if not ready_pool:
+            logger.warning("no ready scenarios judge candidates — L2 disabled")
+            return None
         if not pool:
             return None
         # Use priority-based selection: 7B→14B→3B→1.5B→0.6B→first-available
         try:
-            judge = _select_judge_model(pool)
+            judge = _select_judge_model(ready_pool)
         except RuntimeError:
             return None
     if not wait_model_ready(judge, timeout_s=10.0):

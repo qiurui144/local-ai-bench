@@ -188,6 +188,27 @@ def test_infer_stream_seed_in_payload(monkeypatch):
     assert "seed" not in captured["json"]
 
 
+def test_infer_stream_ollama_think_false_payload_and_token_floor(monkeypatch):
+    captured = {}
+
+    def fake_stream(method, url, **kw):
+        captured.clear()
+        captured.update(kw)
+        return _FakeStreamCM(_FakeStreamResponse(["data: [DONE]"]))
+
+    monkeypatch.setattr(common.httpx, "stream", fake_stream)
+    monkeypatch.setattr(common, "time", _FakeClock())
+
+    model = _Model()
+    model.ollama_think = False
+    common.infer_stream(model, prompt="hi", max_tokens=64)
+
+    payload = captured["json"]
+    assert payload["think"] is False
+    assert payload["options"]["think"] is False
+    assert payload["max_tokens"] == 2048
+
+
 def test_infer_stream_transport_exception(monkeypatch):
     def boom(method, url, **kw):
         raise common.httpx.ConnectError("connection refused")

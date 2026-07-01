@@ -22,9 +22,12 @@ Harness env: OV_EXTRAS_INTEL_BASE_URL=http://192.168.100.116:8081/v1
 
 import argparse
 import io
+import json
 import logging
+import subprocess
 import sys
 import time
+import tempfile
 from pathlib import Path
 
 # Fix GBK console on Windows
@@ -244,28 +247,58 @@ async def asr_transcribe(request: _FastAPIRequest):
     if not ASR_DIR.exists():
         raise HTTPException(503, f"ASR model not found: {ASR_DIR}")
 
-    try:
-        proc, model = _load_asr()
-    except Exception as e:
-        raise HTTPException(500, f"ASR model load failed: {e}")
-
     audio_bytes = await request.body()
     if not audio_bytes:
         raise HTTPException(400, "empty audio body")
 
-    t0 = time.monotonic()
-    try:
-        import soundfile as sf  # type: ignore
-        audio, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
-        inputs = proc(audio, sampling_rate=16000, return_tensors="pt")
-        ids    = model.generate(inputs.input_features)
-        texts  = proc.batch_decode(ids, skip_special_tokens=True)
-        text   = texts[0].strip() if texts else ""
-    except Exception as e:
-        raise HTTPException(500, f"ASR inference failed: {e}")
+    helper = Path(__file__).with_name("whisper_ov_transcribe.py")
+    if not helper.exists():
+        raise HTTPException(500, f"ASR helper not found: {helper}")
 
-    elapsed_ms = (time.monotonic() - t0) * 1000
-    return {"result": text, "_perf": {"latency_ms": round(elapsed_ms, 1)}}
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        wav_path = Path(tmp.name)
+    try:
+        cmd = [
+            sys.executable,
+            str(helper),
+            "--model-dir", str(ASR_DIR),
+            "--wav", str(wav_path),
+            "--device", _ASR_DEVICE_OVERRIDE or "CPU",
+            "--language", "zh",
+            "--task", "transcribe",
+        ]
+        proc = subprocess.run(
+            cmd,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=240,
+        )
+        if proc.returncode != 0:
+            raise HTTPException(
+                500,
+                "ASR subprocess failed: "
+                f"rc={proc.returncode}; stderr={proc.stderr[-1000:]}",
+            )
+        lines = [line for line in proc.stdout.splitlines() if line.strip()]
+        if not lines:
+            raise HTTPException(500, f"ASR subprocess produced no output; stderr={proc.stderr[-1000:]}")
+        try:
+            return json.loads(lines[-1])
+        except Exception as e:
+            raise HTTPException(
+                500,
+                f"ASR subprocess returned invalid JSON: {e}; stdout={proc.stdout[-1000:]}; stderr={proc.stderr[-1000:]}",
+            )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(504, "ASR subprocess timed out")
+    finally:
+        try:
+            wav_path.unlink()
+        except Exception:
+            pass
 
 
 # ── entry point ───────────────────────────────────────────────────────────────

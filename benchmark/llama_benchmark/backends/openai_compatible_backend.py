@@ -57,6 +57,13 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
+        self._timeout_s = float(config.extra.get("timeout_s", 120.0))
+        self._retry_attempts = max(1, int(config.extra.get("retry_attempts", 1)))
+        self._retry_initial_s = max(0.0, float(config.extra.get("retry_initial_s", 2.0)))
+        self._retry_max_s = max(self._retry_initial_s, float(config.extra.get("retry_max_s", 30.0)))
+        self._retry_statuses = {
+            int(s) for s in config.extra.get("retry_statuses", (502, 503, 504))
+        }
 
     def load(self) -> None:
         """检查服务可达性。"""
@@ -88,6 +95,52 @@ class OpenAICompatibleBackend(AbstractModelBackend):
     def unload(self) -> None:
         pass  # 远程服务，无需释放本地资源
 
+    def _retry_wait_s(self, attempt: int) -> float:
+        return min(self._retry_max_s, self._retry_initial_s * (2 ** attempt))
+
+    def _post_json(self, endpoint: str, payload: Dict[str, Any], timeout: float):
+        import httpx
+
+        url = f"{self._base_url}{endpoint}"
+        last_exc: Exception | None = None
+        for attempt in range(self._retry_attempts):
+            try:
+                resp = httpx.post(
+                    url,
+                    headers=self._headers,
+                    json=payload,
+                    timeout=timeout,
+                )
+                if resp.status_code not in self._retry_statuses or attempt == self._retry_attempts - 1:
+                    return resp
+                wait_s = self._retry_wait_s(attempt)
+                logger.warning(
+                    "OpenAI-compatible transient HTTP {} from {}; retry {}/{} in {:.1f}s",
+                    resp.status_code,
+                    url,
+                    attempt + 1,
+                    self._retry_attempts,
+                    wait_s,
+                )
+                time.sleep(wait_s)
+            except (httpx.TransportError, httpx.TimeoutException) as exc:
+                last_exc = exc
+                if attempt == self._retry_attempts - 1:
+                    raise
+                wait_s = self._retry_wait_s(attempt)
+                logger.warning(
+                    "OpenAI-compatible transport error from {}: {!r}; retry {}/{} in {:.1f}s",
+                    url,
+                    exc,
+                    attempt + 1,
+                    self._retry_attempts,
+                    wait_s,
+                )
+                time.sleep(wait_s)
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("unreachable retry state")
+
     # ── LLM 接口 ──────────────────────────────────────────────────────────────
 
     def generate(
@@ -98,8 +151,6 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         system: Optional[str] = None,
         stream: bool = False,
     ) -> str:
-        import httpx
-
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -114,12 +165,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         }
         if not self.config.extra.get("ollama_think", True):
             payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
-        resp = httpx.post(
-            f"{self._base_url}/chat/completions",
-            headers=self._headers,
-            json=payload,
-            timeout=120,
-        )
+        resp = self._post_json("/chat/completions", payload, self._timeout_s)
         resp.raise_for_status()
         import re
         content = resp.json()["choices"][0]["message"]["content"] or ""
@@ -138,7 +184,6 @@ class OpenAICompatibleBackend(AbstractModelBackend):
           - completion_tokens:  输出 token 数
           - tokens_per_second:  估算值（需要 total_ms 外部计时）
         """
-        import httpx
         import time as _time
 
         messages = [{"role": "user", "content": prompt}]
@@ -150,12 +195,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "stream": False,
         }
         start_ns = _time.perf_counter_ns()
-        resp = httpx.post(
-            f"{self._base_url}/chat/completions",
-            headers=self._headers,
-            json=payload,
-            timeout=300,
-        )
+        resp = self._post_json("/chat/completions", payload, max(300.0, self._timeout_s))
         elapsed_ms = (_time.perf_counter_ns() - start_ns) / 1_000_000
         resp.raise_for_status()
         data = resp.json()
@@ -186,8 +226,6 @@ class OpenAICompatibleBackend(AbstractModelBackend):
 
         兼容 vLLM / LMDeploy / SGLang（均支持 top_logprobs 参数）。
         """
-        import httpx
-
         messages = [{"role": "user", "content": prompt}]
         payload = {
             "model": self._model_name,
@@ -200,12 +238,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         }
         if not self.config.extra.get("ollama_think", True):
             payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
-        resp = httpx.post(
-            f"{self._base_url}/chat/completions",
-            headers=self._headers,
-            json=payload,
-            timeout=60,
-        )
+        resp = self._post_json("/chat/completions", payload, self._timeout_s)
         resp.raise_for_status()
         data = resp.json()
 

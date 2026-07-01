@@ -63,10 +63,18 @@ class RemoteExecutor:
             return base + ["cmd", "/S", "/C", f'"{cmd}"']
         return base + [cmd]
 
-    def _run_checked(self, cmd: list[str], timeout: int) -> None:
+    def _run_checked(
+        self,
+        cmd: list[str],
+        timeout: int,
+        *,
+        allowed_exit_codes: set[int] | None = None,
+    ) -> int:
+        allowed = allowed_exit_codes or {0}
         rc = subprocess.call(cmd, timeout=timeout)
-        if rc != 0:
+        if rc not in allowed:
             raise RuntimeError(f"remote command failed with exit code {rc}")
+        return rc
 
     def sync_code(self):
         """推送项目代码到目标机（排除 output/、.git/、__pycache__/）。
@@ -192,7 +200,15 @@ class RemoteExecutor:
             env_prefix = " ".join(f"{k}={v}" for k, v in env_overrides.items())
             run_cmd = f'cd "{workdir}" && {env_prefix} "{py}" run_benchmark.py {args_str}'
 
-        self._run_checked(self._ssh_cmd(run_cmd), timeout=7200)
+        rc = self._run_checked(
+            self._ssh_cmd(run_cmd),
+            timeout=7200,
+            allowed_exit_codes={0, 1, 2},
+        )
+        self.last_error = (
+            RuntimeError(f"remote benchmark exited with code {rc}")
+            if rc != 0 else None
+        )
 
     def collect_reports(self, local_out: Path) -> None:
         """scp 拉回目标机 output/reports/ 到本机 local_out/。"""

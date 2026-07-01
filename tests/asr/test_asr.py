@@ -13,8 +13,10 @@ import json
 
 import pytest
 
+from common import ModelConfig
 from benchmark.asr import metrics
 from benchmark.asr.datasets import load_asr_manifest
+from benchmark.asr import runner as asr_runner
 from benchmark.asr.runner import run_asr
 
 
@@ -144,3 +146,41 @@ def test_run_asr_no_backend_blocked(tmp_path):
     res = run_asr(_FakeModel(), manifest_path=manifest, audio_root=tmp_path)
     assert res["status"] == "blocked"
     assert "backend" in res["reason"]
+
+
+def test_run_asr_explicit_whisper_ov_does_not_fallback_to_sherpa(monkeypatch, tmp_path):
+    rows = [{"audio": "a.wav", "text": "你好", "duration": 1.0}]
+    manifest = _write_manifest(tmp_path, rows)
+    monkeypatch.setattr(
+        asr_runner,
+        "_try_sherpa_transcriber",
+        lambda model_dir: pytest.fail("explicit Whisper OV must not fall back to sherpa"),
+    )
+    model = ModelConfig(
+        name="intel-whisper",
+        asr_backend="whisper_ov_subprocess",
+        ov_model_dir=str(tmp_path / "missing-ov-model"),
+    )
+
+    res = run_asr(model, manifest_path=manifest, audio_root=tmp_path)
+
+    assert res["status"] == "blocked"
+    assert "Whisper OpenVINO backend unavailable" in res["reason"]
+
+
+def test_run_asr_amd_whisper_npu_missing_config_blocks(tmp_path):
+    rows = [{"audio": "a.wav", "text": "你好", "duration": 1.0}]
+    manifest = _write_manifest(tmp_path, rows)
+    model = ModelConfig(
+        name="whisper-base-amd-npu",
+        target="amd-win-x86",
+        asr_backend="whisper_amd_npu_subprocess",
+        asr_model_type="whisper-base",
+        asr_device="npu",
+        asr_config_file=str(tmp_path / "missing-model-config.json"),
+    )
+
+    res = run_asr(model, manifest_path=manifest, audio_root=tmp_path)
+
+    assert res["status"] == "blocked"
+    assert "AMD Whisper NPU backend unavailable" in res["reason"]

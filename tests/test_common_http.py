@@ -174,3 +174,29 @@ def test_infer_sync_passes_seed_into_payload(monkeypatch):
     captured.clear()
     common.infer_sync(_Model(), prompt="hi")
     assert "seed" not in captured
+
+
+def test_infer_sync_ollama_think_false_payload_and_token_floor(monkeypatch):
+    """Qwen3 Ollama entries need both think=false and a larger output budget."""
+    captured = {}
+
+    class _OkResp:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _OkResp()
+
+    monkeypatch.setattr(common.httpx, "post", fake_post)
+
+    model = _Model()
+    model.ollama_think = False
+    common.infer_sync(model, prompt="hi", max_tokens=64)
+
+    assert captured["think"] is False
+    assert captured["options"]["think"] is False
+    assert captured["max_tokens"] == 2048

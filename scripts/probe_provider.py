@@ -26,7 +26,12 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 
 import httpx  # noqa: E402  (after sys.path tweak)
-from common import ModelConfig, load_models, _CLOUD_PROVIDERS  # noqa: E402
+from common import (  # noqa: E402
+    ModelConfig,
+    _CLOUD_PROVIDERS,
+    _apply_ollama_think_controls,
+    load_models,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +45,11 @@ _1X1_PNG_B64 = (
 _1X1_PNG_DATA_URL = f"data:image/png;base64,{_1X1_PNG_B64}"
 
 _PROBE_TIMEOUT = 15.0  # seconds for each individual request
+
+
+def _prepare_probe_payload(cfg: ModelConfig, payload: dict) -> dict:
+    _apply_ollama_think_controls(payload, cfg, int(payload.get("max_tokens") or 0))
+    return payload
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -78,6 +88,7 @@ def probe_chat_completion(cfg: ModelConfig) -> tuple[str, str, float, int]:
         "max_tokens": 32,
         "temperature": 0.0,
     }
+    _prepare_probe_payload(cfg, payload)
     url = f"{cfg.base_url}/chat/completions"
     try:
         t0 = time.monotonic()
@@ -110,6 +121,7 @@ def probe_json_mode(cfg: ModelConfig) -> tuple[str, str]:
         "temperature": 0.0,
         "response_format": {"type": "json_object"},
     }
+    _prepare_probe_payload(cfg, payload)
     url = f"{cfg.base_url}/chat/completions"
     try:
         r = httpx.post(
@@ -144,6 +156,7 @@ def probe_seed_consistency(cfg: ModelConfig) -> tuple[str, str]:
             "temperature": 0.0,
             "seed": 42,
         }
+        _prepare_probe_payload(cfg, payload)
         try:
             r = httpx.post(
                 f"{cfg.base_url}/chat/completions",
@@ -184,6 +197,7 @@ def probe_vlm(cfg: ModelConfig) -> tuple[str, str]:
         "max_tokens": 16,
         "temperature": 0.0,
     }
+    _prepare_probe_payload(cfg, payload)
     url = f"{cfg.base_url}/chat/completions"
     try:
         r = httpx.post(

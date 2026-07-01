@@ -69,6 +69,10 @@ def _vitisai_helper_path() -> Path:
     return Path(__file__).resolve().parents[2] / "scripts" / "ocr_vitisai_rapidocr.py"
 
 
+def _rapidocr_helper_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "scripts" / "ocr_rapidocr_subprocess.py"
+
+
 def _vitisai_model_args(model_dir: Optional[Path]) -> list[str]:
     if model_dir is None:
         return []
@@ -131,6 +135,44 @@ def _run_vitisai_helper(
         detail = payload.get("error") or proc.stderr.strip() or payload_text
         raise RuntimeError(detail)
     return payload
+
+
+def _run_rapidocr_helper(
+    helper: Path,
+    *,
+    backend: str,
+    image: Optional[Path] = None,
+    timeout_s: int = 180,
+) -> dict:
+    cmd = [sys.executable, str(helper), "--backend", backend]
+    if image is None:
+        cmd.append("--probe")
+    else:
+        cmd.extend(["--image", str(image)])
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout_s,
+            env={**os.environ.copy(), "PYTHONIOENCODING": "utf-8"},
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"rapidocr {backend} helper timed out after {timeout_s}s") from exc
+
+    payload_text = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else ""
+    try:
+        payload = json.loads(payload_text) if payload_text else {}
+    except json.JSONDecodeError:
+        payload = {"ok": False, "error": payload_text or proc.stderr.strip()}
+    if proc.returncode != 0 or not payload.get("ok"):
+        detail = payload.get("error") or proc.stderr.strip() or payload_text
+        raise RuntimeError(detail)
+    return payload
+
 
 def _try_vitisai(model_dir: Optional[Path]) -> Optional[Recognizer]:
     """AMD XDNA NPU via RyzenAI VitisAI EP + RapidOCR PP-OCR pipeline."""
@@ -239,40 +281,31 @@ def _try_directml() -> Optional[Recognizer]:
 
 
 def _try_openvino() -> Optional[Recognizer]:
-    """Intel OpenVINO via rapidocr-openvino (OV 2026.2.1 + rapidocr-openvino 1.4.4).
+    """Intel OpenVINO via rapidocr-openvino in a child process.
 
-    rapidocr-openvino uses the OV Core internally with auto-device selection
-    (CPU or iGPU, not specifically NPU — dynamic shapes prevent NPU here).
-    Confirmed p50 797 ms on Intel Arc (2026-06-22).
-    For NPU-specific PP-OCRv4 static-shape path see _try_openvino_npu().
+    The OpenVINO/RapidOCR native stack can terminate or hang the interpreter on
+    Windows during recognition. Keep it out of the benchmark worker so failures
+    become per-sample errors instead of losing the whole model report.
     """
-    try:
-        import openvino as ov  # type: ignore
-        devices = list(ov.Core().available_devices)
-        logger.info("OpenVINO OCR: devices available %s", devices)
-    except Exception as e:
-        logger.info("OpenVINO OCR unavailable: %s", e)
+    helper = _rapidocr_helper_path()
+    if not helper.exists():
+        logger.info("OpenVINO OCR helper missing: %s", helper)
         return None
     try:
-        from rapidocr_openvino import RapidOCR  # type: ignore
-        engine = RapidOCR()
-
-        def _recognize(img_path: Path) -> str:
-            result, _ = engine(str(img_path))
-            if not result:
-                return ""
-            return " ".join(line[1] for line in result if line and len(line) > 1)
-
-        try:
-            import numpy as np  # type: ignore
-            engine(np.zeros((32, 32, 3), dtype="uint8"))
-        except Exception:
-            pass
-        logger.info("rapidocr-openvino backend loaded (devices=%s)", devices)
-        return _recognize
-    except Exception as e:
+        probe = _run_rapidocr_helper(helper, backend="openvino")
+    except Exception as e:  # pragma: no cover - backend-specific
         logger.info("OpenVINO OCR init failed: %s", e)
         return None
+
+    devices = probe.get("devices", [])
+    logger.info("rapidocr-openvino helper loaded (devices=%s)", devices)
+
+    def _recognize(img_path: Path) -> str:  # pragma: no cover - Windows OV-only
+        payload = _run_rapidocr_helper(helper, backend="openvino", image=img_path)
+        return str(payload.get("text", ""))
+
+    setattr(_recognize, "_rapidocr_devices", devices)
+    return _recognize
 
 
 def _try_openvino_npu(model_dir: Optional[Path] = None) -> Optional[Recognizer]:
@@ -492,6 +525,9 @@ def run_ocr(
     backend_providers = getattr(recognizer_fn, "_rapidocr_providers", None)
     if backend_providers:
         aggregate["backend_providers"] = backend_providers
+    backend_devices = getattr(recognizer_fn, "_rapidocr_devices", None)
+    if backend_devices:
+        aggregate["backend_devices"] = backend_devices
 
     reasons: list[str] = []
     if errors == len(samples):

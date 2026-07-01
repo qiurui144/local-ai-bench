@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import logging
 import os
@@ -24,6 +25,7 @@ import time
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import httpx
 import yaml
@@ -129,6 +131,13 @@ class ModelConfig:
                                        # cross-encoder single pass) vs generative yes/no
     ocr_backend: str = "auto"          # ocr dim: auto | rapidocr | paddleocr | vitisai | directml | openvino
     ocr_model_dir: Optional[str] = None
+    asr_backend: str = "auto"          # asr dim: auto | whisper_ov | whisper_ov_subprocess | whisper_amd_npu_subprocess | sherpa
+    asr_model_dir: Optional[str] = None
+    asr_model_type: Optional[str] = None
+    asr_config_file: Optional[str] = None
+    asr_device: str = "auto"
+    asr_python: Optional[str] = None
+    ov_model_dir: Optional[str] = None
     max_model_len: Optional[int] = None  # conditioned dim: 阶梯超限 SKIPPED 的依据;
                                          # 未配置时运行时探 /v1/models
     notes: str = ""
@@ -279,8 +288,30 @@ TEXT_PROMPT = """你是法律文本分析助手。简要分析以下内容（200
 # 同步客户端（用 httpx 直调，避免 openai SDK 的额外开销）
 # ────────────────────────────────────────────────────────────
 
-# Providers that may return HTTP 429 rate-limit; local providers do not retry.
+# Providers that may return HTTP 429 rate-limit; local providers only retry
+# transient service restart failures.
 _CLOUD_PROVIDERS = {"openai", "deepseek", "dashscope"}
+_TRANSIENT_LOCAL_STATUSES = {502, 503, 504}
+_LOCAL_ENDPOINT_HOSTNAMES = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}
+
+
+def _is_local_endpoint_url(base_url: str) -> bool:
+    """Return True for loopback/private endpoints, even under an OpenAI-compatible provider."""
+    host = (urlparse(base_url).hostname or "").lower()
+    if not host:
+        return False
+    if host in _LOCAL_ENDPOINT_HOSTNAMES or host.endswith(".local"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_loopback or ip.is_private or ip.is_link_local
+
+
+def _is_cloud_endpoint(model_cfg: ModelConfig) -> bool:
+    """Cloud provider with a public endpoint; local OpenAI-compatible servers are not cloud."""
+    return model_cfg.provider in _CLOUD_PROVIDERS and not _is_local_endpoint_url(model_cfg.base_url)
 
 
 def _post_with_retry(
@@ -290,23 +321,42 @@ def _post_with_retry(
     timeout_s: float,
     is_cloud: bool,
 ) -> "httpx.Response":
-    """POST with exponential-backoff retry on 429 for cloud providers.
+    """POST with exponential-backoff retry for expected transient failures.
 
-    Local providers (is_cloud=False) never retry — a 429 from a local server
-    is unexpected and should surface immediately.  Cloud providers retry up to
-    3 times with waits of 1 s, 2 s, 4 s.
+    Cloud providers retry 429 rate limits. Local providers keep 429 as an
+    immediate error but retry 502/503/504 and transport errors, which can happen
+    during supervised local service restarts.
     """
-    max_retries = 3 if is_cloud else 1
+    max_retries = 3 if is_cloud else 6
+    last_exc: Exception | None = None
     for attempt in range(max_retries):
-        r = httpx.post(url, json=payload, headers=headers, timeout=timeout_s)
-        if r.status_code != 429 or attempt == max_retries - 1:
+        try:
+            r = httpx.post(url, json=payload, headers=headers, timeout=timeout_s)
+        except (httpx.TransportError, httpx.TimeoutException) as exc:
+            last_exc = exc
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt
+            logger.warning(
+                "transient transport error from %s, retry %d/%d in %ds: %r",
+                url, attempt + 1, max_retries, wait, exc,
+            )
+            time.sleep(wait)
+            continue
+
+        retry_status = (
+            r.status_code == 429 if is_cloud else r.status_code in _TRANSIENT_LOCAL_STATUSES
+        )
+        if not retry_status or attempt == max_retries - 1:
             return r
-        wait = 2 ** attempt  # 1 s, 2 s, 4 s
+        wait = 2 ** attempt
         logger.warning(
-            "429 rate limit from %s, retry %d/%d in %ds",
-            url, attempt + 1, max_retries, wait,
+            "transient HTTP %s from %s, retry %d/%d in %ds",
+            r.status_code, url, attempt + 1, max_retries, wait,
         )
         time.sleep(wait)
+    if last_exc:
+        raise last_exc
     return r  # unreachable, satisfies type checkers
 
 
@@ -349,6 +399,22 @@ def _strip_think_tags(text: str) -> str:
     return stripped.strip()
 
 
+def _apply_ollama_think_controls(payload: dict, model_cfg: ModelConfig, max_tokens: int) -> None:
+    """Request non-thinking Ollama output and leave enough budget for older Qwen3 builds.
+
+    Some Ollama/OpenAI-compatible versions ignore the non-thinking flag for Qwen3
+    but still stream hidden reasoning tokens before visible content. The token
+    floor prevents short benchmark requests from ending as reasoning-only output.
+    """
+    if getattr(model_cfg, "ollama_think", True):
+        return
+    payload["think"] = False
+    options = dict(payload.get("options") or {})
+    options["think"] = False
+    payload["options"] = options
+    payload["max_tokens"] = max(max_tokens, 2048)
+
+
 def infer_sync(
     model_cfg: ModelConfig,
     *,
@@ -381,11 +447,7 @@ def infer_sync(
     }
     if seed is not None:
         payload["seed"] = seed   # OpenAI 兼容采样种子(vLLM 支持);judge 多 seed 用
-    if not getattr(model_cfg, "ollama_think", True):
-        payload["options"] = {"think": False}
-        # Qwen3 thinking models use ~1000-2000 tokens for reasoning before emitting
-        # content; bump max_tokens so thinking finishes and content is non-empty.
-        payload["max_tokens"] = max(max_tokens, 2048)
+    _apply_ollama_think_controls(payload, model_cfg, max_tokens)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -394,7 +456,7 @@ def infer_sync(
             url, payload,
             headers={"Authorization": model_cfg.auth_header},
             timeout_s=timeout_s,
-            is_cloud=model_cfg.provider in _CLOUD_PROVIDERS,
+            is_cloud=_is_cloud_endpoint(model_cfg),
         )
         elapsed = (time.monotonic() - t0) * 1000
     except Exception as e:
@@ -442,7 +504,7 @@ def infer_sync(
                     url, retry_payload,
                     headers={"Authorization": model_cfg.auth_header},
                     timeout_s=timeout_s,
-                    is_cloud=model_cfg.provider in _CLOUD_PROVIDERS,
+                    is_cloud=_is_cloud_endpoint(model_cfg),
                 )
                 if r2.status_code == 200:
                     d2 = r2.json()
@@ -526,9 +588,7 @@ def infer_stream(
     }
     if seed is not None:
         payload["seed"] = seed   # 缓存 A/B 一致性校验需确定性采样(spec §11)
-    if not getattr(model_cfg, "ollama_think", True):
-        payload["options"] = {"think": False}
-        payload["max_tokens"] = max(max_tokens, 2048)
+    _apply_ollama_think_controls(payload, model_cfg, max_tokens)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -650,6 +710,7 @@ async def infer_async(
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    _apply_ollama_think_controls(payload, model_cfg, max_tokens)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -712,7 +773,7 @@ def wait_model_ready(model_cfg: ModelConfig, timeout_s: float = 300.0) -> bool:
     云端 provider（openai / deepseek / dashscope 等）直接返回 True，不轮询。
     若 model_cfg.readiness_url 设置，则轮询该 URL（用于自定义 API 如 ASR /health）。
     """
-    if model_cfg.provider not in _LOCAL_PROVIDERS:
+    if model_cfg.provider not in _LOCAL_PROVIDERS and _is_cloud_endpoint(model_cfg):
         return True  # cloud endpoints are always "ready"
     if model_cfg.readiness_url:
         # Custom readiness URL (e.g. ASR services that expose /health, not /v1/models)

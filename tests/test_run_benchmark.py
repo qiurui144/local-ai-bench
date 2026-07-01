@@ -248,6 +248,23 @@ def test_resolve_judge_endpoint_not_ready_returns_none(monkeypatch):
     assert rb._resolve_judge(None, models[0]) is None
 
 
+def test_resolve_judge_prefers_ready_same_target_candidate(monkeypatch):
+    dut = _stub_model("dut-amd", vram=20)
+    dut.target = "amd-win-x86"
+    global_vl = _stub_model("qwen2.5-vl-7b-fp16", port=8002, vram=18)
+    same_target = _stub_model("qwen2.5-7b-amd-win", vram=10)
+    same_target.target = "amd-win-x86"
+    other_target = _stub_model("qwen2.5-7b-intel-win", vram=10)
+    other_target.target = "intel-win-x86"
+    models = [dut, global_vl, same_target, other_target]
+
+    monkeypatch.setattr(rb, "load_models", lambda p: list(models))
+    monkeypatch.setattr(rb, "wait_model_ready", lambda m, timeout_s=2.0: m is same_target)
+
+    judge = rb._resolve_judge(None, dut)
+    assert judge is same_target
+
+
 def test_resolve_judge_named_not_found_returns_none(monkeypatch):
     models = _judge_pool(monkeypatch)
     assert rb._resolve_judge("no-such-model", models[0]) is None
@@ -568,9 +585,43 @@ def test_remote_all_continues_after_model_failure(monkeypatch):
     monkeypatch.setattr(sys, "argv", [
         "run_benchmark.py", "--target", "win", "--model", "all",
     ])
-
     assert rb.main() == 2
     assert calls == ["bad", "good"]
+
+
+def test_remote_single_model_quality_failure_does_not_abort_controller(monkeypatch):
+    import common
+    from common import TargetConfig
+    from benchmark.executor import remote as remote_mod
+
+    calls = []
+
+    class _Exec:
+        def __init__(self, target):
+            self.target = target
+            self.last_error = RuntimeError("remote benchmark exited with code 2")
+
+        def run_benchmark(self, model_name, extra_args=(), install_first=False,
+                          raise_on_error=True):
+            calls.append((model_name, raise_on_error))
+
+    target = TargetConfig(
+        name="win",
+        platform="windows",
+        arch="x86_64",
+        connection="ssh",
+        runtime="ollama",
+        ip_env=None,
+        ssh_user_env=None,
+        ssh_pass_env=None,
+    )
+    monkeypatch.setattr(common, "load_targets", lambda: {"win": target})
+    monkeypatch.setattr(remote_mod, "RemoteExecutor", _Exec)
+    monkeypatch.setattr(sys, "argv", [
+        "run_benchmark.py", "--target", "win", "--model", "bad",
+    ])
+    assert rb.main() == 0
+    assert calls == [("bad", True)]
 
 
 # ─── SCHEMA_VERSION single-sourced (FIX-5) ───

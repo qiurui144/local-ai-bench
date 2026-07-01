@@ -43,7 +43,9 @@ TARGET_TO_TIER = {
     "intel-win-x86": "intel-win",
     "intel-linux": "intel-linux",
     "jetson-agx": "nvidia-cuda",
-    "k3-riscv": "riscv-k3",
+    "k3-riscv": "riscv-k3-16g",
+    "k3-riscv-16g": "riscv-k3-16g",
+    "k3-riscv-8g": "riscv-k3-8g",
     "rk1820": "rk1820-npu",
     "rk3588": "rk3588-rknpu",
     # local/reference rows have no hardware target -> contribute to cpu-fallback only

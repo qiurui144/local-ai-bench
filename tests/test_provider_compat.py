@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 
+import httpx
+
 from common import ModelConfig, infer_sync, wait_for_server
 
 
@@ -79,6 +81,7 @@ _OK_BODY = json.dumps({
 })
 
 _429_BODY = json.dumps({"error": "rate limited"})
+_503_BODY = json.dumps({"error": "service restarting"})
 
 
 def test_429_retry_cloud(monkeypatch):
@@ -158,6 +161,91 @@ def test_429_no_retry_llama_cpp(monkeypatch):
     assert call_count[0] == 1
 
 
+def test_503_retry_local(monkeypatch):
+    """Local provider retries supervised service restart 503s."""
+    call_count = [0]
+
+    def mock_post(url, **kwargs):
+        call_count[0] += 1
+        if call_count[0] < 3:
+            return _FakeResponse(503, _503_BODY)
+        return _FakeResponse(200, _OK_BODY)
+
+    monkeypatch.setattr("httpx.post", mock_post)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    cfg = ModelConfig(name="test-local", provider="local_vllm", port=8000)
+    result = infer_sync(cfg, prompt="test")
+
+    assert result.ok
+    assert call_count[0] == 3
+
+
+def test_transport_retry_local(monkeypatch):
+    """Local provider retries transient connection failures during service restart."""
+    call_count = [0]
+
+    def mock_post(url, **kwargs):
+        call_count[0] += 1
+        if call_count[0] == 1:
+            raise httpx.ConnectError("restarting", request=httpx.Request("POST", url))
+        return _FakeResponse(200, _OK_BODY)
+
+    monkeypatch.setattr("httpx.post", mock_post)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    cfg = ModelConfig(name="test-local", provider="local_vllm", port=8000)
+    result = infer_sync(cfg, prompt="test")
+
+    assert result.ok
+    assert call_count[0] == 2
+
+
+def test_openai_localhost_endpoint_uses_local_503_retry(monkeypatch):
+    """OpenAI-compatible local servers must use local restart retry policy."""
+    call_count = [0]
+
+    def mock_post(url, **kwargs):
+        call_count[0] += 1
+        if call_count[0] < 3:
+            return _FakeResponse(503, _503_BODY)
+        return _FakeResponse(200, _OK_BODY)
+
+    monkeypatch.setattr("httpx.post", mock_post)
+    monkeypatch.setattr("time.sleep", lambda s: None)
+
+    cfg = ModelConfig(
+        name="test-openai-local",
+        provider="openai",
+        base_url_override="http://localhost:8085/v1",
+    )
+    result = infer_sync(cfg, prompt="test")
+
+    assert result.ok
+    assert call_count[0] == 3
+
+
+def test_openai_private_endpoint_does_not_retry_429(monkeypatch):
+    """Private OpenAI-compatible endpoints are treated as local, not cloud rate-limit targets."""
+    call_count = [0]
+
+    def mock_post(url, **kwargs):
+        call_count[0] += 1
+        return _FakeResponse(429, _429_BODY)
+
+    monkeypatch.setattr("httpx.post", mock_post)
+
+    cfg = ModelConfig(
+        name="test-openai-private",
+        provider="openai",
+        base_url_override="http://192.168.100.116:8085/v1",
+    )
+    result = infer_sync(cfg, prompt="test")
+
+    assert not result.ok
+    assert call_count[0] == 1
+
+
 def test_429_exhaust_cloud_retries(monkeypatch):
     """After 3 attempts all returning 429, infer_sync returns ok=False."""
     call_count = [0]
@@ -190,6 +278,28 @@ def test_wait_for_server_skips_cloud():
     assert result is True
 
 
+def test_wait_for_server_checks_openai_localhost(monkeypatch):
+    """OpenAI-compatible localhost endpoints are local and should be polled."""
+    call_count = [0]
+
+    def mock_get(url, **kwargs):
+        call_count[0] += 1
+        assert url == "http://localhost:8085/v1/models"
+        return _FakeResponse(200, "{}")
+
+    monkeypatch.setattr("httpx.get", mock_get)
+
+    cfg = ModelConfig(
+        name="test-openai-local",
+        provider="openai",
+        base_url_override="http://localhost:8085/v1",
+    )
+    result = wait_for_server(cfg, timeout_s=1.0)
+
+    assert result is True
+    assert call_count[0] == 1
+
+
 def test_wait_for_server_skips_deepseek():
     cfg = ModelConfig(name="test", provider="deepseek")
     result = wait_for_server(cfg, timeout_s=1.0)
@@ -220,3 +330,25 @@ def test_probe_script_importable():
     spec.loader.exec_module(mod)  # type: ignore[union-attr]
     assert hasattr(mod, "probe_model"), "probe_model not found in probe_provider"
     assert callable(mod.probe_model)
+
+
+def test_probe_script_applies_ollama_think_payload_controls():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "probe_provider",
+        Path(__file__).resolve().parent.parent / "scripts" / "probe_provider.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+
+    cfg = ModelConfig(name="qwen3", provider="ollama", model_id="qwen3:0.6b")
+    cfg.ollama_think = False
+    payload = {"model": "qwen3:0.6b", "max_tokens": 32}
+
+    mod._prepare_probe_payload(cfg, payload)
+
+    assert payload["think"] is False
+    assert payload["options"]["think"] is False
+    assert payload["max_tokens"] == 2048

@@ -218,33 +218,38 @@ def test_directml_requires_dml_provider(monkeypatch):
 
 
 def test_openvino_backend_uses_rapidocr_openvino(monkeypatch):
-    import sys
-    import types
+    import benchmark.ocr.runner as runner
 
-    class _Core:
-        @property
-        def available_devices(self):
-            return ["CPU", "GPU", "NPU"]
+    calls = []
 
-    class _RapidOCR:
-        def __call__(self, img):
-            return [[None, "hello", 0.99]], [0.1]
+    def fake_run_helper(helper, *, backend, image=None, timeout_s=180):
+        calls.append({"helper": helper, "backend": backend, "image": image, "timeout_s": timeout_s})
+        if image is None:
+            return {"ok": True, "devices": ["CPU", "GPU", "NPU"]}
+        return {"ok": True, "text": "hello"}
 
-    monkeypatch.setitem(
-        sys.modules,
-        "openvino",
-        types.SimpleNamespace(Core=_Core),
-    )
-    monkeypatch.setitem(
-        sys.modules,
-        "rapidocr_openvino",
-        types.SimpleNamespace(RapidOCR=_RapidOCR),
-    )
+    helper = Path("scripts/ocr_rapidocr_subprocess.py")
+    monkeypatch.setattr(runner, "_rapidocr_helper_path", lambda: helper)
+    monkeypatch.setattr(runner, "_run_rapidocr_helper", fake_run_helper)
 
     recognizer, reason = build_recognizer("openvino")
     assert reason == "openvino"
     assert recognizer is not None
     assert recognizer(Path("x.png")) == "hello"
+    assert calls == [
+        {"helper": helper, "backend": "openvino", "image": None, "timeout_s": 180},
+        {"helper": helper, "backend": "openvino", "image": Path("x.png"), "timeout_s": 180},
+    ]
+
+
+def test_openvino_backend_blocks_when_helper_missing(monkeypatch, tmp_path):
+    import benchmark.ocr.runner as runner
+
+    monkeypatch.setattr(runner, "_rapidocr_helper_path", lambda: tmp_path / "missing.py")
+
+    recognizer, reason = build_recognizer("openvino")
+    assert recognizer is None
+    assert reason == "no ocr backend available"
 
 
 def test_ocr_dimension_uses_model_backend(monkeypatch, tmp_path):

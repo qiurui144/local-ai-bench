@@ -55,6 +55,8 @@
 **硬约束**：
 - **性能测试（ttft / throughput / prefill_decode / concurrency / stability）** 必须 GPU 独占，任何并发都使数据失真，结论作废
 - **质量测试（general_ability / translation / embedding / rerank / asr）** 并发虽不影响 accuracy，但会大幅拉长耗时、提高超时风险、增大 seed 间方差
+- **LLM/VLM 默认禁止 CPU-only 测试**：除非用户明确要求 CPU baseline / 特殊诊断，否则不启动纯 CPU LLM/VLM；CPU-only 结果必须标注为 baseline，不进入常规模型选型/性能结论
+- **scenarios 禁止同机自动加载第二模型做 L2 judge**：target-local 单模型测试默认 L1-only；L2 judge 必须来自独立硬件/外部服务，否则违反单机单模型原则
 - **唯一例外**：不同目标机可并行（AMD 机和 Intel 机同时跑，互不影响）
 
 **正确顺序**：同一台测试机上，一个模型跑完 → 进程退出 → 再启动下一个。

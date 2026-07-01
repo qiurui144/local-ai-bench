@@ -46,3 +46,15 @@ def test_rockchip_targets_split_rk3588_and_rk182x():
     targets = load_targets()
     assert targets["rk3588-linux"].supports_accelerator("rknn-npu")
     assert targets["rk182x-linux"].supports_accelerator("rk1820-npu")
+
+
+def test_k3_targets_split_memory_sizes():
+    targets = load_targets()
+    assert "k3-riscv" in targets
+    assert "k3-riscv-16g" in targets
+    assert "k3-riscv-8g" in targets
+
+    assert targets["k3-riscv-16g"].supports_accelerator("rvv")
+    assert targets["k3-riscv-16g"].supports_accelerator("ime2")
+    assert targets["k3-riscv-8g"].supports_accelerator("rvv")
+    assert targets["k3-riscv-8g"].supports_accelerator("ime2")
