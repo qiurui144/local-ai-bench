@@ -106,9 +106,9 @@ python run_benchmark.py --model all --skip general_ability,conditioned,scenarios
 ## 指针
 
 - 开发者上手 / 架构:[DEVELOP.md](DEVELOP.md);版本史 SSOT:[RELEASE.md](RELEASE.md)
-- 设计 spec:`docs/superpowers/specs/`(本定位:`2026-06-11-platform-positioning.md`)
+- 文档索引:[docs/index.md](docs/index.md)
 - 架构评审:`reports/2026-06-11-architecture-review.md`
-- 贡献指南:[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- 贡献指南:[docs/contributing.md](docs/contributing.md)
 
 ---
 

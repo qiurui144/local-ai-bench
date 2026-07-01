@@ -3,9 +3,8 @@
 
 This bench repo (models.yaml + reports/*.en.md + drivers/) is the upstream SSOT for
 attune's local-base model selection (embedding / rerank / OCR / ASR / local-LLM) and
-vendor driver artifacts. attune consumes the produced manifests via company-mirror +
-S8 download_with_failover (spec:
-  /data/company/project/attune/docs/superpowers/specs/2026-06-20-model-selection-from-bench-drivers.md).
+vendor driver artifacts. attune consumes the produced manifests via company-mirror
+and its S8 download_with_failover flow.
 
 Outputs two manifests under --out:
   model-catalog.yaml   — tier x role -> repo/file/engine/ep/verdict + source line refs

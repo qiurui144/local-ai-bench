@@ -95,13 +95,14 @@ Models are declared in `models.yaml`. The minimum required fields are `name`, `p
 
 | Document | Contents |
 |---|---|
+| [docs/index.md](docs/index.md) | Documentation map, naming rules, and public/private report boundary |
 | [DEVELOP.md](DEVELOP.md) | Developer setup, architecture, dimension reference, model config schema, contributing guide |
 | [RELEASE.md](RELEASE.md) | Version history, breaking changes, migration notes |
 | [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows benchmark results — calibrated thresholds and model selection recommendations |
 | [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows benchmark results |
-| [docs/AMD_INTEL_LINUX_TEST_PLAN.md](docs/AMD_INTEL_LINUX_TEST_PLAN.md) | AMD/Intel Linux post-Windows execution plan and CPU-baseline policy |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to add models, dimensions, and hardware targets |
-| [docs/ACADEMIC-RIGOR.md](docs/ACADEMIC-RIGOR.md) | Statistical rigor principles (multi-seed, effect sizes, calibration) |
+| [docs/amd-intel-linux-test-plan.md](docs/amd-intel-linux-test-plan.md) | AMD/Intel Linux post-Windows execution plan and CPU-baseline policy |
+| [docs/contributing.md](docs/contributing.md) | How to add models, dimensions, and hardware targets |
+| [docs/academic-rigor.md](docs/academic-rigor.md) | Statistical rigor principles (multi-seed, effect sizes, calibration) |
 
 ---
 

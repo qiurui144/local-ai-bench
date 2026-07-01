@@ -1,8 +1,8 @@
 # Testing Guide
 
-The repository ships a 436-test offline suite (`pytest --collect-only -q`
-reports the count). All tests run without network, without GPUs, and
-without any model server — CI runs the full suite on every push.
+The repository ships an offline suite (`pytest --collect-only -q` reports the
+current count). All tests run without network, without GPUs, and without any
+model server — CI runs the full suite on every push.
 
 ## How to run
 
@@ -60,7 +60,7 @@ Set it for any environment without (or where you don't want) network.
   patched reference is the one the code under test resolves.
 - **TDD policy.** Bug fixes land with a regression test that reproduces
   the bug first (red), then the fix (green). New features ship their
-  tests in the same PR; per `docs/CONTRIBUTING.md`, every new metric
+  tests in the same PR; per `docs/contributing.md`, every new metric
   reproduces a published reference value where one exists.
 - **Synthetic data only.** Fixtures are synthetic and PII-free
   (`scripts/check_no_real_images.sh` guards images).

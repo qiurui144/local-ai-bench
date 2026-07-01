@@ -43,9 +43,8 @@ contract), `metrics/` (NLP / ranking / speaker / performance),
 Currently **zero imports in either direction**: the main
 `run_benchmark.py` harness (11 dimensions, OpenAI-compatible endpoints)
 and this subtree share no code paths. Reuse of this subtree's pinned
-dataset loaders by the main harness is planned per the platform
-positioning spec
-(`docs/superpowers/specs/2026-06-11-platform-positioning.md`).
+dataset loaders by the main harness is tracked as follow-up work in the
+repo-root roadmap and release notes.
 
 ## STATUS — read before using
 

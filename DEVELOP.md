@@ -332,7 +332,7 @@ Cloud providers skip the endpoint-reachability check (expected) and the seed-con
 
 For the full multi-platform deployment SOP covering AMD Windows (Vulkan), Intel Windows,
 Rockchip RK3588 (RKNN NPU), SpacemiT K3 (RISC-V), Intel Linux, and Jetson, see
-[docs/DEPLOY_TARGETS.md](docs/DEPLOY_TARGETS.md).
+[docs/deploy-targets.md](docs/deploy-targets.md).
 
 Quick start for the AMD Windows / Radeon 780M target (most common):
 
@@ -424,5 +424,6 @@ This verifies all `cases.jsonl` files are valid, provenances are correct, and VL
 - `README.md` — entry point + quick start (user-facing, English).
 - `RELEASE.md` — version-history SSOT; every shipped change gets a note in its version section, never a separate notes file.
 - `DEVELOP.md` (this file) — developer onboarding + architecture.
-- `docs/` — deep dives (ACADEMIC-RIGOR / BASELINES / REPRODUCIBILITY / CITATION / CONTRIBUTING-methodology / CROSS-BENCH-MAPPING / case-studies).
-- `docs/superpowers/specs/` — design specs (one per feature, dated). Specs for shipped work get archived; implementation plans are deleted after the sprint. One-off sprint reports go to PR descriptions or `RELEASE.md`, not `docs/` top level.
+- `docs/index.md` — documentation map, naming rules, and public/private report boundary.
+- `docs/` — stable deep dives using lowercase kebab-case filenames.
+- `reports/` — curated fixed-name public reports only. Date-stamped audit/run records stay ignored under `reports/YYYY-*`, `reports/YYYY/`, `reports/runs/`, or `output/`.

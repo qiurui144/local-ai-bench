@@ -190,7 +190,7 @@ python run_benchmark.py --compare llama3.2-1b-intel-win qwen2.5-3b-intel-win
 
 ## 参考
 
-- 详细部署 SOP → [docs/DEPLOY_TARGETS.md](DEPLOY_TARGETS.md)
+- 详细部署 SOP → [docs/deploy-targets.md](deploy-targets.md)
 - targets.yaml 平台注册 → [targets.yaml](../targets.yaml)
 - models.yaml 模型矩阵 → [models.yaml](../models.yaml)
 - compare 算法实现 → [benchmark/compare.py](../benchmark/compare.py)

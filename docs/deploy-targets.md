@@ -1,4 +1,4 @@
-# DEPLOY_TARGETS — Multi-Platform Deployment SOP
+# Multi-Platform Deployment SOP
 
 Step-by-step runbook for deploying and running the local-ai-bench harness on all supported
 remote target platforms. Covers SSH prerequisites, runtime startup, model pull, benchmark
@@ -507,7 +507,7 @@ Ollama CPU only for explicit CPU baseline or diagnostics
 **Use case**: x86 Linux servers with accelerator-backed inference, or labeled CPU baselines
 
 AMD Linux and Intel Linux post-Windows sequencing is maintained in
-[`docs/AMD_INTEL_LINUX_TEST_PLAN.md`](AMD_INTEL_LINUX_TEST_PLAN.md).
+[`docs/amd-intel-linux-test-plan.md`](amd-intel-linux-test-plan.md).
 
 ### 5.1 Runtime choice
 

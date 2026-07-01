@@ -25,7 +25,7 @@ None. `--target local` (default) preserves v0.3 behavior; remote targets are opt
 ### Migration
 
 - To run on a remote target, add entry to `targets.yaml` and declare `target: <name>` in `models.yaml` ModelConfig. Existing `models.yaml` (no `target` field) defaults to `target: local`.
-- SSH targets require passwordless login setup (SSH key, `known_hosts` pre-configured). See `docs/DEPLOY_TARGETS.md` Section 2 for per-platform SOP.
+- SSH targets require passwordless login setup (SSH key, `known_hosts` pre-configured). See `docs/deploy-targets.md` Section 2 for per-platform SOP.
 - RKNN models must be pre-converted to `.rknn` format (PyTorch → rknn-toolkit2); harness does not auto-convert.
 
 ### Known limitations
@@ -67,7 +67,7 @@ None. `--target local` (default) preserves v0.3 behavior; remote targets are opt
 - **Docs: Windows CPU/iGPU/NPU mode breakdown + attune-bench cleanup (2026-06-20)** — Each Windows platform report now documents all three hardware execution paths separately:
   - AMD Windows: new sub-docs `amd-windows-igpu.en.md` (Ollama Vulkan + ONNX DirectML), `amd-windows-npu.en.md` (VitisAI + DirectML ASR), `amd-windows-cpu.en.md` (ONNX CPU baseline + Reranker). Main report `amd-windows.en.md` gains hardware overview table and measured execution-mode comparison across all three paths.
   - Intel Windows: new sub-docs `intel-windows-igpu.en.md` (OpenVINO OCR PASS + DirectML OCR FAIL root cause + DirectML ASR), `intel-windows-cpu.en.md` (Ollama CPU LLM / Embedding, ONNX Reranker, TTFT comparison vs AMD iGPU). Main report `intel-windows.en.md` gains same structure.
-  - Removed `docs/CROSS-BENCH-MAPPING.md` (internal attune-bench criterion integration — not public). Removed two internal references from README.md / README.zh.md (attune-bench mention; attune/attune-pro/cloud eval methodology paragraph).
+  - Removed the internal cross-bench mapping document (attune-bench criterion integration — not public). Removed two internal references from README.md / README.zh.md (attune-bench mention; attune/attune-pro/cloud eval methodology paragraph).
 
 - **K3 RISC-V (SpacemiT) E2E calibration (2026-06-19/20)** — First successful end-to-end benchmark run on SpacemiT K3 (16-core RISC-V, llama-server b1-17ce6aa, port 8080). Q4_0 quantization (not K-quant — Q4_K_M caused garbled output, Q4_0 SIGSEGV was in a prior build; current build stable with Q4_0). Model: Qwen2.5-0.5B-Instruct. Calibrated thresholds committed as `models.yaml::qwen2.5-0.5b-k3-riscv`:
   - TTFT: measured P50=63.5ms, P95=305ms → thresholds p50_max=150ms (2.4×), p95_max=700ms (2.3×)
@@ -121,7 +121,7 @@ None. `--target local` (default) preserves v0.3 behavior; remote targets are opt
 
 ## v0.3.0 (2026-06-11)
 
-The platform-positioning release: from a vLLM perf harness (+ RAG framework) to a **performance × model-quality comprehensive testing platform** — 13 registered dimensions and an automated replaceability verdict. Includes the 2026-06-10 / 2026-06-11 remediation + feature sprint. First tagged version (spec: [docs/superpowers/specs/2026-06-11-platform-positioning.md](docs/superpowers/specs/2026-06-11-platform-positioning.md)).
+The platform-positioning release: from a vLLM perf harness (+ RAG framework) to a **performance × model-quality comprehensive testing platform** — 13 registered dimensions and an automated replaceability verdict. Includes the 2026-06-10 / 2026-06-11 remediation + feature sprint. First tagged version; the original sprint spec is not part of the public documentation tree.
 
 ### Highlights
 
@@ -185,4 +185,4 @@ The original vLLM performance harness, initial public release:
 
 ## Versioning note
 
-v0.1 / v0.2 above are retrospective history markers, not tags. Tagging starts at **v0.3.0** per the platform-positioning spec ([docs/superpowers/specs/2026-06-11-platform-positioning.md](docs/superpowers/specs/2026-06-11-platform-positioning.md)); the `v0.3.0` tag itself is gated on the RC four-gate review + first real-endpoint smoke run (human step).
+v0.1 / v0.2 above are retrospective history markers, not tags. Tagging starts at **v0.3.0** per the archived platform-positioning plan; the `v0.3.0` tag itself is gated on the RC four-gate review + first real-endpoint smoke run (human step).

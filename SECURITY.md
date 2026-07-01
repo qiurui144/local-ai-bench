@@ -22,7 +22,7 @@ Please include:
 - Never commit `.env`, API keys, SSH passwords, private keys, real device
   credentials, or private dataset material.
 - Use `*.env` variables documented in `.env.example`, `targets.yaml`, and
-  `docs/DEPLOY_TARGETS.md`.
+  `docs/deploy-targets.md`.
 - Keep real VLM images and user data outside git unless they are explicitly
   approved synthetic fixtures.
 - Treat generated benchmark outputs under `output/` as local artifacts unless a

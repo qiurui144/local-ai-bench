@@ -77,7 +77,7 @@ Validation framework:
   "code-execution" — prefer `evaluation` / `evaluator` / `assessor`.
 - [ ] All public symbols have type annotations.
 - [ ] Linting is clean (ruff or flake8 default rules).
-- [ ] If you added a metric: a sentence in `BASELINES.md` recording
+- [ ] If you added a metric: a sentence in [`baselines.md`](baselines.md) recording
   any default threshold you suggested.
 - [ ] If your change can affect numbers: a note in
   [`RELEASE.md`](../RELEASE.md) (repo root) describing the expected
@@ -112,7 +112,7 @@ Validation framework:
 
 ## Tests
 
-- `tests/` holds a 436-test offline suite (no network, runs in CI with
+- `tests/` holds the offline suite (no network, runs in CI with
   `TRANSLATION_OFFLINE=1`). See [tests/TESTING.md](../tests/TESTING.md)
   for the suite map, conventions, and how to run it.
 - Every new benchmark dimension must ship synthetic-data unit tests in
@@ -148,4 +148,4 @@ Apache License 2.0 (same as the project).
 ## Getting help
 
 Open a discussion before a sizeable PR. Interactions in this project are
-governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
+governed by the [Code of Conduct](code-of-conduct.md).

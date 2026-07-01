@@ -55,7 +55,7 @@ what we archive.
 
 If a benchmark requires hardware (GPU), the hardware class is recorded
 in the snapshot. Re-running on a different class is allowed; the
-expected drift is documented in `BASELINES.md`.
+expected drift is documented in [`baselines.md`](baselines.md).
 
 ## Seed policy
 
