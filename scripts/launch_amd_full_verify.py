@@ -15,7 +15,9 @@ Models run in sequence (no concurrency — GPU must be exclusive for perf tests)
 
 Estimated total: ~90 min (non-LLM) + ~3 hours (qwen3nt GA+translation)
 """
-import subprocess, sys, os, time
+import subprocess
+import os
+import time
 
 PYTHON = r"C:\Users\happy\AppData\Local\Programs\Python\Python311\python.exe"
 CWD    = r"C:\Users\happy\vlm-llm-benchmark"

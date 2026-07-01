@@ -156,7 +156,6 @@ async def list_models():
 
 @app.post("/v1/embeddings")
 async def embeddings(request: _FastAPIRequest):
-    import numpy as np
 
     body = await request.json()
     inputs = body.get("input", [])
@@ -262,7 +261,6 @@ async def asr_transcribe(request: _FastAPIRequest):
     t0 = time.monotonic()
     try:
         import soundfile as sf
-        import numpy as np
 
         audio, sr = sf.read(io.BytesIO(audio_bytes), dtype="float32")
         # Whisper encoder: get mel features

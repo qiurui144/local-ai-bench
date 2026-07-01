@@ -110,7 +110,6 @@ def _load_asr():
         if enc_device not in ("GPU", "CPU"):
             candidates.extend(["GPU", "CPU"])
         log.info("Loading Whisper ASR from %s, encoder=%s ...", ASR_DIR, enc_device)
-    t0 = time.monotonic()
     _asr_proc = AutoProcessor.from_pretrained(str(ASR_DIR))
     last_err = None
     for candidate in candidates:
@@ -335,9 +334,12 @@ def main():
     log.info("  asr        → %s  %s", ASR_DIR, "ENABLED" if _ASR_ENABLED else "DISABLED")
 
     if args.preload:
-        if EMB_DIR.exists():  _load_embedding(_EMB_DEVICE)
-        if RANK_DIR.exists(): _load_reranker(_RANK_DEVICE)
-        if _ASR_ENABLED and ASR_DIR.exists(): _load_asr()
+        if EMB_DIR.exists():
+            _load_embedding(_EMB_DEVICE)
+        if RANK_DIR.exists():
+            _load_reranker(_RANK_DEVICE)
+        if _ASR_ENABLED and ASR_DIR.exists():
+            _load_asr()
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 

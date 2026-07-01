@@ -8,7 +8,9 @@ Expected improvement over prior run:
 - translation empty_rate should drop from 1.000 to near-0
 - GA scores should reflect actual model capability (not empty-content failure)
 """
-import subprocess, os, time
+import subprocess
+import os
+import time
 
 PYTHON = r"C:\Users\happy\AppData\Local\Programs\Python\Python311\python.exe"
 CWD    = r"C:\Users\happy\vlm-llm-benchmark"

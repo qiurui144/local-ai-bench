@@ -127,7 +127,7 @@ def main():
             print(f"[WARN] Unknown task: {task}", flush=True)
 
     print("\nAll done. Run serve_ort_extras_amd.py to start the server.", flush=True)
-    print(f"  python serve_ort_extras_amd.py --port 8091", flush=True)
+    print("  python serve_ort_extras_amd.py --port 8091", flush=True)
 
 
 if __name__ == "__main__":

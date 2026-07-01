@@ -1,5 +1,8 @@
 """Fire AMD full verification as a detached background process (run this from SSH)."""
-import subprocess, sys, os, time
+import subprocess
+import sys
+import os
+import time
 
 DETACHED_PROCESS = 0x00000008
 CREATE_NEW_PROCESS_GROUP = 0x00000200
@@ -23,5 +26,5 @@ with open(logfile, "w") as f:
     )
 
 print(f"PID: {proc.pid}  driver_log: {logfile}")
-print(f"Detail log: C:\\Users\\happy\\amd_full_verify.log")
+print("Detail log: C:\\Users\\happy\\amd_full_verify.log")
 print(f"Reports: {cwd}\\output\\reports\\")

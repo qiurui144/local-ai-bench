@@ -1,5 +1,8 @@
 """Download Qwen3-8B INT4 OV model to Intel machine (for iGPU 7B GA test)."""
-import subprocess, sys, os, time
+import subprocess
+import sys
+import os
+import time
 
 DETACHED_PROCESS = 0x00000008
 CREATE_NEW_PROCESS_GROUP = 0x00000200

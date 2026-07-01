@@ -1,5 +1,8 @@
 """Launch qwen3-1.7b-amd GA re-test (3-seed) detached on AMD Windows machine."""
-import subprocess, sys, os, time
+import subprocess
+import sys
+import os
+import time
 
 DETACHED_PROCESS = 0x00000008
 CREATE_NEW_PROCESS_GROUP = 0x00000200

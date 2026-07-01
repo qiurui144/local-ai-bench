@@ -7,7 +7,9 @@ Resolves:
 Run via: wmic process call create "cmd /c C:\\Users\\happy\\run_intel_blockers.bat"
 Log:     C:\\Users\\happy\\intel_blockers.log
 """
-import subprocess, os, time
+import subprocess
+import os
+import time
 
 PYTHON = r"C:\Users\happy\AppData\Local\Programs\Python\Python312\python.exe"
 CWD    = r"C:\Users\happy\vlm-llm-benchmark"

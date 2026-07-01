@@ -14,7 +14,9 @@ The embedding model needs Ollama running on localhost:11434 — script starts it
 
 Estimated total: ~60-90 min.
 """
-import subprocess, os, time
+import subprocess
+import os
+import time
 
 PYTHON = r"C:\Users\happy\AppData\Local\Programs\Python\Python312\python.exe"
 CWD    = r"C:\Users\happy\vlm-llm-benchmark"

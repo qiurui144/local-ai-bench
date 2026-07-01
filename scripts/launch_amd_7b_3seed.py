@@ -5,7 +5,10 @@ Runs: accuracy, ttft, throughput, prefill_decode, general_ability, translation
 
 Log: C:\\Users\\happy\\amd_7b_3seed.log
 """
-import subprocess, os, time, urllib.request
+import subprocess
+import os
+import time
+import urllib.request
 
 PYTHON = r"C:\Users\happy\AppData\Local\Programs\Python\Python312\python.exe"
 CWD = r"C:\Users\happy\vlm-llm-benchmark"
