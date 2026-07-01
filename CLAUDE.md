@@ -175,7 +175,8 @@ python run_benchmark.py --model all --skip general_ability,conditioned,scenarios
 
 | 平台 | 当前 SDK 版本 | 关键文件 |
 |---|---|---|
-| AMD Windows (Ryzen 8845H) | Ollama 0.30.8（100% iGPU Radeon 780M Vulkan）+ ORT 1.x + DirectML；RyzenAI SDK v1.7.1 + NPU 驱动 v1.6.1（NPU仅CNN，LLM不支持） | `amd-win/ryzen-ai-lt-1.7.1.exe` |
+| **AMD Linux (Ryzen 8845H, current 192.168.100.201 target)** | Ubuntu 26.04 + Ollama 0.22.1 ROCm on Radeon 780M; Python 3.14 venv at `/home/qiurui/vlm-llm-benchmark/.venv`; ONNX Runtime CPU only; DirectML unavailable on Linux; VitisAI/XDNA not exposed to Python stack | current SSH target for `amd-linux-x86`; report: `reports/amd-linux.en.md` |
+| AMD Windows (Ryzen 8845H historical dual-boot run) | Ollama 0.30.8（100% iGPU Radeon 780M Vulkan）+ ORT 1.x + DirectML；RyzenAI SDK v1.7.1 + NPU 驱动 v1.6.1（NPU仅CNN，LLM不支持） | `amd-win/ryzen-ai-lt-1.7.1.exe`; report: `reports/amd-windows.en.md` |
 | Intel Windows (Core Ultra 7 155H) | OpenVINO 2026.2.1 + optimum-intel 2.0.0（OVModelForCausalLM device=GPU Arc ✓）；openvino-genai DLL broken；serve_ov_extras.py port 8081（embedding+reranker+asr） | `intel-win/ov_models/llm/` |
 | RK1820/1828 Linux | RKNN3 SDK v1.0.4（stable），v1.0.5b2（beta runtime）| `rk182x-linux/RK1820_RK1828_AI_SDK_V1.0.4.tgz` |
 | **RK3588+RK182X Linux** (192.168.100.206) | RKNN3 runtime 已装（librknnrt.so / librknn3_api.so）；rknn-smi v? 已装；rknn_toolkit_lite2==2.3.2（在 /userdata/model_hub/embedding/.venv）；RK1828 via PCIe（Product: RM1828SA0-F, Serial: R1BCA260200353）；Python 3.11.2；**rknn Python toolkit 未全局安装** | 需 sudo 运行 rknn-smi；/ 分区 93% 满（剩 468M）→ 数据放 /userdata（1.2G 可用）|
@@ -199,7 +200,8 @@ python run_benchmark.py --model all --skip general_ability,conditioned,scenarios
 
 ```
 benchmark-runs/
-├── amd-win/           # 从 AMD 机 output/reports/ 同步的原始 .json/.md/.html
+├── amd-linux/         # 从 AMD Linux 机 output/reports/ 同步的原始 .json/.md/.html
+├── amd-win/           # AMD Windows dual-boot 历史原始报告
 └── intel-win/         # 从 Intel 机 output/reports/ 同步的原始 .json/.md/.html
 ```
 
@@ -207,7 +209,7 @@ benchmark-runs/
 
 ### 新增软件栈 / 模型文件的规范
 
-1. **按平台分目录**：`amd-win/` / `rk182x-linux/` / `rk3588-linux/` / `intel-win/` / `k3-riscv/`（如需新建）
+1. **按平台分目录**：`amd-linux/` / `amd-win/` / `rk182x-linux/` / `rk3588-linux/` / `intel-win/` / `k3-riscv/`（如需新建）
 2. **按类别分子目录**：驱动放根，SDK 放 `<SDK名>/`，模型放 `models/` 或 `rknn3_models/`
 3. **更新此清单**：每次新增文件同步更新本节，标明版本和用途
 4. **大文件不进 git**：`drivers/` 整个目录已 `.gitignore`；本 `CLAUDE.md` 也不进 git
@@ -216,7 +218,8 @@ benchmark-runs/
 
 | 机器 | 访问方式 | 备注 |
 |---|---|---|
-| AMD Windows `192.168.100.201` | SSH 文件传输 | `happyqiurui@163.com` / `qr@1205RI` |
+| AMD Linux `192.168.100.201` | SSH rsync | `qiurui` / `123123`; current target for `amd-linux-x86`; repo `/home/qiurui/vlm-llm-benchmark` |
+| AMD Windows `192.168.100.201` | historical dual-boot SSH target | previous Windows user `happyqiurui@163.com` / `qr@1205RI`; do not use unless machine is explicitly booted into Windows |
 | Intel Windows `192.168.100.116` | SSH 文件传输 | `happyqiurui@163.com` / `qr@1205RI` (Microsoft 账户格式) |
 | RK3588+RK182X Linux `192.168.100.206` | SSH rsync | `linaro` / `linaro` |
 | K3 RISC-V `192.168.100.215` | SSH rsync | `root` / `bianbu` (旧 IP 140 已废弃，2026-06-21 更新) |

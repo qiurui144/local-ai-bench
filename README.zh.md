@@ -41,7 +41,8 @@ python run_benchmark.py --compare qwen2.5-7b qwen3-4b
 
 | 平台 | 状态 | 结果报告 |
 |---|---|---|
-| AMD Windows（Ryzen 8845H + 780M iGPU） | ✅ 已校准 | [amd-windows.en.md](reports/amd-windows.en.md) |
+| AMD Linux（Ryzen 8845H + 780M iGPU） | ✅ 已校准 | [amd-linux.en.md](reports/amd-linux.en.md) |
+| AMD Windows（同一 Ryzen 8845H 硬件；历史 dual-boot 结果） | ✅ 已校准 | [amd-windows.en.md](reports/amd-windows.en.md) |
 | Intel Windows（Core Ultra 7 155H + Arc iGPU） | ✅ 已校准 | [intel-windows.en.md](reports/intel-windows.en.md) |
 | RK3588 Linux（RKNN3 NPU） | 🔧 进行中 | — |
 | K3 RISC-V | 🔧 进行中 | — |
@@ -89,7 +90,8 @@ python -m pytest tests/ -q
 | [docs/index.md](docs/index.md) | 文档目录、命名规则、公开报告与本地记录边界 |
 | [DEVELOP.md](DEVELOP.md) | 开发者环境配置、架构说明、维度参考、模型配置 schema、贡献指南 |
 | [RELEASE.md](RELEASE.md) | 版本历史、Breaking Changes、迁移说明 |
-| [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows 评测结果——已校准阈值与模型选型建议 |
+| [reports/amd-linux.en.md](reports/amd-linux.en.md) | AMD Linux 评测结果——当前 192.168.100.201 目标机状态与模型选型建议 |
+| [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows 评测结果——历史 dual-boot 结果与已校准阈值 |
 | [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows 评测结果 |
 | [docs/contributing.md](docs/contributing.md) | 如何新增模型、维度、硬件目标 |
 | [docs/academic-rigor.md](docs/academic-rigor.md) | 统计严谨性原则（多 seed、效应量、校准） |

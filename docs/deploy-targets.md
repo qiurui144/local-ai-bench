@@ -6,12 +6,13 @@ invocation, and per-platform skip-dimension recommendations.
 
 **Priority order** (reflects typical hardware availability):
 
-1. [AMD Windows](#1-amd-windows--ryzen-8845h--radeon-780m-vulkan)
-2. [Intel Windows](#2-intel-windows--openvinoigpu-primary-cpu-baseline-explicit-only)
-3. [Rockchip RK3588 Linux](#3-rockchip-rk3588-linux--rknn-npu)
-4. [SpacemiT K3 Linux / RISC-V](#4-spacemit-k3-linux--risc-v-riscv64)
-5. [Intel Linux](#5-intel-linux--openvinovllm-accelerated-runtime-cpu-baseline-explicit-only)
-6. [Other ARM / macOS / Jetson](#6-other-arm--macos--jetson-brief)
+1. [AMD Linux](../reports/amd-linux.en.md) — current Ryzen 8845H target state (`amd-linux-x86`)
+2. [AMD Windows](#1-amd-windows--ryzen-8845h--radeon-780m-vulkan) — historical dual-boot path, use only when the machine is explicitly booted into Windows
+3. [Intel Windows](#2-intel-windows--openvinoigpu-primary-cpu-baseline-explicit-only)
+4. [Rockchip RK3588 Linux](#3-rockchip-rk3588-linux--rknn-npu)
+5. [SpacemiT K3 Linux / RISC-V](#4-spacemit-k3-linux--risc-v-riscv64)
+6. [Intel Linux](#5-intel-linux--openvinovllm-accelerated-runtime-cpu-baseline-explicit-only)
+7. [Other ARM / macOS / Jetson](#6-other-arm--macos--jetson-brief)
 
 ---
 
@@ -118,6 +119,8 @@ the SSH client will fall through to key auth automatically.
 ---
 
 ## 1. AMD Windows — Ryzen 8845H + Radeon 780M (Vulkan)
+
+> **Current 192.168.100.201 state:** the Ryzen 8845H machine is currently booted into AMD Linux and should be targeted as `amd-linux-x86` (`AMD_LINUX_HOST`, `AMD_LINUX_SSH_USER`, `AMD_LINUX_SSH_PASS`). This Windows section is retained for historical dual-boot reproduction only; do not use it unless the machine is explicitly booted into Windows.
 
 **Target ID**: `amd-win-x86`  
 **Runtime**: Ollama with Vulkan backend (RDNA3 iGPU, 17.9 GiB shared memory pool)  
