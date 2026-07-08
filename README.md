@@ -42,11 +42,11 @@ Each dimension has a PASS / WARN / FAIL verdict with configurable thresholds. Th
 | Platform | Status | Results |
 |---|---|---|
 | AMD Linux (Ryzen 8845H + 780M iGPU) | ✅ Calibrated | [amd-linux.en.md](reports/amd-linux.en.md) |
-| AMD Windows (same Ryzen 8845H hardware; historical dual-boot run) | ✅ Calibrated | [amd-windows.en.md](reports/amd-windows.en.md) |
-| Intel Windows (Core Ultra 7 155H + Arc iGPU) | ✅ Calibrated | [intel-windows.en.md](reports/intel-windows.en.md) |
+| AMD Windows (Ryzen 8845H + Radeon 780M + XDNA NPU) | ✅ Calibrated | [AMD Windows platform report](reports/platforms/amd-windows/index.en.md) |
+| Intel Windows (Core Ultra 7 155H + Arc iGPU + AI Boost NPU) | ✅ Calibrated | [Intel Windows platform report](reports/platforms/intel-windows/index.en.md) |
+| K3 RISC-V 32G (SpacemiT K3 X100) | ✅ Calibrated for current model_zoo scope | [K3 RISC-V 32G platform report](reports/platforms/k3-riscv-32g/index.en.md) |
+| RK3588 + RK1828 NPU | ✅ Calibrated primary paths; RKNN3 cache complete, pending per-model load | [RK platform report](reports/platforms/rk3588/index.en.md) |
 | Intel Linux (OpenVINO/vLLM; CPU baseline explicit) | 🔧 In progress | — |
-| RK3588 Linux (RKNN3 NPU) | 🔧 In progress | — |
-| K3 RISC-V | 🔧 In progress | — |
 | vLLM server (Linux + NVIDIA GPU) | ✅ Supported | — |
 
 Any **OpenAI-compatible endpoint** works — vLLM, Ollama, llama.cpp server, OpenAI, DashScope, DeepSeek.
@@ -57,6 +57,7 @@ Project run policy:
 - LLM/VLM CPU-only runs are special-case CPU baselines only; normal LLM/VLM benchmark runs must use the target accelerator.
 - Scenario L2 judges must run on separate hardware or an external service. Target-local single-model runs use L1-only scenarios by default.
 - Windows and Linux target-local full-matrix runners enforce these rules: `scripts/run_windows_full_matrix.py` and `scripts/run_linux_full_matrix.py`.
+- Hostnames, account names, passwords, and reusable connection strings stay out of reports and documentation. Remote targets are configured through local secure environment variables.
 
 ---
 
@@ -91,6 +92,19 @@ Models are declared in `models.yaml`. The minimum required fields are `name`, `p
 
 ---
 
+## Report navigation
+
+Use the curated report index first. Legacy root-level reports remain available as evidence, but the model-selection entry point is now split by platform and execution path.
+
+| Need | Report |
+|---|---|
+| Choose models across platforms | [Model Selection](reports/selection/model-selection.en.md) |
+| Browse all curated reports | [Reports Index](reports/index.en.md) |
+| Review K3 evidence and run-log provenance | [K3 Evidence Map](reports/evidence/k3-riscv-32g.evidence.en.md) |
+| Compare AMD/Intel CPU, GPU/iGPU, and NPU paths | [AMD Windows](reports/platforms/amd-windows/index.en.md), [Intel Windows](reports/platforms/intel-windows/index.en.md) |
+
+---
+
 ## Documentation
 
 | Document | Contents |
@@ -98,11 +112,12 @@ Models are declared in `models.yaml`. The minimum required fields are `name`, `p
 | [docs/index.md](docs/index.md) | Documentation map, naming rules, and public/private report boundary |
 | [DEVELOP.md](DEVELOP.md) | Developer setup, architecture, dimension reference, model config schema, contributing guide |
 | [RELEASE.md](RELEASE.md) | Version history, breaking changes, migration notes |
-| [reports/amd-linux.en.md](reports/amd-linux.en.md) | AMD Linux benchmark results — current 192.168.100.201 target state and model selection recommendations |
-| [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows benchmark results — historical dual-boot run with calibrated thresholds |
-| [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows benchmark results |
+| [reports/index.en.md](reports/index.en.md) | Curated reports index with bilingual platform report links |
+| [reports/selection/model-selection.en.md](reports/selection/model-selection.en.md) | First-stop model-selection summary across K3, AMD, Intel, and RK |
 | [docs/amd-intel-linux-test-plan.md](docs/amd-intel-linux-test-plan.md) | AMD/Intel Linux post-Windows execution plan and CPU-baseline policy |
 | [docs/k3-realistic-stress-plan.md](docs/k3-realistic-stress-plan.md) | K3 product-like mixed-traffic stress plan |
+| [docs/k3-source-runtime-and-long-context.md](docs/k3-source-runtime-and-long-context.md) | K3 source-runtime equivalence and aviation-manual long-context gating |
+| [docs/rockchip-rknn3-model-cache.md](docs/rockchip-rknn3-model-cache.md) | RKNN3 model cache and sync workflow |
 | [docs/spacemit-model-zoo.md](docs/spacemit-model-zoo.md) | SpacemiT model_zoo data acquisition and K3 invocation map |
 | [docs/contributing.md](docs/contributing.md) | How to add models, dimensions, and hardware targets |
 | [docs/academic-rigor.md](docs/academic-rigor.md) | Statistical rigor principles (multi-seed, effect sizes, calibration) |

@@ -5,12 +5,29 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LOWER_KEBAB_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-PUBLIC_REPORT_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:en|zh))?\.md$")
+REPORT_PATH_RE = re.compile(
+    r"^reports/(?:"
+    r"[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:en|zh))?\.md|"
+    r"(?:selection|archive)/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:en|zh)\.md|"
+    r"platforms/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:en|zh)\.md|"
+    r"evidence/[a-z0-9]+(?:-[a-z0-9]+)*\.evidence\.(?:en|zh)\.md"
+    r")$"
+)
 
 
 def _tracked_files() -> list[str]:
     output = subprocess.check_output(["git", "ls-files"], cwd=REPO_ROOT, text=True)
     return output.splitlines()
+
+
+def _markdown_stem(part: str) -> str:
+    if not part.endswith(".md"):
+        return part
+    stem = part[:-3]
+    for suffix in (".en", ".zh"):
+        if stem.endswith(suffix):
+            return stem[: -len(suffix)]
+    return stem
 
 
 def test_docs_use_lowercase_kebab_case_names():
@@ -20,7 +37,7 @@ def test_docs_use_lowercase_kebab_case_names():
             continue
         parts = Path(path).parts[1:]
         for part in parts:
-            stem = part[:-3] if part.endswith(".md") else part
+            stem = _markdown_stem(part)
             if not LOWER_KEBAB_RE.fullmatch(stem):
                 bad_paths.append(path)
                 break
@@ -33,8 +50,7 @@ def test_public_reports_use_fixed_lowercase_names():
     for path in _tracked_files():
         if not path.startswith("reports/"):
             continue
-        rel = Path(path)
-        if len(rel.parts) != 2 or not PUBLIC_REPORT_RE.fullmatch(rel.name):
+        if not REPORT_PATH_RE.fullmatch(path):
             bad_paths.append(path)
 
     assert bad_paths == []
