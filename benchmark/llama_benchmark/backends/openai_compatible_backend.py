@@ -64,6 +64,8 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         self._retry_statuses = {
             int(s) for s in config.extra.get("retry_statuses", (502, 503, 504))
         }
+        self._prompt_prefix = str(config.extra.get("prompt_prefix") or "")
+        self._chat_template_kwargs = dict(config.extra.get("chat_template_kwargs") or {})
 
     def load(self) -> None:
         """检查服务可达性。"""
@@ -143,6 +145,17 @@ class OpenAICompatibleBackend(AbstractModelBackend):
 
     # ── LLM 接口 ──────────────────────────────────────────────────────────────
 
+    def _apply_prompt_prefix(self, prompt: str) -> str:
+        if not self._prompt_prefix or prompt.startswith(self._prompt_prefix):
+            return prompt
+        return f"{self._prompt_prefix}{prompt}"
+
+    def _apply_chat_controls(self, payload: Dict[str, Any]) -> None:
+        if not self.config.extra.get("ollama_think", True):
+            payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
+        if self._chat_template_kwargs:
+            payload["chat_template_kwargs"] = dict(self._chat_template_kwargs)
+
     def generate(
         self,
         prompt: str,
@@ -151,6 +164,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         system: Optional[str] = None,
         stream: bool = False,
     ) -> str:
+        prompt = self._apply_prompt_prefix(prompt)
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -163,8 +177,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "temperature": temperature,
             "stream": False,
         }
-        if not self.config.extra.get("ollama_think", True):
-            payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
+        self._apply_chat_controls(payload)
         resp = self._post_json("/chat/completions", payload, self._timeout_s)
         resp.raise_for_status()
         import re
@@ -186,6 +199,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         """
         import time as _time
 
+        prompt = self._apply_prompt_prefix(prompt)
         messages = [{"role": "user", "content": prompt}]
         payload = {
             "model": self._model_name,
@@ -194,6 +208,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "temperature": temperature,
             "stream": False,
         }
+        self._apply_chat_controls(payload)
         start_ns = _time.perf_counter_ns()
         resp = self._post_json("/chat/completions", payload, max(300.0, self._timeout_s))
         elapsed_ms = (_time.perf_counter_ns() - start_ns) / 1_000_000
@@ -226,6 +241,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
 
         兼容 vLLM / LMDeploy / SGLang（均支持 top_logprobs 参数）。
         """
+        prompt = self._apply_prompt_prefix(prompt)
         messages = [{"role": "user", "content": prompt}]
         payload = {
             "model": self._model_name,
@@ -236,8 +252,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "top_logprobs": 20,  # 拿足够多以覆盖 A/B/C/D
             "stream": False,
         }
-        if not self.config.extra.get("ollama_think", True):
-            payload["think"] = False  # Ollama /v1/chat/completions: top-level, not options
+        self._apply_chat_controls(payload)
         resp = self._post_json("/chat/completions", payload, self._timeout_s)
         resp.raise_for_status()
         data = resp.json()
@@ -274,6 +289,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
         """通过 SSE 流式响应测量 TTFT（Time To First Token）。"""
         import httpx
 
+        prompt = self._apply_prompt_prefix(prompt)
         messages = [{"role": "user", "content": prompt}]
         payload = {
             "model": self._model_name,
@@ -282,6 +298,7 @@ class OpenAICompatibleBackend(AbstractModelBackend):
             "temperature": 0.0,
             "stream": True,
         }
+        self._apply_chat_controls(payload)
 
         start = time.perf_counter_ns()
         ttft_ms = 0.0

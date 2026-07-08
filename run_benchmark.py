@@ -27,6 +27,7 @@ import copy
 import datetime
 import json
 import logging
+import re
 import subprocess
 import sys
 import time
@@ -59,6 +60,7 @@ from benchmark.rerank.dimension import run_rerank_dimension
 from benchmark.asr.dimension import run_asr_dimension
 from benchmark.ocr.dimension import run_ocr_dimension
 from benchmark.conditioned.runner import run_conditioned
+from benchmark.long_context.runner import run_long_context
 try:
     from benchmark.general_ability.runner import run_general_ability
     _GENERAL_ABILITY_AVAILABLE = True
@@ -275,8 +277,41 @@ def _run_conditioned_dim(m, c, ctx):
     return run_conditioned(m, c, ctx.root)
 
 
+def _run_long_context_dim(m, c, ctx):
+    return run_long_context(m, c, ctx.root)
+
+
 def _run_conversation_drift_dim(m, c, ctx):
     return run_conversation_drift(m, cfg=c)
+
+
+def _parameter_size_b(model_cfg: ModelConfig) -> float:
+    explicit = getattr(model_cfg, "parameter_size_b", None)
+    if explicit is not None:
+        return float(explicit)
+    haystack = " ".join(
+        str(x or "")
+        for x in (
+            getattr(model_cfg, "name", ""),
+            getattr(model_cfg, "hf_repo", ""),
+            getattr(model_cfg, "model_id", ""),
+            getattr(model_cfg, "notes", ""),
+        )
+    )
+    matches = re.findall(r"(?i)(\d+(?:\.\d+)?)\s*b\b", haystack)
+    return max((float(m) for m in matches), default=0.0)
+
+
+def _is_long_context_required(model_cfg: ModelConfig) -> bool:
+    if not _is_chat_capable(model_cfg):
+        return False
+    benchmarks = getattr(model_cfg, "benchmarks", None) or {}
+    dim_cfg = benchmarks.get("long_context") or {}
+    if dim_cfg.get("required") is True:
+        return True
+    if dim_cfg.get("required") is False:
+        return False
+    return _parameter_size_b(model_cfg) >= 20.0
 
 
 # 注册顺序 = dispatch 顺序 = 报告节顺序,不可乱。
@@ -314,6 +349,10 @@ DIMENSIONS: dict[str, DimensionSpec] = {
     "conditioned": DimensionSpec("conditioned", quality=True,
                                  run=_run_conditioned_dim, gate=_is_chat_capable,
                                  render=sections.render_conditioned),
+    "long_context": DimensionSpec("long_context", quality=True,
+                                  run=_run_long_context_dim,
+                                  gate=_is_long_context_required,
+                                  render=sections.render_long_context),
     "scenarios": DimensionSpec(
         "scenarios", quality=True, run=_run_scenarios_dim, gate=_is_chat_capable,
         render=sections.render_scenarios),
@@ -575,7 +614,7 @@ def main() -> int:
                         help="逗号分隔跳过的 benchmark: accuracy,ttft,throughput,"
                              "prefill_decode,concurrency,stability,translation,"
                              "embedding,rerank,asr,general_ability,conditioned,"
-                             "scenarios")
+                             "long_context,scenarios")
     parser.add_argument("--golden", default=str(GOLDEN))
     parser.add_argument("--seeds", type=int, default=1,
                         help="每模型完整重跑次数 N（默认 1 = 单次，行为不变）。"

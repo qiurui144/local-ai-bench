@@ -102,6 +102,8 @@ Models are declared in `models.yaml`. The minimum required fields are `name`, `p
 | [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows benchmark results — historical dual-boot run with calibrated thresholds |
 | [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows benchmark results |
 | [docs/amd-intel-linux-test-plan.md](docs/amd-intel-linux-test-plan.md) | AMD/Intel Linux post-Windows execution plan and CPU-baseline policy |
+| [docs/k3-realistic-stress-plan.md](docs/k3-realistic-stress-plan.md) | K3 product-like mixed-traffic stress plan |
+| [docs/spacemit-model-zoo.md](docs/spacemit-model-zoo.md) | SpacemiT model_zoo data acquisition and K3 invocation map |
 | [docs/contributing.md](docs/contributing.md) | How to add models, dimensions, and hardware targets |
 | [docs/academic-rigor.md](docs/academic-rigor.md) | Statistical rigor principles (multi-seed, effect sizes, calibration) |
 

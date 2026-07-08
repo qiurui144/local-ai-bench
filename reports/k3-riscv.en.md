@@ -1,10 +1,10 @@
 # K3 RISC-V Platform — Comprehensive Benchmark Report
 
-**Platform:** k3-riscv | SpacemiT K3 SoC, 8×X100 RISC-V RVV cores + A100 NPU + IME2, 16 GB LPDDR5  
-**Chip:** SpacemiT K1/M1 (X100 RVV 1.0, 2 GHz) + A100 NPU (INT8/INT4) + IME2 accelerator  
-**Primary framework:** llama.cpp with IME2 acceleration (llama-server v8355; port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B)  
-**Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)  
-**SSH:** root@192.168.100.215 (pass: bianbu)  
+**Platform:** k3-riscv | SpacemiT K3 SoC, 8×X100 RISC-V RVV cores + A100 NPU + IME2, 16 GB LPDDR5
+**Chip:** SpacemiT K1/M1 (X100 RVV 1.0, 2 GHz) + A100 NPU (INT8/INT4) + IME2 accelerator
+**Primary framework:** llama.cpp with IME2 acceleration (llama-server v8355; port 11434 = 3B, port 8081 = 1.5B, port 11435 = 7B)
+**Reference:** attune-k3/docs/k3-16g-model-selection.md (2026-06-20 E2E verified)
+**Access:** configured through local environment variables; this report does not record host IPs, users, or passwords.
 **Last calibrated:** 2026-06-21. This file is updated in place.
 
 ---
@@ -114,7 +114,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 > † 1.5B MMLU uses 1.5B-tier floor (0.45) not default 7B floor (0.55). GA thresholds are model-size dependent (calibrated 2026-06-21):
 > - ≤0.6B: gsm8k≥0.20 / mmlu≥0.40 / hellaswag≥0.45
 > - 1.5B:  gsm8k≥0.30 / mmlu≥0.45 / hellaswag≥0.50
-> - 3-7B:  gsm8k≥0.55 / mmlu≥0.55 / hellaswag≥0.60 (default) 
+> - 3-7B:  gsm8k≥0.55 / mmlu≥0.55 / hellaswag≥0.60 (default)
 
 ### Non-LLM Performance (K3 X100 CPU ORT / sherpa-onnx)
 
@@ -287,7 +287,7 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 |---|---|
 | 2026-06-20 | Initial calibration: TTFT, throughput, general_ability (gsm8k) measured; thresholds set from E2E device runs (qwen2.5-0.5b) |
 | 2026-06-20 | Expanded: K3 model selection from attune-k3 reference (bottom models verified, 7B LLM dual-framework decision, memory budget analysis) |
-| 2026-06-21 | Added qwen2.5-3b-k3-riscv: new llama-server port 11434 (IP 215); clean single-process run: PP≈572 t/s (545/571/602), TG≈7.1 t/s (7.0/7.2/7.0), TTFT warm P50≈184ms (cold 1031ms); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750) |
+| 2026-06-21 | Added qwen2.5-3b-k3-riscv: new llama-server port 11434; clean single-process run: PP≈572 t/s (545/571/602), TG≈7.1 t/s (7.0/7.2/7.0), TTFT warm P50≈184ms (cold 1031ms); translation PASS (zh→en chrF 57.5/70.4; en→zh chrF 33.6/32.4); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750) |
 | 2026-06-21 | Added qwen2.5-1.5b-k3-riscv (port 8081) and qwen2.5-7b-k3-riscv (port 11435); 7B server confirmed running; 1.5B benchmark in progress (GA phase, ~14:40 est.); 7B benchmark queued after 1.5B completes |
 
 ---
@@ -296,8 +296,8 @@ When on (per global §4.5H): text default **deepseek-v4**, multimodal **qwen-3.6
 
 **平台：** k3-riscv | SpacemiT K3，8×X100 RISC-V RVV，A100 NPU + IME2，16 GB LPDDR5
 **主框架：** llama.cpp（IME2 加速，llama-server v8355；端口 11434=3B，8081=1.5B，11435=7B，8080=nginx NAS 禁用）
-**参考：** attune-k3/docs/k3-16g-model-selection.md（2026-06-20 端到端验证）  
-**SSH：** root@192.168.100.215（密码：bianbu）
+**参考：** attune-k3/docs/k3-16g-model-selection.md（2026-06-20 端到端验证）
+**访问方式：** 通过本地环境变量配置；本报告不记录主机 IP、用户或密码。
 
 ### 内存预算（16 GB）
 

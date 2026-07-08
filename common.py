@@ -140,11 +140,19 @@ class ModelConfig:
     ov_model_dir: Optional[str] = None
     max_model_len: Optional[int] = None  # conditioned dim: 阶梯超限 SKIPPED 的依据;
                                          # 未配置时运行时探 /v1/models
+    parameter_size_b: Optional[float] = None
     notes: str = ""
     capabilities: tuple = ()           # typed positive capability set; load_models 由
                                        # *_capable hint 派生(hint 留一个 minor 作 alias)
     target: Optional[str] = None       # targets.yaml 中的 key（None = "local"）
     benchmarks: dict = field(default_factory=dict)  # per-model benchmark overrides
+    # Optional text prepended to each user prompt. Useful for runtimes where the
+    # model-specific non-thinking control is prompt-level rather than API-level.
+    prompt_prefix: str = ""
+    # Extra chat template controls passed through to llama.cpp / other OpenAI
+    # compatible servers. Example: {"enable_thinking": false} for Qwen thinking
+    # templates that otherwise return reasoning_content with empty content.
+    chat_template_kwargs: dict = field(default_factory=dict)
     # Ollama qwen3 thinking mode: set False to inject options.think=false, disabling chain-of-thought
     # tokens that otherwise fill max_tokens before any content is emitted (empty hyp/answer bug).
     ollama_think: bool = True
@@ -399,6 +407,13 @@ def _strip_think_tags(text: str) -> str:
     return stripped.strip()
 
 
+def _apply_prompt_prefix(prompt: str, model_cfg: ModelConfig) -> str:
+    prefix = str(getattr(model_cfg, "prompt_prefix", "") or "")
+    if not prefix or prompt.startswith(prefix):
+        return prompt
+    return f"{prefix}{prompt}"
+
+
 def _apply_ollama_think_controls(payload: dict, model_cfg: ModelConfig, max_tokens: int) -> None:
     """Request non-thinking Ollama output and leave enough budget for older Qwen3 builds.
 
@@ -415,6 +430,12 @@ def _apply_ollama_think_controls(payload: dict, model_cfg: ModelConfig, max_toke
     payload["max_tokens"] = max(max_tokens, 2048)
 
 
+def _apply_chat_template_kwargs(payload: dict, model_cfg: ModelConfig) -> None:
+    kwargs = getattr(model_cfg, "chat_template_kwargs", None) or {}
+    if kwargs:
+        payload["chat_template_kwargs"] = dict(kwargs)
+
+
 def infer_sync(
     model_cfg: ModelConfig,
     *,
@@ -427,6 +448,7 @@ def infer_sync(
     prior_messages: Optional[list[dict]] = None,
 ) -> InferResult:
     """单次同步推理（非流式），返回 token 统计 + 延迟 + 解析内容"""
+    prompt = _apply_prompt_prefix(prompt, model_cfg)
     messages: list[dict] = list(prior_messages) if prior_messages else []
     if image_path and model_cfg.is_vlm:
         messages.append({
@@ -448,6 +470,7 @@ def infer_sync(
     if seed is not None:
         payload["seed"] = seed   # OpenAI 兼容采样种子(vLLM 支持);judge 多 seed 用
     _apply_ollama_think_controls(payload, model_cfg, max_tokens)
+    _apply_chat_template_kwargs(payload, model_cfg)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -566,6 +589,7 @@ def infer_stream(
     seed: Optional[int] = None,
 ) -> InferResult:
     """流式推理，返回 TTFT + 总延迟 + usage"""
+    prompt = _apply_prompt_prefix(prompt, model_cfg)
     messages: list[dict] = []
     if image_path and model_cfg.is_vlm:
         messages.append({
@@ -589,6 +613,7 @@ def infer_stream(
     if seed is not None:
         payload["seed"] = seed   # 缓存 A/B 一致性校验需确定性采样(spec §11)
     _apply_ollama_think_controls(payload, model_cfg, max_tokens)
+    _apply_chat_template_kwargs(payload, model_cfg)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -692,6 +717,7 @@ async def infer_async(
     temperature: float = 0.1,
 ) -> InferResult:
     """异步版本，供并发测试调用"""
+    prompt = _apply_prompt_prefix(prompt, model_cfg)
     messages: list[dict] = []
     if image_path and model_cfg.is_vlm:
         messages.append({
@@ -711,6 +737,7 @@ async def infer_async(
         "temperature": temperature,
     }
     _apply_ollama_think_controls(payload, model_cfg, max_tokens)
+    _apply_chat_template_kwargs(payload, model_cfg)
     url = f"{model_cfg.base_url}/chat/completions"
 
     t0 = time.monotonic()
@@ -743,13 +770,14 @@ async def infer_async(
             latency_ms=elapsed,
         )
     choice = data.get("choices", [{}])[0]
+    msg = choice.get("message", {}) or {}
     usage = data.get("usage", {}) or {}
     output_tokens = int(usage.get("completion_tokens", 0))
     tps = (output_tokens / (elapsed / 1000)) if elapsed > 0 and output_tokens > 0 else 0.0
     return InferResult(
         model=model_cfg.name,
         ok=True,
-        content=choice.get("message", {}).get("content", ""),
+        content=_strip_think_tags(msg.get("content", "") or ""),
         input_tokens=int(usage.get("prompt_tokens", 0)),
         output_tokens=output_tokens,
         finish_reason=choice.get("finish_reason", ""),

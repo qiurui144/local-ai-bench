@@ -267,6 +267,45 @@ def render_conditioned(cd: dict) -> list[str]:
     return lines
 
 
+def render_long_context(lc: dict) -> list[str]:
+    if not lc:
+        return []
+    lines = ["", "## 公开长上下文套件 (NIHS / LongBench / L-Eval)", "",
+             f"- **判定**: {lc.get('verdict','?')}",
+             f"- 模式: `{lc.get('mode','')}`"]
+    sources = lc.get("sources") or {}
+    if sources:
+        lines.append("- 来源: " + " / ".join(f"{k}={v}" for k, v in sources.items()))
+    summary = lc.get("summary") or {}
+    latency = summary.get("latency") or {}
+    lines.append(f"- measured cases: {summary.get('measured_cases', 0)}")
+    if summary.get("blocked_suites"):
+        lines.append(f"- blocked suites: {', '.join(summary['blocked_suites'])}")
+    if latency:
+        lines.append(
+            f"- latency mean/p95/max: {latency.get('mean_s')} / "
+            f"{latency.get('p95_s')} / {latency.get('max_s')} s")
+    suites = lc.get("suites") or {}
+    if suites:
+        lines += ["", "| Suite | Metric | Measured | Errors | Verdict |",
+                  "|---|---:|---:|---:|---|"]
+        for name, suite in suites.items():
+            if "recall" in suite:
+                metric = suite.get("recall")
+            elif "score" in suite:
+                metric = suite.get("score")
+            elif "accuracy" in suite:
+                metric = suite.get("accuracy")
+            else:
+                metric = "-"
+            lines.append(
+                f"| {name} | {metric} | {suite.get('measured', 0)} "
+                f"| {suite.get('errors', 0)} | {suite.get('verdict', '?')} |")
+    for r in lc.get("verdict_reasons", []):
+        lines.append(f"  - {r}")
+    return lines
+
+
 def render_scenarios(sc: dict) -> list[str]:
     lines: list[str] = []
     if sc:

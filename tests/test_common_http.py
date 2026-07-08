@@ -151,6 +151,40 @@ def test_openai_backend_generate_with_logprobs_passes_think_false(monkeypatch):
     assert captured.get("think") is False  # top-level, not in options
 
 
+def test_openai_backend_applies_prompt_prefix(monkeypatch):
+    """GA backend must support prompt-level controls such as llama.cpp Qwen3 /no_think."""
+    import httpx
+    from benchmark.llama_benchmark.backends.openai_compatible_backend import OpenAICompatibleBackend
+    from benchmark.llama_benchmark.core.config import ModelConfig as LBModelConfig
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    cfg = LBModelConfig(
+        name="test", type="llm", backend="openai_compatible",
+        openai_base_url="http://localhost:11434/v1",
+        extra={"prompt_prefix": "/no_think\n"},
+    )
+    backend = OpenAICompatibleBackend(cfg)
+    assert backend.generate("What is 2+2?", max_tokens=8) == "ok"
+
+    assert captured["messages"][0]["content"] == "/no_think\nWhat is 2+2?"
+
+
 def test_infer_sync_passes_seed_into_payload(monkeypatch):
     """seed 显式给定时进 payload(OpenAI 兼容字段);缺省不带 seed 键。"""
     captured = {}
@@ -200,3 +234,84 @@ def test_infer_sync_ollama_think_false_payload_and_token_floor(monkeypatch):
     assert captured["think"] is False
     assert captured["options"]["think"] is False
     assert captured["max_tokens"] == 2048
+
+
+def test_infer_sync_applies_prompt_prefix_without_token_floor(monkeypatch):
+    captured = {}
+
+    class _OkResp:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _OkResp()
+
+    monkeypatch.setattr(common.httpx, "post", fake_post)
+
+    model = _Model()
+    model.prompt_prefix = "/no_think\n"
+    common.infer_sync(model, prompt="hi", max_tokens=64)
+
+    assert captured["messages"][0]["content"] == "/no_think\nhi"
+    assert captured["max_tokens"] == 64
+    assert "think" not in captured
+
+
+def test_infer_sync_applies_chat_template_kwargs(monkeypatch):
+    captured = {}
+
+    class _OkResp:
+        status_code = 200
+        text = "{}"
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}}], "usage": {}}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _OkResp()
+
+    monkeypatch.setattr(common.httpx, "post", fake_post)
+
+    model = _Model()
+    model.chat_template_kwargs = {"enable_thinking": False}
+    common.infer_sync(model, prompt="hi", max_tokens=64)
+
+    assert captured["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_openai_backend_applies_chat_template_kwargs(monkeypatch):
+    import httpx
+    from benchmark.llama_benchmark.backends.openai_compatible_backend import OpenAICompatibleBackend
+    from benchmark.llama_benchmark.core.config import ModelConfig as LBModelConfig
+
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]}
+
+    def fake_post(url, json=None, **kw):
+        captured.update(json or {})
+        return _Resp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    cfg = LBModelConfig(
+        name="test", type="llm", backend="openai_compatible",
+        openai_base_url="http://localhost:11434/v1",
+        extra={"chat_template_kwargs": {"enable_thinking": False}},
+    )
+    backend = OpenAICompatibleBackend(cfg)
+    assert backend.generate("What is 2+2?", max_tokens=8) == "ok"
+
+    assert captured["chat_template_kwargs"] == {"enable_thinking": False}

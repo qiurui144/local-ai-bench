@@ -11,6 +11,7 @@ env/
 
 # Build / dist
 build/
+builds/
 dist/
 *.tar.gz
 *.zip

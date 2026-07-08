@@ -1,6 +1,13 @@
 """Rockchip RKNN3 Model Zoo coverage in models.yaml."""
 
+import subprocess
+import sys
+from pathlib import Path
+
 import yaml
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 RKNN3_V104_MODEL_NAMES = {
@@ -66,3 +73,33 @@ def test_rockchip_rknn3_entries_point_to_model_zoo_paths():
         path = models[name].get("rknn_model_path", "")
         assert path.startswith("/RKNN3_SDK/rknn3_models/v1.0.4/")
         assert path.endswith(".rknn")
+
+
+def test_rockchip_rknn3_cache_manifest_covers_llm_vlm_ocr():
+    proc = subprocess.run(
+        [sys.executable, "scripts/cache_rockchip_rknn3_models.py", "--manifest"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True,
+    )
+    out = proc.stdout
+    assert "v1.0.4/llm/Qwen3-8B/Qwen3-8B.rknn" in out
+    assert "v1.0.4/vlm/FastVLM_1.6B/vision_FastVLM_1.6B.rknn" in out
+    assert "v1.0.4/others/PaddleOCR-VL/vision/PaddleOCR-vision.rknn" in out
+    assert "192.168." not in out
+    assert "linaro" not in out
+
+
+def test_rockchip_docs_and_configs_do_not_expose_device_connection_details():
+    checked = [
+        ROOT / "models.yaml",
+        ROOT / "reports/rk3588.en.md",
+        ROOT / "docs/rockchip-rknn3-model-cache.md",
+    ]
+    combined = "\n".join(path.read_text(encoding="utf-8") for path in checked)
+    assert "192.168.100.206" not in combined
+    assert "RK3588_PASS=linaro" not in combined
+    assert "Product serial:" not in combined
+    assert "R1BCA" not in combined

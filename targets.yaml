@@ -79,9 +79,9 @@ targets:
     platform: linux
     arch: riscv64
     connection: ssh
-    ip_env: K3_HOST                  # 192.168.100.215
-    ssh_user_env: K3_USER            # root
-    ssh_pass_env: K3_PASS            # bianbu
+    ip_env: K3_HOST
+    ssh_user_env: K3_USER
+    ssh_pass_env: K3_PASS
     runtime: llama_cpp
     runtime_port: 11434
     accelerator: cpu
@@ -94,9 +94,9 @@ targets:
     platform: linux
     arch: riscv64
     connection: ssh
-    ip_env: K3_HOST                  # 192.168.100.215
-    ssh_user_env: K3_USER            # root
-    ssh_pass_env: K3_PASS            # bianbu
+    ip_env: K3_HOST
+    ssh_user_env: K3_USER
+    ssh_pass_env: K3_PASS
     runtime: llama_cpp
     runtime_port: 11434
     accelerator: cpu
@@ -104,6 +104,28 @@ targets:
     remote_workdir: "/root/local-ai-bench"
     python_cmd: "python3"
     notes: "进迭时空 SpacemiT K3（X100+A100 异构，8核 RISC-V RVV 0.7.1 + IME2 NPU，16GB）；Bianbu Linux；llama-server v8355（/usr/bin/llama-server）RVV+IME2 编译；port 11434=3B，8081=1.5B，8082=0.5B，11435=7B。"
+
+  k3-riscv-32g:
+    platform: linux
+    arch: riscv64
+    connection: ssh
+    ip_env: K3_32G_HOST
+    ssh_user_env: K3_32G_USER
+    ssh_pass_env: K3_32G_PASS
+    runtime: llama_cpp
+    runtime_port: 18080
+    accelerator: cpu
+    accelerator_profiles: [cpu, rvv, ime2]
+    env_overrides:
+      K3_32G_QWEN36_BASE_URL: http://localhost:18080/v1
+      K3_32G_QWEN30B_BASE_URL: http://localhost:18082/v1
+      K3_32G_QWEN30B_VLM_BASE_URL: http://localhost:18084/v1
+      K3_32G_QWEN35B_BASE_URL: http://localhost:18100/v1
+      K3_32G_LFM2_24B_BASE_URL: http://localhost:18120/v1
+      K3_32G_QWEN3_8B_BASE_URL: http://localhost:18122/v1
+    remote_workdir: "/root/local-ai-bench"
+    python_cmd: "python3"
+    notes: "进迭时空 SpacemiT K3 32GB 内存档；重点覆盖 SpacemiT model_zoo Qwen3.6-35B-A3B-UD-Q4_K_XL，顺序单实例运行，避免与 16GB 报告混用。"
 
   k3-riscv-8g:
     platform: linux
@@ -126,9 +148,9 @@ targets:
     platform: linux
     arch: riscv64
     connection: ssh
-    ip_env: K1_HOST                  # 192.168.100.140（与 K3 同机或同机架；单独 env var 便于后续分离）
-    ssh_user_env: K1_USER            # bianbu
-    ssh_pass_env: K1_PASS            # bianbu
+    ip_env: K1_HOST
+    ssh_user_env: K1_USER
+    ssh_pass_env: K1_PASS
     runtime: llama_cpp
     runtime_port: 8081               # 与 K3 端口区分，便于同机跑两实例
     accelerator: cpu

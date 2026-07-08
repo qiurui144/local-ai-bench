@@ -93,6 +93,8 @@ python -m pytest tests/ -q
 | [reports/amd-linux.en.md](reports/amd-linux.en.md) | AMD Linux 评测结果——当前 192.168.100.201 目标机状态与模型选型建议 |
 | [reports/amd-windows.en.md](reports/amd-windows.en.md) | AMD Windows 评测结果——历史 dual-boot 结果与已校准阈值 |
 | [reports/intel-windows.en.md](reports/intel-windows.en.md) | Intel Windows 评测结果 |
+| [docs/k3-realistic-stress-plan.zh.md](docs/k3-realistic-stress-plan.zh.md) | 贴近真实业务使用方式的 K3 混合流量压力测试方案 |
+| [docs/spacemit-model-zoo.md](docs/spacemit-model-zoo.md) | SpacemiT model_zoo 数据获取与 K3 模型调用方式索引 |
 | [docs/contributing.md](docs/contributing.md) | 如何新增模型、维度、硬件目标 |
 | [docs/academic-rigor.md](docs/academic-rigor.md) | 统计严谨性原则（多 seed、效应量、校准） |
 

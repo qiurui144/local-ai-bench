@@ -22,6 +22,8 @@ def make_backend(model_cfg) -> OpenAICompatibleBackend:
         openai_model=getattr(model_cfg, "model_id", None) or model_cfg.hf_repo or model_cfg.name,
         extra={
             "ollama_think": getattr(model_cfg, "ollama_think", True),
+            "prompt_prefix": getattr(model_cfg, "prompt_prefix", "") or "",
+            "chat_template_kwargs": getattr(model_cfg, "chat_template_kwargs", None) or {},
             "timeout_s": float(ga_cfg.get("timeout_s", benchmarks.get("backend_timeout_s", 600.0))),
             "retry_attempts": int(ga_cfg.get("retry_attempts", benchmarks.get("backend_retry_attempts", 8))),
             "retry_initial_s": float(ga_cfg.get("retry_initial_s", benchmarks.get("backend_retry_initial_s", 3.0))),

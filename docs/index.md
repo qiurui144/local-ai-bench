@@ -32,6 +32,11 @@ be promoted here unless they are rewritten as maintained documentation.
 | [cross-platform-compare.md](cross-platform-compare.md) | Cross-platform comparison semantics |
 | [deploy-targets.md](deploy-targets.md) | Multi-platform deployment SOP |
 | [reproducibility.md](reproducibility.md) | Reproducibility policy |
+| [k3-realistic-stress-plan.md](k3-realistic-stress-plan.md) | K3 product-like mixed-traffic stress test contract |
+| [k3-realistic-stress-plan.zh.md](k3-realistic-stress-plan.zh.md) | K3 product-like mixed-traffic stress test contract, Chinese version |
+| [k3-source-runtime-and-long-context.md](k3-source-runtime-and-long-context.md) | K3 source runtime comparison and aviation-manual long-context gating |
+| [rockchip-rknn3-model-cache.md](rockchip-rknn3-model-cache.md) | RK3588/RK182X RKNN3 model cache and sync workflow |
+| [spacemit-model-zoo.md](spacemit-model-zoo.md) | SpacemiT model_zoo data acquisition, local cache layout, and K3 invocation map |
 
 ## Reports
 

@@ -980,9 +980,7 @@ models:
   # 双芯片架构（source: /userdata/model_hub/model_hub_config.yaml + 实测 2026-06-20）:
   #   RK3588 内置 RKNPU3（3×2 TOPS）→ embedding（port 18080，uvicorn server.py）
   #   RK1820 PCIe NPU（Device 182a，官方名 RK1820）→ LLM/ASR/TTS（port 18001/18002/18003）
-  # 激活：export RK3588_HOST=192.168.100.206 RK3588_USER=linaro RK3588_PASS=linaro
-  #        export RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1
-  #        export RK182X_EMBED_BASE_URL=http://192.168.100.206:18080/v1
+  # 激活：通过本地安全环境注入 RK 连接变量，再设置 RKLLM3_LLM_BASE_URL / RK182X_EMBED_BASE_URL。
 
   - name: qwen2.5-0.5b-rk3588
     provider: generic
@@ -1101,7 +1099,7 @@ models:
     notes: "RK3588 RKNN VLM — MiniCPM-V；PENDING-VERIFY .rknn 转换后首跑校准"
 
   # 实测可用模型（2026-06-19）—— rkllm3-server on port 18001，pre-loaded on /userdata/model_hub/
-  # 激活：export RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1
+  # 激活：export RKLLM3_LLM_BASE_URL=http://${RK3588_HOST}:18001/v1
   # 注：ctx 768；顶层 top-k=1 greedy；qwenvl chat template；--qwenvl flag 已激活
 
   - name: qwen3-vl-2b-rk1820
@@ -1140,7 +1138,7 @@ models:
 
   # MiniCPM embedding on port 18080（已运行）
   # 实际运行在 RK3588 内置 RKNPU3（3×2 TOPS）上，不是 RK1820 PCIe NPU
-  # 激活：export RK182X_EMBED_BASE_URL=http://192.168.100.206:18080/v1
+  # 激活：export RK182X_EMBED_BASE_URL=http://${RK3588_HOST}:18080/v1
 
   - name: minicpm-embed-rk3588
     provider: generic
@@ -1161,17 +1159,17 @@ models:
           mrr_min: 0.85               # 实测 MRR=1.000
           ndcg_at_10_min: 0.85        # 实测 nDCG@10=1.000
       skip: [accuracy, ttft, throughput, prefill_decode, general_ability, translation, conditioned, scenarios, stability, concurrency, rerank, asr, ocr]
-    notes: "RK3588 内置 RKNPU3（3×2 TOPS）上运行的 MiniCPM-embedding-light RKNN；宿主机 RK3588(192.168.100.206)；port 18080；3-seed 2026-06-23 PASS（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=155.9ms，零方差）"
+    notes: "RK3588 内置 RKNPU3（3×2 TOPS）上运行的 MiniCPM-embedding-light RKNN；port 18080；3-seed 2026-06-23 PASS（hit@1=1.0，MRR=1.0，nDCG@10=1.0，P50=155.9ms，零方差）"
 
   # ═══ RK1820 PCIe NPU（独立 PCIe NPU 卡，官方名 RK1820，SDK: RKNN3 V0.3.0b0）═══
   # 运行时：rkllm3-server（port 18001 LLM；port 18002 ASR；port 18003 TTS）
   # RKNN3 Model Zoo 官方 TPS（参考）：Qwen2.5-0.5B 158.9；Qwen2.5-3B 82.5；InternVL3-2B 119.4；FastVLM-1.5B 119.0；Qwen2.5-VL-3B 47.4
-  # 预转换模型下载：https://console.box.lenovo.com/l/H1fig1（code: rknn）
-  # 激活：RKLLM3_LLM_BASE_URL=http://192.168.100.206:18001/v1（LLM）
-  #        RKLLM3_ASR_BASE_URL=http://192.168.100.206:18002（ASR；POST /asr/transcribe，Content-Type: audio/wav）
+  # 预转换模型下载：通过内部 Filez 分享链接获取；提取码只允许通过临时环境变量传入。
+  # 激活：RKLLM3_LLM_BASE_URL=http://${RK3588_HOST}:18001/v1（LLM）
+  #        RKLLM3_ASR_BASE_URL=http://${RK3588_HOST}:18002（ASR；POST /asr/transcribe，Content-Type: audio/wav）
 
   # RKNN3 Model Zoo 官方支持模型（预转换，W4A16 量化）
-  # 来源：Lenovo Box /RKNN3_SDK/rknn3_models（2026-06-29 扫描，code: rknn）
+  # 来源：Lenovo Filez /RKNN3_SDK/rknn3_models（2026-06-29 扫描）
   # v1.0.4 作为最新覆盖基线；v1.0.0 旧版存在但不重复登记。
   # 以下条目均为 PENDING-VERIFY，表示模型文件已在 Model Zoo 中发现，但本机服务未逐一加载校准。
 
@@ -1891,10 +1889,10 @@ models:
     notes: "RK1820 PCIe NPU PaddleOCR-VL（others/PaddleOCR-VL）；Model Zoo v1.0.4；需要专用 OCR/VLM service glue；PENDING-VERIFY"
 
   # ASR on RK1820 PCIe NPU — rk-asr service（Qwen3-based ASR）
-  # API: POST http://192.168.100.206:18002/asr/transcribe
+  # API: POST ${RKLLM3_ASR_BASE_URL}/asr/transcribe
   # Content-Type: audio/wav（raw WAV body，非 multipart）
   # 实测 RTF（2026-06-20）：0.040（最优）~ 0.066（一般）
-  # 激活：export RKLLM3_ASR_BASE_URL=http://192.168.100.206:18002
+  # 激活：export RKLLM3_ASR_BASE_URL=http://${RK3588_HOST}:18002
 
   - name: rk-asr-rk1820
     provider: generic
@@ -2534,14 +2532,13 @@ models:
 
   # ═══ Intel Linux（OpenVINO / vLLM primary；Ollama CPU baseline explicit only）═══
   # 硬件：Intel x86_64 Linux；LLM/VLM normal path must use accelerator-backed OpenAI-compatible runtime
-  # 激活：export INTEL_LINUX_HOST=<IP> INTEL_LINUX_SSH_USER=<user> INTEL_LINUX_SSH_PASS=<pass>
+  # 激活：通过本地安全环境注入 Intel Linux 连接变量，再设置 OV_INTEL_LINUX_BASE_URL。
   #        export OV_INTEL_LINUX_BASE_URL=http://localhost:8080/v1
   #        export OLLAMA_INTEL_LINUX_BASE_URL=http://localhost:11434/v1  # CPU baseline only
   # 适合：OpenVINO/vLLM accelerated Linux coverage；CPU-only LLM/VLM requires explicit baseline tagging
 
   # ═══ AMD Linux（Ryzen 8845H + Radeon 780M，Ollama）═══
-  # 激活：export AMD_LINUX_HOST=<IP> AMD_LINUX_SSH_USER=<user> AMD_LINUX_SSH_PASS=<pass>
-  #        export OLLAMA_AMD_LINUX_BASE_URL=http://<AMD_LINUX_HOST>:11434/v1
+  # 激活：通过本地安全环境注入 AMD Linux 连接变量，再设置 OLLAMA_AMD_LINUX_BASE_URL。
 
   - name: qwen2.5-7b-amd-linux
     provider: ollama
@@ -3604,13 +3601,12 @@ models:
     notes: "Intel Linux supplemental VLM via Ollama minicpm-v:8b；用于与 AMD Linux MiniCPM-V 覆盖对齐，PENDING-VERIFY。"
 
   # ═══ SpacemiT K3 RISC-V（llama.cpp RVV，riscv64，进迭时空 X100，16GB）═══
-  # 硬件：root@192.168.100.215（ipco-k3），SpacemiT X100（8核 RVV，16GB LPDDR5）
+  # 硬件：K3_HOST/K3_USER 指向的 SpacemiT X100（8核 RVV，16GB LPDDR5）
   # 运行时：/usr/bin/llama-server（llama.cpp v8355），端口 11434
-  # 激活：export K3_HOST=192.168.100.215 K3_USER=root K3_PASS=bianbu
-  #        export K3_LLM_BASE_URL=http://192.168.100.215:11434/v1
+  # 激活：通过本地安全环境注入 K3 连接变量，再设置 K3_LLM_BASE_URL。
   # 模型：GGUF Q4_K_M 格式，已预置 /root/models/ 目录
   # 性能预期：3B ~5-10 tok/s（RVV 加速），RISC-V 纯 CPU
-  # 注：旧 IP 192.168.100.140 / 端口 8080 已废弃（2026-06-21 更新）
+  # 注：旧端口 8080 已废弃（2026-06-21 更新）
 
   - name: qwen2.5-3b-k3-riscv
     provider: generic
@@ -3652,12 +3648,12 @@ models:
           chrf_min: 30.0
           term_match_rate_min: 0.50
       skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
-    notes: "SpacemiT K3 RISC-V (192.168.100.215:11434) — Qwen2.5-3B Q4_K_M via llama-server v8355; TTFT warm P50≈184ms(177/178/184/197ms), cold 1031ms; PP≈572 t/s; TG≈7.1 t/s; translation PASS (zh→en chrF 57.5/70.4, en→zh chrF 33.6/32.4, term 74%/57%); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750, 2026-06-21)"
+    notes: "SpacemiT K3 RISC-V via K3_LLM_BASE_URL — Qwen2.5-3B Q4_K_M via llama-server v8355; TTFT warm P50≈184ms(177/178/184/197ms), cold 1031ms; PP≈572 t/s; TG≈7.1 t/s; translation PASS (zh→en chrF 57.5/70.4, en→zh chrF 33.6/32.4, term 74%/57%); GA PASS (GSM8K 0.550/MMLU 0.500/HellaSwag 0.750, 2026-06-21)"
 
   - name: qwen2.5-0.5b-k3-riscv
     provider: generic
     target: k3-riscv-16g
-    base_url_env: K3_0P5B_BASE_URL        # http://192.168.100.215:8082/v1（0.5B 独立端口，需手动启动）
+    base_url_env: K3_0P5B_BASE_URL        # 0.5B 独立端口，需手动启动
     port: 8082                            # port 8080=nginx(禁用)，port 8081=1.5B，port 11434=3B，port 11435=7B
     model_id: qwen2.5-0.5b-instruct-q4_0.gguf  # GGUF Q4_0 ~0.4GB（需下载；K3 device 上当前无此文件）
     hardware_min: SpacemiT-K3-X100-16GB
@@ -3772,7 +3768,7 @@ models:
   - name: qwen2.5-7b-k3-riscv
     provider: generic
     target: k3-riscv-16g
-    base_url_env: K3_7B_BASE_URL        # http://192.168.100.215:11435/v1（7B 独立端口）
+    base_url_env: K3_7B_BASE_URL        # 7B 独立端口
     port: 11435
     model_id: qwen2.5-7b-instruct-q4_k_m.gguf  # actual llama-server model ID
     hardware_min: SpacemiT-K3-X100-16GB
@@ -3811,9 +3807,387 @@ models:
       skip: [stability, concurrency, conditioned, scenarios, embedding, rerank, asr, ocr, conversation_drift]
     notes: "SpacemiT K3 RISC-V — Qwen2.5-7B Q4_K_M via llama-server port 11435; 3-seed calibrated 2026-06-21. GA FAIL: GSM8K error_rate 35% (parse failures on RISC-V), accuracy 0.65/MMLU 0.80/HellaSwag 0.85 all above floor. Translation: all 4 directions PASS (chrF zh→en 59.4/73.5, en→zh 37.1/46.0)."
 
+  # ═══ SpacemiT K3 RISC-V（32GB 内存档；model_zoo 重点 35B MoE）═══
+  # 硬件：K3_32G_HOST/K3_32G_USER 指向的 K3 32GB，SpacemiT X100 + IME2，Bianbu Linux
+  # 运行时：llama.cpp-tools-spacemit 0.1.1+6；推荐由 scripts/run_k3_32g_qwen36_deep.sh 起服
+  # 激活：通过本地安全环境注入 K3 32G 连接变量，再设置 K3_32G_QWEN36_BASE_URL。
+
+  - name: qwen3.6-35b-a3b-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_QWEN36_BASE_URL
+    port: 18080
+    model_id: Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/llm/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+    quantization: UD-Q4_K_XL
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat]
+    task_type: text_only
+    prompt_prefix: "/no_think\n"
+    chat_template_kwargs:
+      enable_thinking: false
+    translation_capable: true
+    max_model_len: 32768
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 15000
+          p95_ttft_ms_max: 45000
+      throughput:
+        duration_s: 60
+        thresholds:
+          tps_min: 1.0
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 20
+          tg_tps_min: 1.0
+      conditioned:
+        context_ladder: [1024, 4096, 8192, 16384, 32768]
+        max_tokens: 64
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.55
+          hellaswag_min: 0.60
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [accuracy, stability, concurrency, scenarios, embedding, rerank, asr, ocr, conversation_drift]
+    notes: "K3 32GB 重点模型：SpacemiT model_zoo Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf；必须报告 native llama-bench PP/TG、OpenAI endpoint TTFT/TPS、1k→32k context ladder 与 cache A/B。"
+
+  - name: qwen3-30b-a3b-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_QWEN30B_BASE_URL
+    port: 18082
+    model_id: Qwen3-30B-A3B-Q4_0.gguf
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/llm/Qwen3-30B-A3B-Q4_0.gguf
+    quantization: Q4_0
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat]
+    task_type: text_only
+    prompt_prefix: "/no_think\n"
+    chat_template_kwargs:
+      enable_thinking: false
+    translation_capable: true
+    max_model_len: 32768
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 12000
+          p95_ttft_ms_max: 36000
+      throughput:
+        duration_s: 30
+        thresholds:
+          tps_min: 1.2
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 25
+          tg_tps_min: 1.2
+      conditioned:
+        context_ladder: [1024, 3072]
+        max_tokens: 64
+        answer_margin_tokens: 512
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      concurrency:
+        concurrencies: [1, 2, 4, 8]
+        duration_s: 10
+      stability:
+        duration_s: 180
+        sample_interval_s: 10
+      scenarios:
+        num_cases: 3
+      conversation_drift:
+        num_cases: 2
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.55
+          hellaswag_min: 0.60
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [accuracy, embedding, rerank, asr, ocr]
+    notes: "K3 32GB 高规格优先模型：SpacemiT model_zoo Qwen3-30B-A3B-Q4_0.gguf；私有 llama.cpp-tools-spacemit 优先验证，必须补 PP/TG、TTFT/TPS、context ladder 与 Windows fullcov 可比的质量维度。"
+
+  - name: qwen3.5-35b-a3b-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_QWEN35B_BASE_URL
+    port: 18100
+    model_id: Qwen3.5-35B-A3B-Q4_0.gguf
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/llm/Qwen3.5-35B-A3B-Q4_0.gguf
+    quantization: Q4_0
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat]
+    task_type: text_only
+    prompt_prefix: "/no_think\n"
+    chat_template_kwargs:
+      enable_thinking: false
+    translation_capable: true
+    max_model_len: 262144
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 15000
+          p95_ttft_ms_max: 45000
+      throughput:
+        duration_s: 30
+        thresholds:
+          tps_min: 1.0
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 20
+          tg_tps_min: 1.0
+      conditioned:
+        context_ladder: [1024, 3072]
+        max_tokens: 64
+        answer_margin_tokens: 512
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      concurrency:
+        concurrencies: [1, 2, 4]
+        duration_s: 10
+      stability:
+        duration_s: 120
+        sample_interval_s: 10
+      scenarios:
+        num_cases: 3
+      conversation_drift:
+        num_cases: 2
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.55
+          hellaswag_min: 0.60
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [accuracy, embedding, rerank, asr, ocr]
+    notes: "K3 32GB 高规格 LLM：SpacemiT model_zoo Qwen3.5-35B-A3B-Q4_0.gguf；llama.cpp chat template 必须传 chat_template_kwargs.enable_thinking=false，否则仅返回 reasoning_content。"
+
+  - name: lfm2-24b-a2b-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_LFM2_24B_BASE_URL
+    port: 18120
+    model_id: LFM2-24B-A2B-Q4_0.gguf
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/llm/LFM2-24B-A2B-Q4_0.gguf
+    quantization: Q4_0
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat]
+    task_type: text_only
+    translation_capable: true
+    max_model_len: 32768
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 12000
+          p95_ttft_ms_max: 36000
+      throughput:
+        duration_s: 30
+        thresholds:
+          tps_min: 1.2
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 20
+          tg_tps_min: 1.2
+      conditioned:
+        context_ladder: [1024, 3072]
+        max_tokens: 64
+        answer_margin_tokens: 512
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      concurrency:
+        concurrencies: [1, 2, 4]
+        duration_s: 10
+      stability:
+        duration_s: 120
+        sample_interval_s: 10
+      scenarios:
+        num_cases: 3
+      conversation_drift:
+        num_cases: 2
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.50
+          mmlu_min: 0.50
+          hellaswag_min: 0.55
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [accuracy, embedding, rerank, asr, ocr]
+    notes: "K3 32GB 高规格 LLM：SpacemiT model_zoo LFM2-24B-A2B-Q4_0.gguf；与 Qwen MoE 同样记录 native PP/TG、OpenAI endpoint 性能、GA、翻译和上下文能力。"
+
+  - name: qwen3-8b-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_QWEN3_8B_BASE_URL
+    port: 18122
+    model_id: Qwen3-8B-Q4_K_M.gguf
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/llm/Qwen3-8B-Q4_K_M.gguf
+    quantization: Q4_K_M
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat]
+    task_type: text_only
+    prompt_prefix: "/no_think\n"
+    chat_template_kwargs:
+      enable_thinking: false
+    translation_capable: true
+    max_model_len: 40960
+    benchmarks:
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 8000
+          p95_ttft_ms_max: 24000
+      throughput:
+        duration_s: 30
+        thresholds:
+          tps_min: 2.0
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 40
+          tg_tps_min: 2.0
+      conditioned:
+        context_ladder: [1024, 4096]
+        max_tokens: 64
+        answer_margin_tokens: 512
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      concurrency:
+        concurrencies: [1, 2, 4, 8]
+        duration_s: 10
+      stability:
+        duration_s: 120
+        sample_interval_s: 10
+      scenarios:
+        num_cases: 3
+      conversation_drift:
+        num_cases: 2
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 20}
+          mmlu: {per_subject: 5}
+          hellaswag: {num_samples: 20}
+        thresholds:
+          gsm8k_min: 0.50
+          mmlu_min: 0.50
+          hellaswag_min: 0.55
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 30.0
+          term_match_rate_min: 0.50
+      skip: [accuracy, embedding, rerank, asr, ocr]
+    notes: "K3 32GB 中高规格 LLM：SpacemiT model_zoo Qwen3-8B-Q4_K_M.gguf；用于 30B/35B 不可持续全量时的性能/GA 对照。"
+
+  - name: qwen30ba3b-mm-k3-32g-riscv
+    provider: generic
+    target: k3-riscv-32g
+    base_url_env: K3_32G_QWEN30B_VLM_BASE_URL
+    port: 18084
+    model_id: qwen30ba3b-mm-q4_1
+    hf_repo: https://archive.spacemit.com/spacemit-ai/model_zoo/vlm/qwen30ba3b-mm-q4_1.tar.gz
+    quantization: Q4_1
+    hardware_min: SpacemiT-K3-X100-32GB
+    capabilities: [chat, vlm]
+    task_type: vlm
+    prompt_prefix: "/no_think\n"
+    chat_template_kwargs:
+      enable_thinking: false
+    max_model_len: 32768
+    benchmarks:
+      accuracy:
+        golden_set: vlm_standard
+      ttft:
+        samples: 3
+        thresholds:
+          p50_ttft_ms_max: 20000
+          p95_ttft_ms_max: 60000
+      throughput:
+        duration_s: 60
+        thresholds:
+          tps_min: 0.8
+      prefill_decode:
+        samples: 3
+        decode_tokens: 128
+        thresholds:
+          pp_tps_min: 15
+          tg_tps_min: 0.8
+      conditioned:
+        context_ladder: [1024, 4096, 8192, 16384, 32768]
+        max_tokens: 64
+        thresholds:
+          quality_drop_warn: 0.20
+          quality_drop_fail: 0.35
+          needle_recall_min: 0.50
+      scenarios:
+        num_cases: 10
+        thresholds:
+          wechat_intent: {intent_accuracy_min: 0.60, entity_recall_min: 0.50}
+          vlm_document_extraction: {field_accuracy_min: 0.60}
+      skip: [stability, concurrency, translation, embedding, rerank, asr, ocr, conversation_drift, general_ability]
+    notes: "K3 32GB 高规格 VLM：SpacemiT model_zoo qwen30ba3b-mm-q4_1.tar.gz（用户称 Qwen3-30B-A3B-VL）；需先解析 tar 内 GGUF/mmproj 形态，再验证私有 llama.cpp-tools-spacemit 的 mtmd/mmproj 支持、图文输入、PP/TG 与 VLM 场景。"
+
   # ═══ SpacemiT K3 RISC-V（8GB 内存档；低内存 GGUF only）═══
-  # 激活：export K3_8G_HOST=<IP> K3_8G_USER=root K3_8G_PASS=<pass>
-  #        export K3_8G_LLM_BASE_URL=http://<K3_8G_HOST>:11434/v1
+  # 激活：通过本地安全环境注入 K3 8G 连接变量，再设置 K3_8G_LLM_BASE_URL。
   # 约束：8GB 档只登记 0.5B/1B/1.5B；3B/7B 留在 k3-riscv-16g。
 
   - name: qwen2.5-0.5b-k3-8g-riscv
@@ -3908,10 +4282,9 @@ models:
     notes: "SpacemiT K3 8GB — Qwen2.5-1.5B Q4_K_M；8GB 档上限模型，PENDING-VERIFY；3B/7B 不登记到 8GB。"
 
   # ═══ SpacemiT K1 RISC-V（llama.cpp RVV，riscv64，同 K3 机架）═══
-  # 硬件：bianbu@192.168.100.140（K1_HOST），SpacemiT K1（BPI-F3/Muse-Pi，8核 RVV 0.7.1）
+  # 硬件：SpacemiT K1（BPI-F3/Muse-Pi，8核 RVV 0.7.1）
   # 运行时：llama-server，端口 8081（与 K3 端口区分，可同机并发跑）
-  # 激活：export K1_HOST=192.168.100.140 K1_USER=bianbu K1_PASS=bianbu
-  #        export K1_LLM_BASE_URL=http://192.168.100.140:8081/v1
+  # 激活：通过本地安全环境注入 K1 连接变量，再设置 K1_LLM_BASE_URL。
   # 性能预期：与 K3 接近但低频 core；0.5B ~3-4 tok/s（PENDING-VERIFY）
 
   - name: qwen2.5-0.5b-k1-riscv
@@ -4217,6 +4590,26 @@ benchmarks:
       quality_drop_warn: 0.20
       quality_drop_fail: 0.35
       needle_recall_min: 0.50
+
+  long_context:
+    description: "公开长上下文必测项: NIHS / LongBench / L-Eval；20B+ chat 模型默认启用。K3/RISC-V 报告使用 edge_subset_not_leaderboard_full 标注。"
+    max_input_tokens: 3072
+    timeout_s: 900
+    suites:
+      needle_in_a_haystack:
+        context_lengths: [1024, 3072]
+        depth_percents: [10, 50, 90]
+      longbench:
+        datasets: [passage_retrieval_en, passage_count]
+        samples_per_dataset: 1
+      leval:
+        tasks: [quality, coursera]
+        samples_per_task: 1
+        questions_per_document: 1
+    thresholds:
+      nihs_recall_min: 0.80
+      longbench_score_min: 0.20
+      leval_accuracy_min: 0.20
 
   scenarios:
     description: >
