@@ -28,6 +28,39 @@ load that must be preserved for the Windows report.
   pulled reports, temporary manifests, credentials, and private notes stay under
   ignored paths such as `output/`.
 
+## Parameter-Matrix Contract
+
+Linux retests must follow `docs/k3-parameter-evaluation-plan.zh.md` for result
+shape, even when the target is AMD or Intel instead of K3. A model can no longer
+be closed only as "1K-4K context PASS", "measured", or "blocked" without the
+parameter profiles below. Test items and parameter axes are fixed in
+`docs/evaluation-contract.json`; `parameter-matrix.json` must conform to
+`docs/parameter-matrix.schema.json` and declare
+`contract_id=vlm-llm-nas-evaluation-contract`. Reports must include the
+top-level `environment` block so OS build, accelerator provider, memory and
+storage state are reproducible across AMD, Intel and K3 targets. JSON artifacts
+must use the schema suite declared by `docs/evaluation-contract.json`, including
+`run-summary.json`, `model-profile.json` and `scheduler-contract.json`.
+
+For each model and parameter bucket, the report must include:
+
+- `latency_profile`: TTFT, prefill, decode/TPOT, end-to-end p50/p90/p95/p99/max.
+- `memory_profile`: peak RSS, minimum available memory, OOM/kill/restart state.
+- `quality_profile`: task score, threshold, pass/fail reason, evidence status
+  for RAG/VLM.
+- `startup_profile`: hot/warm/cold state, startup wait, model I/O and cache
+  state.
+- `queue_profile`: queue wait, queue depth, priority, deadline/cutover result.
+- `resource_profile`: accelerator or CPU hold time, lease conflict, fallback.
+- `product_verdict`: one of `sync_default`, `sync_bounded`, `async_default`,
+  `async_only`, `offline_only`, `not_recommended`, `blocked`.
+
+Scheduler fields such as `max_context_tokens_sync`,
+`max_output_tokens_sync`, ETA weights, hot-set, RAG chunk/top-k/evidence
+defaults, VLM sync/async boundary and UI timeout are not fixed by this Linux
+plan. They are derived only after the cross-platform parameter matrix is
+complete.
+
 ## Runner
 
 Use the target-local Linux runner:
@@ -191,6 +224,10 @@ For each model, the report should state one of:
 - measured as explicit CPU baseline
 - blocked with root cause and repair notes
 - invalidated with reason and replacement run tag
+
+These are runner outcomes only. Final product reporting must also provide a
+parameter-level `product_verdict` from the fixed verdict set in the
+Parameter-Matrix Contract.
 
 After review, copy only maintained scripts and designated summary reports into
 the public GitHub surface.

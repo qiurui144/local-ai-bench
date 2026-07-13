@@ -426,7 +426,7 @@ models:
     role: llm_amd_primary
     task_type: text_only
     translation_capable: true
-    notes: "AMD 780M Vulkan GPU — qwen2.5:7b Q4_K_M ~4.7GB; 热 TTFT P50=985ms, 吞吐13.6TPS, PP=112tok/s, TG=17tok/s; general_ability PASS (gsm8k=0.880/mmlu=0.600/hellaswag=0.790); translation(3-seed 2026-06-17): en->zh chrF 36.4 PASS(≥35), zh->en term 79% PASS(≥75%) — 阈值 2026-06-21 按实测校准"
+    notes: "AMD 780M Vulkan GPU — qwen2.5:7b Q4_K_M ~4.7GB；2026-07-09 general_ability PASS(gsm8k=0.75/mmlu=0.875/hellaswag=0.875)，L3 术语 zh->en 81.8%、en->zh 84.6% PASS；en->zh L1 chrF 34.2 < 35.0 轻微贴线失败。可作为通用 LLM/RAG 候选，但暂不做严格双向翻译认证。"
     benchmarks:
       ttft:
         samples: 3
@@ -441,6 +441,10 @@ models:
         thresholds:
           tg_tps_min: 14             # 实测 TG P50=17.0 tok/s (2026-06-17 E2E)
       general_ability:
+        tasks:
+          gsm8k: {num_samples: 8}
+          mmlu: {per_subject: 2}
+          hellaswag: {num_samples: 8}
         thresholds:
           gsm8k_min: 0.55          # 实测 gsm8k=0.880 (2026-06-17)；保留旧阈值
           mmlu_min: 0.55           # 实测 mmlu=0.600 (2026-06-17)
@@ -597,7 +601,7 @@ models:
     role: vlm_amd_baseline
     task_type: vlm
     is_vlm: true
-    notes: "AMD 780M Vulkan — llava:7b Q4 ~4.7GB；PP=199tok/s, TG=19.8tok/s, TPS=18.1；general_ability FAIL(gsm8k=0.33/mmlu=0.48/hellaswag=0.50，VLM 不适合纯文本推理基准)；accuracy BLOCKED(VLM golden set 需图像输入) (2026-06-17 E2E)"
+    notes: "AMD 780M Vulkan — llava:7b Q4 ~4.7GB；2026-07-09 类别识别 precision 88.9%，但实体召回 0%、事实召回 0%、文档字段准确率 6.7%；仅适合粗粒度图像分类 smoke，不推荐证据级 VLM QA 或文档字段抽取。"
     benchmarks:
       ttft:
         samples: 3
@@ -613,7 +617,9 @@ models:
         thresholds:
           pp_tps_min: 100           # 实测 PP=199 tok/s
           tg_tps_min: 12            # 实测 TG=19.8 tok/s
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      scenarios:
+        num_cases: 3
+      skip: [stability, concurrency, conditioned, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
 
   # ═══ AMD Embedding 模型（Ryzen 8845H + 780M，Ollama Vulkan）═══
 
@@ -3200,8 +3206,31 @@ models:
     task_type: text_only
     translation_capable: true
     benchmarks:
-      skip: [stability]
-    notes: "Intel Linux CPU — qwen2.5:7b Q4，与 AMD Windows 同模型对比基准"
+      ttft:
+        samples: 3
+        thresholds:
+          p95_ttft_ms_max: 15000
+      throughput:
+        duration_s: 20
+        thresholds:
+          tps_min: 8
+      general_ability:
+        tasks:
+          gsm8k: {num_samples: 8}
+          mmlu: {per_subject: 2}
+          hellaswag: {num_samples: 8}
+        thresholds:
+          gsm8k_min: 0.55
+          mmlu_min: 0.55
+          hellaswag_min: 0.60
+      translation:
+        max_pairs: 10
+        thresholds:
+          bleu_min: 14.0
+          chrf_min: 35.0
+          term_match_rate_min: 0.80
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
+    notes: "Intel Linux Ollama/Vulkan — qwen2.5:7b Q4_K_M；2026-07-13 正式 HF datasets 补测：general_ability PASS（GSM8K 0.75 / MMLU 0.625 / HellaSwag 0.875），Flores L1 zh->en PASS（BLEU 25.25 / chrF 55.96），en->zh BLEU 37.47 但 chrF 33.46 < 35 FAIL；L3 术语 zh->en 81.8% PASS、en->zh 76.9% < 80% FAIL；TTFT P95≈626ms、吞吐≈8.04 TPS，Ollama 显示 100% GPU。结论：可作为 Intel 通用 LLM 候选，不认证双向翻译、术语敏感 RAG 或生产翻译链路。"
 
   - name: qwen3-embedding-0.6b-intel-linux
     provider: ollama
@@ -3324,7 +3353,7 @@ models:
         thresholds:
           tps_min: 12
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, asr, ocr, embedding, rerank, prefill_decode]
-    notes: "Intel Linux CPU/Ollama — Qwen3-0.6B 小模型覆盖；think=false 避免纯 thinking 输出。"
+    notes: "Intel Linux Ollama/Vulkan 微型 LLM 覆盖；2026-07-12 合同运行在 LLM/RAG 项 blocked(model_process_failed)，当前仅保留 smoke/运行时覆盖，不作为质量候选。"
 
   - name: qwen3-0.6b-openvino-intel-linux
     hf_repo: OpenVINO/Qwen3-0.6B-int4-ov
@@ -3351,7 +3380,7 @@ models:
         thresholds:
           bleu_min: 8.0
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
-    notes: "Intel Linux OpenVINO optimized micro LLM：HF source OpenVINO/Qwen3-0.6B-int4-ov；CPU/GPU/NPU device由 OV service 配置，PENDING-VERIFY。"
+    notes: "Intel Linux OpenVINO 微型 LLM：HF source OpenVINO/Qwen3-0.6B-int4-ov；2026-07-12 L1 基础翻译可输出，但 L3 术语保持 zh->en 36%、en->zh 62%，且有术语模板化/重复输出；仅适合 smoke/性能覆盖，不推荐生产 LLM/RAG/术语翻译。"
 
   - name: qwen2.5-1.5b-openvino-intel-linux
     hf_repo: OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov
@@ -3379,7 +3408,7 @@ models:
           bleu_min: 10.0
           chrf_min: 28.0
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank, prefill_decode]
-    notes: "Intel Linux OpenVINO optimized translation small model：HF source OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov；PENDING-VERIFY。"
+    notes: "Intel Linux OpenVINO 小型翻译 LLM：HF source OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov；2026-07-12 L1 基础双向翻译通过，但 L3 术语保持 zh->en 55%、en->zh 62% 低于 80% 门槛；可标记为 basic translation，暂不推荐生产 RAG/术语一致性回答。"
 
   - name: qwen3-1.7b-intel-linux
     provider: ollama
@@ -3440,6 +3469,44 @@ models:
     benchmarks:
       skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, rerank, ttft, throughput, prefill_decode]
     notes: "Intel Linux CPU/Ollama — BGE-M3 embedding，补齐与 AMD Linux 的 embedding 模型族。"
+
+  - name: bge-base-en-v1.5-igpu-intel-linux
+    provider: openai
+    target: intel-linux
+    base_url_env: OV_EXTRAS_INTEL_LINUX_BASE_URL
+    model_id: bge-base-en-v1.5-int8-ov
+    port: 8081
+    hardware_min: Intel-x86_64-Linux-OpenVINO
+    role: embedding_intel_linux_openvino_igpu
+    task_type: text_only
+    embedding_capable: true
+    benchmarks:
+      embedding:
+        thresholds:
+          recall_at_10_min: 0.75
+          latency_ms_p95_max: 15000
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, rerank, ttft, throughput, prefill_decode]
+    notes: "Intel Linux Arc iGPU embedding：BGE-base-en-v1.5 INT8 OpenVINO，serve_ov_extras.py /v1/embeddings，device=GPU。"
+
+  - name: bge-reranker-base-igpu-intel-linux
+    provider: openai
+    target: intel-linux
+    base_url_env: OV_EXTRAS_INTEL_LINUX_BASE_URL
+    model_id: bge-reranker-base-int8-ov
+    port: 8081
+    hardware_min: Intel-x86_64-Linux-OpenVINO
+    role: reranker_intel_linux_openvino_igpu
+    task_type: text_only
+    rerank_capable: true
+    rerank_native: true
+    benchmarks:
+      rerank:
+        num_samples: 6
+        thresholds:
+          ndcg_at_5_min: 0.65
+          latency_ms_p95_max: 50000
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, ttft, throughput, prefill_decode]
+    notes: "Intel Linux Arc iGPU reranker：BGE-reranker-base INT8 OpenVINO，serve_ov_extras.py /v1/rerank，device=GPU。"
 
   - name: qwen2.5-3b-reranker-intel-linux
     provider: ollama
@@ -3543,12 +3610,16 @@ models:
     hf_repo: Intel/whisper.cpp-openvino-models
     provider: local_onnx
     target: intel-linux
+    model_id: whisper-tiny-int8-ov
     quantization: int8
     port: 0
     hardware_min: Intel-x86_64-Linux-OpenVINO
     role: asr_intel_linux_openvino_tiny
     task_type: text_only
     asr_capable: true
+    asr_backend: whisper_ov_subprocess
+    ov_model_dir: /home/qiurui/ov_models/asr/whisper-tiny-int8-ov
+    asr_device: GPU
     benchmarks:
       asr:
         num_samples: 3
@@ -3576,8 +3647,10 @@ models:
         duration_s: 20
         thresholds:
           tps_min: 2
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, asr, ocr]
-    notes: "Intel Linux VLM baseline via Ollama llava:7b；CPU 路径性能保守，PENDING-VERIFY。"
+      scenarios:
+        num_cases: 3
+      skip: [stability, concurrency, conditioned, conversation_drift, general_ability, translation, embedding, rerank, asr, ocr]
+    notes: "Intel Linux VLM baseline via Ollama llava:7b/Vulkan；2026-07-12 类别识别 precision 88.9% 但实体召回 33.3%、事实召回 0%、文档字段准确率 0%；仅适合粗粒度图像分类 smoke，不推荐证据级 VLM QA 或文档字段抽取。"
 
   - name: minicpm-v-8b-intel-linux
     provider: ollama

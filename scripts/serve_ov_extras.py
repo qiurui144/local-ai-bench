@@ -24,6 +24,7 @@ import argparse
 import io
 import json
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -40,9 +41,9 @@ log = logging.getLogger(__name__)
 
 # ── model dirs ────────────────────────────────────────────────────────────────
 
-EMB_DIR  = Path(r"C:\ov_models\embedding\bge-base-en-v1.5-int8-ov")
-RANK_DIR = Path(r"C:\ov_models\reranker\bge-reranker-base-int8-ov")
-ASR_DIR  = Path(r"C:\ov_models\asr\whisper-base-int8-ov")
+EMB_DIR  = Path(os.environ.get("OV_EXTRAS_EMB_DIR",  r"C:\ov_models\embedding\bge-base-en-v1.5-int8-ov"))
+RANK_DIR = Path(os.environ.get("OV_EXTRAS_RANK_DIR", r"C:\ov_models\reranker\bge-reranker-base-int8-ov"))
+ASR_DIR  = Path(os.environ.get("OV_EXTRAS_ASR_DIR",  r"C:\ov_models\asr\whisper-base-int8-ov"))
 
 # ── lazy model singletons ─────────────────────────────────────────────────────
 

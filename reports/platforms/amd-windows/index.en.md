@@ -1,38 +1,53 @@
 # AMD Windows
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-09
 **Chinese version:** [index.zh.md](index.zh.md)
-**Legacy source:** [../../amd-windows.en.md](../../amd-windows.en.md)
 
 ## Scope
 
-AMD Windows is split into CPU, Radeon 780M iGPU, and AMD XDNA NPU paths. The iGPU is the practical LLM/OCR acceleration path in the current evidence set. CPU remains the reranker path and OCR baseline. NPU is qualified for VitisAI OCR but not yet for LLM serving.
+This page records the AMD Windows contract baseline. This run aligns the NAS contract items on their selected same-stack paths only; it does not compare llama.cpp, Ollama, CPU-only, or other cross-stack dimensions.
+
+Target host: Windows 11 / Ryzen 7 8845H / Radeon 780M / 27.75GB RAM. Coverage includes 10 contract items across LLM, RAG, embedding, reranker, VLM, OCR, and ASR.
+
+## Contract Baseline
+
+| Item | Value |
+|---|---|
+| target | `amd-win-x86` |
+| run_id | `amd-20260709-baseline-contract-s1-final` |
+| status | `complete` |
+| row_count | 10 |
+| blocked_test_items | 0 |
+| sync_default | 4 |
+| sync_bounded | 1 |
+| not_recommended | 5 |
 
 ## Execution Path Summary
 
-| Path | Runtime | Best-fit workloads | Status |
+| Workload | Baseline model/path | Runtime | Verdict |
 |---|---|---|---|
-| [CPU](cpu.en.md) | ONNX Runtime CPU EP | Reranker, OCR baseline | PASS |
-| [iGPU](igpu.en.md) | Ollama Vulkan, ONNX DirectML | LLM, embedding, fastest OCR | Measured; LLM quality caveats |
-| [NPU](npu.en.md) | VitisAI, DirectML, Lemonade/FastFlowLM candidates | OCR batch, ASR, future LLM NPU | OCR/ASR PASS; LLM pending |
+| LLM / RAG answer | `qwen2.5-7b-amd-win` | Ollama AMD/Vulkan service path | `not_recommended` |
+| VLM | `llava-7b-amd-win` | Ollama AMD/VLM service path | `not_recommended` |
+| Embedding / RAG search-only | `bge-base-en-v1.5-igpu-amd-win` | ONNX Runtime DirectML service path | `sync_default` / `sync_bounded` |
+| Reranker | `bge-reranker-base-igpu-amd-win` | ONNX Runtime DirectML service path | `sync_default` |
+| OCR | `rapidocr-amd-directml` | DirectML OCR path | `sync_default` |
+| ASR | `sensevoice-small-amd-win` | AMD Windows ASR path | `sync_default` |
 
-## Selection Notes
+## Decision
 
-| Role | Current choice | Decision |
-|---|---|---|
-| LLM route | Radeon 780M iGPU via Ollama Vulkan | `qwen2.5-7b` and `llama3.2-3b` have valid performance data, but current quality gates are not clean passes. |
-| OCR route | Radeon 780M DirectML | `rapidocr-amd-directml` is fastest: p50 468.5ms. |
-| Reranker route | CPU ONNX | `bge-reranker-base-amd-win` p50 78ms; default for latency-sensitive paths. |
-| NPU route | VitisAI OCR / pending LLM NPU | OCR works but is slower than DirectML; use when isolating iGPU or for batch/power experiments. |
+The AMD Windows paths that are currently usable as NAS product sync-default baselines are OCR, ASR, embedding, and reranker. RAG search-only is usable as a bounded sync fallback.
+
+The `qwen2.5-7b-amd-win` LLM/RAG answer rows and the `llava-7b-amd-win` VLM rows have measured performance and quality outputs, but their contract verdict is `not_recommended` because quality did not meet the current productization gate.
 
 ## Evidence
 
-| Detail | Report |
+| Artifact | Path |
 |---|---|
-| CPU path | [cpu.en.md](cpu.en.md) |
-| iGPU path | [igpu.en.md](igpu.en.md) |
-| NPU path | [npu.en.md](npu.en.md) |
-| Legacy full report | [../../amd-windows.en.md](../../amd-windows.en.md) |
-| Legacy CPU detail | [../../amd-windows-cpu.en.md](../../amd-windows-cpu.en.md) |
-| Legacy iGPU detail | [../../amd-windows-igpu.en.md](../../amd-windows-igpu.en.md) |
-| Legacy NPU detail | [../../amd-windows-npu.en.md](../../amd-windows-npu.en.md) |
+| Contract report | [nas-contract-report.md](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/nas-contract-report.md) |
+| Parameter matrix | [parameter-matrix.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/parameter-matrix.json) |
+| Run summary | [run-summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/run-summary.json) |
+| Verdict table | [verdict-table.tsv](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/verdict-table.tsv) |
+| Model profile | [model-profile.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/model-profile.json) |
+| Scheduler contract | [scheduler-contract.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/scheduler-contract.json) |
+| Main summary | [amd-20260709-baseline-contract-s1-capped_summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-capped_summary.json) |
+| VLM supplemental summary | [amd-20260709-baseline-contract-s1-capped-vlm-scenarios_summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-capped-vlm-scenarios_summary.json) |

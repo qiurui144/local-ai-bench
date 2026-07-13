@@ -625,11 +625,12 @@ def _selected_models(target: str, names: str) -> list[ModelConfig]:
         if (getattr(m, "target", None) or "local") == target
     ]
     if names != "all":
-        wanted = {x.strip() for x in names.split(",") if x.strip()}
-        models = [m for m in models if m.name in wanted]
-        missing = wanted - {m.name for m in models}
+        requested = [x.strip() for x in names.split(",") if x.strip()]
+        by_name = {m.name: m for m in models}
+        missing = set(requested) - set(by_name)
         if missing:
             raise SystemExit(f"unknown model(s) for {target}: {sorted(missing)}")
+        models = [by_name[name] for name in requested]
     return models
 
 
@@ -704,6 +705,8 @@ def _detached_child_cmd(args: argparse.Namespace, tag: str) -> list[str]:
         cmd.append("--allow-cpu-llm-vlm")
     if args.allow_local_scenarios_judge:
         cmd.append("--allow-local-scenarios-judge")
+    if getattr(args, "preserve_model_skip", False):
+        cmd.append("--preserve-model-skip")
     return cmd
 
 
@@ -778,6 +781,7 @@ def _spawn_detached_windows_task(args: argparse.Namespace, tag: str) -> int:
         "allow_batch": args.allow_batch,
         "allow_cpu_llm_vlm": args.allow_cpu_llm_vlm,
         "allow_local_scenarios_judge": args.allow_local_scenarios_judge,
+        "preserve_model_skip": getattr(args, "preserve_model_skip", False),
         "cmd_file": str(cmd_path),
         "timestamp": dt.datetime.now().isoformat(),
     })
@@ -805,6 +809,7 @@ def _spawn_detached(args: argparse.Namespace, tag: str) -> int:
         "allow_batch": args.allow_batch,
         "allow_cpu_llm_vlm": args.allow_cpu_llm_vlm,
         "allow_local_scenarios_judge": args.allow_local_scenarios_judge,
+        "preserve_model_skip": getattr(args, "preserve_model_skip", False),
         "cmd": cmd,
         "timestamp": dt.datetime.now().isoformat(),
     })
@@ -829,6 +834,7 @@ def _run_child_model(args: argparse.Namespace, tag: str) -> int:
         tag,
         manifest,
         allow_local_scenarios_judge=args.allow_local_scenarios_judge,
+        preserve_model_skip=getattr(args, "preserve_model_skip", False),
     )
     if manifest:
         row["child_manifest"] = manifest
@@ -844,6 +850,7 @@ def _run_one_model_isolated(
     manifest: list[dict[str, Any]],
     *,
     allow_local_scenarios_judge: bool = False,
+    preserve_model_skip: bool = False,
 ) -> dict[str, Any]:
     stem = f"{tag}_{model.name}"
     row_path = RUNS / f"{stem}_row.json"
@@ -870,6 +877,8 @@ def _run_one_model_isolated(
     ]
     if allow_local_scenarios_judge:
         cmd.append("--allow-local-scenarios-judge")
+    if preserve_model_skip:
+        cmd.append("--preserve-model-skip")
     log(f"CHILD {model.name} start")
     with open(out_path, "a", encoding="utf-8", errors="replace") as out, open(
         err_path, "a", encoding="utf-8", errors="replace"
@@ -904,13 +913,15 @@ def _run_one_model(
     manifest: list[dict[str, Any]],
     *,
     allow_local_scenarios_judge: bool = False,
+    preserve_model_skip: bool = False,
 ) -> dict:
     seed_runs: list[dict] = []
     durations: list[float] = []
     for idx in range(seeds):
         cfg = copy.deepcopy(model)
         cfg.benchmarks = copy.deepcopy(cfg.benchmarks or {})
-        cfg.benchmarks["skip"] = []
+        if not preserve_model_skip:
+            cfg.benchmarks["skip"] = []
         _apply_single_model_benchmark_policy(
             cfg,
             manifest,
@@ -934,7 +945,8 @@ def _run_one_model(
     result["full_matrix"] = {
         "tag": tag,
         "seeds": seeds,
-        "quick_skip_cleared": True,
+        "quick_skip_cleared": not preserve_model_skip,
+        "model_skip_preserved": preserve_model_skip,
         "duration_s": round(sum(durations), 3),
     }
     if seeds > 1:
@@ -983,6 +995,11 @@ def main() -> int:
         "--allow-local-scenarios-judge",
         action="store_true",
         help="allow scenarios to auto-load a second same-machine L2 judge model",
+    )
+    parser.add_argument(
+        "--preserve-model-skip",
+        action="store_true",
+        help="preserve each model's configured skip list; use for contract baseline runs that must not add extra dimensions",
     )
     parser.add_argument("--child-model", default="", help=argparse.SUPPRESS)
     parser.add_argument("--child-output", default="", help=argparse.SUPPRESS)
@@ -1060,6 +1077,7 @@ def main() -> int:
             tag,
             manifest,
             allow_local_scenarios_judge=args.allow_local_scenarios_judge,
+            preserve_model_skip=getattr(args, "preserve_model_skip", False),
         )
         results.append(row)
         _write_json(RUNS / f"{tag}_summary.json", {"manifest": manifest, "results": results})

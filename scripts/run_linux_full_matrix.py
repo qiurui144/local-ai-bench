@@ -58,6 +58,7 @@ TARGET_ENV = {
     "intel-linux": {
         "OLLAMA_INTEL_LINUX_BASE_URL": "http://localhost:11434/v1",
         "OV_INTEL_LINUX_BASE_URL": "http://localhost:8080/v1",
+        "OV_EXTRAS_INTEL_LINUX_BASE_URL": "http://localhost:8081/v1",
         "INTEL_LINUX_BASE_URL": "http://localhost:8080/v1",
     },
 }
@@ -133,6 +134,9 @@ def ensure_ollama(target: str, manifest: list[dict[str, Any]]) -> bool:
     env.setdefault("OLLAMA_HOST", "0.0.0.0:11434")
     if target == "amd-linux-x86":
         env.setdefault("OLLAMA_KEEP_ALIVE", "5m")
+    if target == "intel-linux":
+        env.setdefault("OLLAMA_IGPU_ENABLE", "1")
+        env.setdefault("OLLAMA_VULKAN", "1")
     cmd = [_ollama_exe(), "serve"]
     try:
         pid = _start_process(cmd, RUNS / f"{target}-ollama-serve", env)
@@ -420,6 +424,15 @@ def _needs_intel_linux_ov_llm(model: ModelConfig, target: str) -> bool:
     )
 
 
+def _needs_intel_linux_ov_extras(model: ModelConfig, target: str) -> bool:
+    return (
+        target == "intel-linux"
+        and model.provider == "openai"
+        and not _is_chat_capable(model)
+        and (model.base_url_env or "") == "OV_EXTRAS_INTEL_LINUX_BASE_URL"
+    )
+
+
 def ensure_intel_linux_ov_llm(model: ModelConfig, manifest: list[dict[str, Any]]) -> bool:
     ready_url = (model.readiness_url or model.base_url.rstrip("/") + "/models")
     port = _endpoint_port(model)
@@ -523,6 +536,142 @@ def ensure_intel_linux_ov_llm(model: ModelConfig, manifest: list[dict[str, Any]]
     return False
 
 
+def _stop_linux_ov_extras_processes(port: int, supervisor_name: str, manifest: list[dict[str, Any]]) -> None:
+    supervisor_pat = shlex.quote(f"supervise_process.py.*{supervisor_name}")
+    serve_pat = shlex.quote(f"serve_ov_extras.py.*--port[ =]{int(port)}")
+    script = (
+        f"pkill -TERM -f {supervisor_pat} >/dev/null 2>&1 || true; "
+        f"pkill -TERM -f {serve_pat} >/dev/null 2>&1 || true; "
+        "sleep 1; "
+        f"pkill -KILL -f {supervisor_pat} >/dev/null 2>&1 || true; "
+        f"pkill -KILL -f {serve_pat} >/dev/null 2>&1 || true"
+    )
+    proc = subprocess.run(["sh", "-lc", script], capture_output=True, text=True)
+    manifest.append({
+        "event": "repair",
+        "runtime": "intel_linux_ov_extras",
+        "action": "stop_named_processes",
+        "port": port,
+        "supervisor_name": supervisor_name,
+        "returncode": proc.returncode,
+        "stderr": (proc.stderr or "").strip()[-500:],
+    })
+
+
+def _openai_model_list_contains(base_url: str, model_id: str, timeout: float = 5.0) -> bool:
+    data = _json_get(base_url.rstrip("/") + "/models", timeout=timeout)
+    if not isinstance(data, dict):
+        return False
+    for item in data.get("data", []):
+        if isinstance(item, dict) and item.get("id") == model_id:
+            return True
+    return False
+
+
+def ensure_intel_linux_ov_extras(model: ModelConfig, manifest: list[dict[str, Any]]) -> bool:
+    ready_url = model.base_url.rstrip("/") + "/models"
+    if _http_ok(ready_url, timeout=3) and _openai_model_list_contains(model.base_url, model.effective_model_id):
+        return True
+
+    port = _endpoint_port(model)
+    supervisor_name = f"intel-linux-ov-extras-{port}"
+    _stop_linux_ov_extras_processes(port, supervisor_name, manifest)
+    _stop_linux_port(port, manifest)
+
+    env = os.environ.copy()
+    env.setdefault("OV_EXTRAS_EMB_DIR", "/home/qiurui/ov_models/embedding/bge-base-en-v1.5-int8-ov")
+    env.setdefault("OV_EXTRAS_RANK_DIR", "/home/qiurui/ov_models/reranker/bge-reranker-base-int8-ov")
+    env.setdefault("OV_EXTRAS_ASR_DIR", "/home/qiurui/ov_models/asr/whisper-tiny-int8-ov")
+
+    required_dirs = {
+        "bge-base-en-v1.5-int8-ov": env["OV_EXTRAS_EMB_DIR"],
+        "bge-reranker-base-int8-ov": env["OV_EXTRAS_RANK_DIR"],
+        "whisper-tiny-int8-ov": env["OV_EXTRAS_ASR_DIR"],
+    }
+    required_dir = required_dirs.get(model.effective_model_id)
+    if required_dir and not Path(required_dir).exists():
+        manifest.append({
+            "event": "repair_failed",
+            "runtime": "intel_linux_ov_extras",
+            "action": "model_dir_missing",
+            "model": model.name,
+            "model_dir": required_dir,
+        })
+        return False
+
+    service_cmd = [
+        _linux_ov_llm_python(),
+        "-u",
+        str(ROOT / "scripts" / "serve_ov_extras.py"),
+        "--host",
+        "0.0.0.0",
+        "--port",
+        str(port),
+        "--emb-device",
+        os.environ.get("OV_EXTRAS_EMB_DEVICE", "GPU"),
+        "--rank-device",
+        os.environ.get("OV_EXTRAS_RANK_DEVICE", "GPU"),
+        "--asr-device",
+        os.environ.get("OV_EXTRAS_ASR_DEVICE", "GPU"),
+    ]
+    cmd = [
+        _linux_ov_llm_python(),
+        "-u",
+        str(ROOT / "scripts" / "supervise_process.py"),
+        "--name",
+        supervisor_name,
+        "--restart-delay",
+        "3",
+        "--",
+        *service_cmd,
+    ]
+    try:
+        pid = _start_process(cmd, RUNS / f"intel-linux-ov-extras-{port}", env, settle_s=3.0)
+        manifest.append({
+            "event": "repair",
+            "runtime": "intel_linux_ov_extras",
+            "action": "start",
+            "model": model.name,
+            "pid": pid,
+            "python": _linux_ov_llm_python(),
+            "port": port,
+            "supervisor_name": supervisor_name,
+            "emb_dir": env["OV_EXTRAS_EMB_DIR"],
+            "rank_dir": env["OV_EXTRAS_RANK_DIR"],
+            "asr_dir": env["OV_EXTRAS_ASR_DIR"],
+            "supervisor": True,
+        })
+    except Exception as exc:
+        manifest.append({
+            "event": "repair_failed",
+            "runtime": "intel_linux_ov_extras",
+            "action": "start",
+            "model": model.name,
+            "error": repr(exc),
+        })
+        return False
+
+    for _ in range(60):
+        time.sleep(2)
+        if _http_ok(ready_url, timeout=3) and _openai_model_list_contains(model.base_url, model.effective_model_id):
+            manifest.append({
+                "event": "runtime_probe",
+                "runtime": "intel_linux_ov_extras",
+                "model": model.name,
+                "ready_url": ready_url,
+                "ok": True,
+            })
+            return True
+    manifest.append({
+        "event": "repair_failed",
+        "runtime": "intel_linux_ov_extras",
+        "action": "wait_ready",
+        "model": model.name,
+        "url": ready_url,
+    })
+    return False
+
+
 def repair_model_runtime(model: ModelConfig, target: str, manifest: list[dict[str, Any]]) -> bool:
     if model.provider == "ollama":
         if not ensure_ollama(target, manifest):
@@ -532,6 +681,8 @@ def repair_model_runtime(model: ModelConfig, target: str, manifest: list[dict[st
         return True
     if _needs_intel_linux_ov_llm(model, target):
         return ensure_intel_linux_ov_llm(model, manifest)
+    if _needs_intel_linux_ov_extras(model, target):
+        return ensure_intel_linux_ov_extras(model, manifest)
     if model.port and model.base_url:
         ready_url = model.readiness_url or model.base_url.rstrip("/") + "/models"
         if not _http_ok(ready_url, timeout=5):
@@ -558,17 +709,31 @@ def repair_model_runtime(model: ModelConfig, target: str, manifest: list[dict[st
     return True
 
 
+def cleanup_model_runtime(model: ModelConfig, target: str, manifest: list[dict[str, Any]]) -> None:
+    if _needs_intel_linux_ov_llm(model, target):
+        port = _endpoint_port(model)
+        supervisor_name = f"intel-linux-ov-llm-{port}-{model.name}"
+        _stop_linux_ov_llm_processes(port, supervisor_name, manifest)
+        _stop_linux_port(port, manifest)
+    elif _needs_intel_linux_ov_extras(model, target):
+        port = _endpoint_port(model)
+        supervisor_name = f"intel-linux-ov-extras-{port}"
+        _stop_linux_ov_extras_processes(port, supervisor_name, manifest)
+        _stop_linux_port(port, manifest)
+
+
 def _selected_models(target: str, names: str) -> list[ModelConfig]:
     models = [
         m for m in load_models(ROOT / "models.yaml")
         if (getattr(m, "target", None) or "local") == target
     ]
     if names != "all":
-        wanted = {x.strip() for x in names.split(",") if x.strip()}
-        models = [m for m in models if m.name in wanted]
-        missing = wanted - {m.name for m in models}
+        requested = [x.strip() for x in names.split(",") if x.strip()]
+        by_name = {m.name: m for m in models}
+        missing = set(requested) - set(by_name)
         if missing:
             raise SystemExit(f"unknown model(s) for {target}: {sorted(missing)}")
+        models = [by_name[name] for name in requested]
     return models
 
 
@@ -643,6 +808,8 @@ def _detached_child_cmd(args: argparse.Namespace, tag: str) -> list[str]:
         cmd.append("--allow-cpu-llm-vlm")
     if args.allow_local_scenarios_judge:
         cmd.append("--allow-local-scenarios-judge")
+    if getattr(args, "preserve_model_skip", False):
+        cmd.append("--preserve-model-skip")
     return cmd
 
 
@@ -664,6 +831,7 @@ def _spawn_detached(args: argparse.Namespace, tag: str) -> int:
         "allow_batch": args.allow_batch,
         "allow_cpu_llm_vlm": args.allow_cpu_llm_vlm,
         "allow_local_scenarios_judge": args.allow_local_scenarios_judge,
+        "preserve_model_skip": getattr(args, "preserve_model_skip", False),
         "cmd": cmd,
         "timestamp": dt.datetime.now().isoformat(),
     })
@@ -688,6 +856,7 @@ def _run_child_model(args: argparse.Namespace, tag: str) -> int:
         tag,
         manifest,
         allow_local_scenarios_judge=args.allow_local_scenarios_judge,
+        preserve_model_skip=getattr(args, "preserve_model_skip", False),
     )
     if manifest:
         row["child_manifest"] = manifest
@@ -703,6 +872,7 @@ def _run_one_model_isolated(
     manifest: list[dict[str, Any]],
     *,
     allow_local_scenarios_judge: bool = False,
+    preserve_model_skip: bool = False,
 ) -> dict[str, Any]:
     stem = f"{tag}_{model.name}"
     row_path = RUNS / f"{stem}_row.json"
@@ -729,6 +899,8 @@ def _run_one_model_isolated(
     ]
     if allow_local_scenarios_judge:
         cmd.append("--allow-local-scenarios-judge")
+    if preserve_model_skip:
+        cmd.append("--preserve-model-skip")
     log(f"CHILD {model.name} start")
     with open(out_path, "a", encoding="utf-8", errors="replace") as out, open(
         err_path, "a", encoding="utf-8", errors="replace"
@@ -763,13 +935,15 @@ def _run_one_model(
     manifest: list[dict[str, Any]],
     *,
     allow_local_scenarios_judge: bool = False,
+    preserve_model_skip: bool = False,
 ) -> dict:
     seed_runs: list[dict] = []
     durations: list[float] = []
     for idx in range(seeds):
         cfg = copy.deepcopy(model)
         cfg.benchmarks = copy.deepcopy(cfg.benchmarks or {})
-        cfg.benchmarks["skip"] = []
+        if not preserve_model_skip:
+            cfg.benchmarks["skip"] = []
         _apply_single_model_benchmark_policy(
             cfg,
             manifest,
@@ -793,7 +967,8 @@ def _run_one_model(
     result["full_matrix"] = {
         "tag": tag,
         "seeds": seeds,
-        "quick_skip_cleared": True,
+        "quick_skip_cleared": not preserve_model_skip,
+        "model_skip_preserved": preserve_model_skip,
         "duration_s": round(sum(durations), 3),
     }
     if seeds > 1:
@@ -842,6 +1017,11 @@ def main() -> int:
         "--allow-local-scenarios-judge",
         action="store_true",
         help="allow scenarios to auto-load a second same-machine L2 judge model",
+    )
+    parser.add_argument(
+        "--preserve-model-skip",
+        action="store_true",
+        help="preserve each model's configured skip list; use for contract baseline runs that must not add extra dimensions",
     )
     parser.add_argument("--child-model", default="", help=argparse.SUPPRESS)
     parser.add_argument("--child-output", default="", help=argparse.SUPPRESS)
@@ -919,7 +1099,9 @@ def main() -> int:
             tag,
             manifest,
             allow_local_scenarios_judge=args.allow_local_scenarios_judge,
+            preserve_model_skip=getattr(args, "preserve_model_skip", False),
         )
+        cleanup_model_runtime(model, args.target, manifest)
         results.append(row)
         _write_json(RUNS / f"{tag}_summary.json", {"manifest": manifest, "results": results})
 

@@ -4,8 +4,24 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import types
 from pathlib import Path
 from typing import Any
+
+
+def _ensure_openvino_runtime_compat() -> None:
+    """Expose the legacy openvino.runtime module expected by rapidocr-openvino."""
+    if "openvino.runtime" in sys.modules:
+        return
+    try:
+        import openvino as ov  # type: ignore
+    except Exception:
+        return
+    runtime = types.ModuleType("openvino.runtime")
+    for name in dir(ov):
+        if not name.startswith("__"):
+            setattr(runtime, name, getattr(ov, name))
+    sys.modules["openvino.runtime"] = runtime
 
 
 def _openvino_devices() -> list[str]:
@@ -16,6 +32,7 @@ def _openvino_devices() -> list[str]:
 
 def _recognize_with_openvino(image: Path | None) -> dict[str, Any]:
     devices = _openvino_devices()
+    _ensure_openvino_runtime_compat()
     from rapidocr_openvino import RapidOCR  # type: ignore
 
     engine = RapidOCR()

@@ -1,24 +1,30 @@
 # AMD Windows iGPU Path
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-09
 **Chinese version:** [igpu.zh.md](igpu.zh.md)
-**Legacy source:** [../../amd-windows-igpu.en.md](../../amd-windows-igpu.en.md)
 
 ## Scope
 
-The Radeon 780M iGPU path covers Ollama Vulkan for LLM/embedding and ONNX DirectML for OCR. It is the practical acceleration path for AMD Windows in the current benchmark set.
+This page records only the iGPU/DirectML-related paths from the AMD Windows contract baseline. It does not compare different software stacks. LLM/VLM uses the Ollama AMD service path; embedding, reranker, and OCR use DirectML-related paths.
 
 ## Workload Results
 
-| Workload | Model/path | Key metric | Status | Decision |
-|---|---|---:|---|---|
-| LLM | `qwen2.5-7b-amd-win` | 13.33 TPS, TTFT p50 953ms | Measured, quality caveats | Use only with task-specific validation |
-| LLM | `llama3.2-3b-amd-win` | 28.99 TPS, TTFT p50 890ms | Measured, quality caveats | Lightweight/concurrency control |
-| LLM | `qwen2.5-14b-amd-win` | 8.6 TPS | Measured | Only when larger parameter count is required |
-| Embedding | `qwen3-embedding-0.6b-amd` | p50 875ms, hit@1 1.0 | PASS | Default AMD embedding route |
-| Embedding | `bge-m3-amd` | p50 914ms, hit@1 1.0 | PASS | Multilingual alternate |
-| OCR | `rapidocr-amd-directml` | p50 468.5ms, CER 7.04% | PASS | Fastest AMD OCR route |
+| Workload | Model/path | p95 latency | Quality score | Verdict |
+|---|---|---:|---:|---|
+| LLM chat | `qwen2.5-7b-amd-win` | 6312.8ms | - | `not_recommended` |
+| LLM summary | `qwen2.5-7b-amd-win` | 6312.8ms | - | `not_recommended` |
+| RAG answer | `qwen2.5-7b-amd-win` | 6312.8ms | - | `not_recommended` |
+| VLM image QA | `llava-7b-amd-win` | 13666.2ms | 0.8889 | `not_recommended` |
+| VLM document extract | `llava-7b-amd-win` | 13666.2ms | 0.0667 | `not_recommended` |
+| Embedding retrieval | `bge-base-en-v1.5-igpu-amd-win` | 2453.0ms | 0.9866 | `sync_default` |
+| RAG search-only fallback | `bge-base-en-v1.5-igpu-amd-win` | 2453.0ms | 0.9866 | `sync_bounded` |
+| Reranker candidates | `bge-reranker-base-igpu-amd-win` | 4527.7ms | 1.0000 | `sync_default` |
+| OCR pages | `rapidocr-amd-directml` | 518.1ms | 0.9296 | `sync_default` |
+
+ASR `sensevoice-small-amd-win` is included in the AMD Windows contract baseline: p95 latency 437.0ms, quality score 0.9231, verdict `sync_default`.
 
 ## Decision
 
-Use the iGPU path for AMD LLM performance coverage and for the fastest OCR route. Current LLM rows are performance-valid but not clean quality-pass rows, so production selection must be tied to the actual task and prompt class.
+Embedding, reranker, and OCR on the iGPU/DirectML path meet sync-default or bounded-sync product behavior. LLM and VLM rows completed the contract output, but their quality gate did not pass; they should remain retest targets after prompt, model, or dataset adjustments.
+
+Final contract report: [nas-contract-report.md](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/nas-contract-report.md). Full machine-readable matrix: [parameter-matrix.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/parameter-matrix.json).
