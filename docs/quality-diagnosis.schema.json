@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/vlm-llm-benchmark/quality-diagnosis.schema.json",
+  "title": "Model-adjusted quality diagnosis report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "generated_at",
+    "target",
+    "overall_status",
+    "quality_status",
+    "standards_decision",
+    "summary",
+    "model_diagnostics"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "minLength": 1 },
+    "target": { "type": ["string", "null"] },
+    "contract_dir": { "type": ["string", "null"] },
+    "models_yaml": { "type": "string" },
+    "overall_status": { "type": "string" },
+    "quality_status": { "type": "string" },
+    "standards_decision": {
+      "type": "object",
+      "required": ["production_quality_gate", "model_adjusted_reporting", "threshold_policy"],
+      "properties": {
+        "production_quality_gate": { "type": "string" },
+        "model_adjusted_reporting": { "type": "string" },
+        "threshold_policy": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": ["model_count", "status_counts", "production_recommended_models", "limited_or_blocked_models", "conclusion"],
+      "properties": {
+        "model_count": { "type": "integer", "minimum": 0 },
+        "status_counts": { "type": "object" },
+        "production_recommended_models": { "type": "array", "items": { "type": "string" } },
+        "limited_or_blocked_models": { "type": "array", "items": { "type": "string" } },
+        "conclusion": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "model_diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "model",
+          "task_family",
+          "quality_status",
+          "adjusted_quality_standard",
+          "production_recommendation",
+          "bottlenecks",
+          "failed_gates",
+          "observed_metrics",
+          "contract_rows",
+          "evidence_files"
+        ],
+        "properties": {
+          "model": { "type": "string" },
+          "target": { "type": ["string", "null"] },
+          "task_family": { "enum": ["llm", "vlm"] },
+          "provider": { "type": ["string", "null"] },
+          "role": { "type": ["string", "null"] },
+          "quality_status": { "type": "string" },
+          "adjusted_quality_standard": { "type": "string" },
+          "production_recommendation": { "type": "string" },
+          "bottlenecks": { "type": "array", "items": { "type": "string" } },
+          "failed_gates": { "type": "array", "items": { "type": "string" } },
+          "observed_metrics": { "type": "array", "items": { "type": "object" } },
+          "contract_rows": { "type": "array", "items": { "type": "object" } },
+          "evidence_files": { "type": "array", "items": { "type": "string" } },
+          "model_notes": { "type": ["string", "null"] }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

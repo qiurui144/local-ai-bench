@@ -1,0 +1,787 @@
+{
+  "schema_version": 1,
+  "contract_id": "vlm-llm-nas-evaluation-contract",
+  "contract_version": 1,
+  "date": "2026-07-08",
+  "status": "authoritative_for_future_outputs",
+  "output_schema": {
+    "evaluation_contract_schema": "docs/evaluation-contract.schema.json",
+    "parameter_matrix_schema": "docs/parameter-matrix.schema.json",
+    "run_summary_schema": "docs/run-summary.schema.json",
+    "model_profile_schema": "docs/model-profile.schema.json",
+    "scheduler_contract_schema": "docs/scheduler-contract.schema.json",
+    "required_top_level_fields": [
+      "schema_version",
+      "contract_id",
+      "contract_version",
+      "generated_at",
+      "target",
+      "environment",
+      "rows"
+    ],
+    "required_row_fields": [
+      "test_item_id",
+      "task_class",
+      "priority_class",
+      "deadline_ms",
+      "sync_requested",
+      "hot_set_id",
+      "memory_tier",
+      "storage_state",
+      "nas_pressure",
+      "fallback_allowed",
+      "model_artifact_id",
+      "model_profile",
+      "runtime",
+      "params",
+      "dataset_profile",
+      "latency_profile",
+      "memory_profile",
+      "quality_profile",
+      "startup_profile",
+      "queue_profile",
+      "resource_profile",
+      "error_profile",
+      "product_verdict",
+      "product_verdict_reason",
+      "confidence"
+    ],
+    "required_artifacts": [
+      "parameter-matrix.json",
+      "run-summary.json",
+      "verdict-table.tsv",
+      "model-profile.json",
+      "scheduler-contract.json"
+    ],
+    "verdict_table_columns": [
+      "target",
+      "test_item_id",
+      "task_class",
+      "model_artifact_id",
+      "params_hash",
+      "latency_p95_ms",
+      "memory_peak_mb",
+      "quality_score",
+      "startup_p95_ms",
+      "queue_p95_ms",
+      "resource_hold_p95_ms",
+      "product_verdict",
+      "product_verdict_reason",
+      "confidence"
+    ]
+  },
+  "verdict_enum": [
+    "sync_default",
+    "sync_bounded",
+    "async_default",
+    "async_only",
+    "offline_only",
+    "not_recommended",
+    "blocked"
+  ],
+  "targets": [
+    {
+      "target": "amd-win-x86",
+      "os": "windows",
+      "phase": "P1",
+      "status": "planned_not_started",
+      "purpose": "AMD Windows accelerator and fallback retest"
+    },
+    {
+      "target": "intel-win-x86",
+      "os": "windows",
+      "phase": "P1",
+      "status": "planned_not_started",
+      "purpose": "Intel Windows OpenVINO/DirectML/fallback retest"
+    },
+    {
+      "target": "amd-linux-x86",
+      "os": "linux",
+      "phase": "P2",
+      "status": "planned_not_started",
+      "purpose": "AMD Linux accelerator and explicit CPU baseline retest"
+    },
+    {
+      "target": "intel-linux",
+      "os": "linux",
+      "phase": "P2",
+      "status": "planned_not_started",
+      "purpose": "Intel Linux OpenVINO accelerator and explicit CPU baseline retest"
+    },
+    {
+      "target": "k3-riscv-16g",
+      "os": "bianbu-linux",
+      "phase": "P3",
+      "status": "planned_not_started",
+      "purpose": "K3 16GB small and mid model NAS workload retest"
+    },
+    {
+      "target": "k3-riscv-32g",
+      "os": "bianbu-linux",
+      "phase": "P3",
+      "status": "planned_not_started",
+      "purpose": "K3 32GB Qwen3-30B, RAG, VLM, direct I/O and CMA retest"
+    }
+  ],
+  "execution_policy": {
+    "run_state": "not_started",
+    "one_model_per_target": true,
+    "do_not_overlap_model_loads_on_same_target": true,
+    "cpu_llm_vlm_requires_explicit_baseline_tag": true,
+    "runner_outcome_is_not_product_verdict": true,
+    "missing_required_profile_forces_verdict": "blocked",
+    "pass_label_is_not_product_verdict": true,
+    "null_metric_allowed_only_when_confidence_low": true,
+    "blocked_or_not_recommended_requires_error_profile": true
+  },
+  "common_admission_axes": {
+    "deadline_ms": "integer_or_null",
+    "sync_requested": [
+      true,
+      false
+    ],
+    "priority_class": [
+      "foreground",
+      "interactive",
+      "background",
+      "maintenance"
+    ],
+    "startup_state": [
+      "hot_resident",
+      "warm_process",
+      "cold_start"
+    ],
+    "hot_set_id": "string_or_none",
+    "resource_class": [
+      "x100_cpu",
+      "a100_ime2",
+      "gpu_vpu",
+      "cpu",
+      "npu",
+      "igpu",
+      "mixed",
+      "blocked"
+    ],
+    "memory_tier": [
+      "unknown",
+      "x86_host",
+      "k3_16g",
+      "k3_32g"
+    ],
+    "storage_state": [
+      "page_cache_hot",
+      "page_cache_cold",
+      "direct_io",
+      "unknown",
+      "blocked"
+    ],
+    "nas_pressure": [
+      "idle",
+      "normal",
+      "scrub_or_fio",
+      "low_mem",
+      "unknown"
+    ],
+    "fallback_allowed": [
+      true,
+      false
+    ]
+  },
+  "required_result_profiles": {
+    "latency_profile": [
+      "ttft_ms",
+      "prefill_tps",
+      "decode_tps",
+      "tpot_ms",
+      "e2e_latency_ms"
+    ],
+    "memory_profile": [
+      "rss_peak_mb",
+      "mem_available_min_mb",
+      "cma_free_min_kb",
+      "tcm_state_before",
+      "tcm_state_after",
+      "oom",
+      "worker_restarted"
+    ],
+    "quality_profile": [
+      "score",
+      "metric_name",
+      "threshold",
+      "passed",
+      "reason",
+      "evidence_status"
+    ],
+    "startup_profile": [
+      "startup_state",
+      "startup_wait_ms",
+      "model_io_ms",
+      "storage_state"
+    ],
+    "queue_profile": [
+      "queue_wait_ms",
+      "queue_depth_p95",
+      "deadline_hit_rate",
+      "async_cutover_reason"
+    ],
+    "resource_profile": [
+      "resource_hold_ms",
+      "resource_class",
+      "lease_conflict_rate",
+      "preempted"
+    ],
+    "error_profile": [
+      "error_class",
+      "retryable",
+      "blocked_reason"
+    ],
+    "product_verdict": [
+      "product_verdict",
+      "product_verdict_reason",
+      "confidence"
+    ]
+  },
+  "summary_stat_required": [
+    "p50",
+    "p90",
+    "p95",
+    "p99",
+    "max"
+  ],
+  "environment_required": [
+    "os",
+    "arch",
+    "kernel_or_build",
+    "memory_gb",
+    "accelerators",
+    "storage",
+    "runtime_stack"
+  ],
+  "test_items": [
+    {
+      "test_item_id": "llm_chat_boundary",
+      "task_class": "llm_chat",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "context_tokens": [
+          512,
+          1024,
+          2048,
+          3072,
+          4096
+        ],
+        "max_output_tokens": [
+          64,
+          128,
+          256,
+          512
+        ],
+        "startup_state": [
+          "hot_resident",
+          "cold_start"
+        ],
+        "prompt_cache": [
+          "off",
+          "small",
+          "default",
+          "large"
+        ],
+        "answer_mode": [
+          "direct_answer",
+          "structured_json"
+        ]
+      },
+      "scheduler_derivations": [
+        "max_context_tokens_sync",
+        "max_output_tokens_sync",
+        "sync_deadline_ms",
+        "sync_queue_wait_budget_ms",
+        "sync_resource_hold_budget_ms"
+      ]
+    },
+    {
+      "test_item_id": "llm_summary_boundary",
+      "task_class": "llm_summary",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "context_tokens": [
+          512,
+          1024,
+          2048,
+          3072,
+          4096
+        ],
+        "max_output_tokens": [
+          128,
+          256,
+          512
+        ],
+        "startup_state": [
+          "hot_resident",
+          "cold_start"
+        ],
+        "answer_mode": [
+          "summary",
+          "structured_json"
+        ]
+      },
+      "scheduler_derivations": [
+        "max_context_tokens_sync",
+        "max_output_tokens_sync",
+        "sync_deadline_ms"
+      ]
+    },
+    {
+      "test_item_id": "embedding_retrieval",
+      "task_class": "embedding",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "embedding_batch_size": [
+          1,
+          4,
+          8,
+          16,
+          32
+        ],
+        "query_length_tokens": [
+          16,
+          64,
+          128,
+          256
+        ],
+        "document_chunk_tokens": [
+          128,
+          256,
+          512,
+          1024
+        ]
+      },
+      "scheduler_derivations": [
+        "rag_retrieve_latency_budget_ms",
+        "rag_search_only_verdict"
+      ]
+    },
+    {
+      "test_item_id": "reranker_candidates",
+      "task_class": "reranker",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "rerank_candidate_count": [
+          10,
+          20,
+          50,
+          100
+        ],
+        "document_chunk_tokens": [
+          128,
+          256,
+          512,
+          1024
+        ]
+      },
+      "scheduler_derivations": [
+        "rerank_top_k_sync",
+        "rerank_timeout_budget_ms"
+      ]
+    },
+    {
+      "test_item_id": "rag_answer_defaults",
+      "task_class": "rag_answer",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "chunk_tokens": [
+          256,
+          512,
+          768,
+          1024
+        ],
+        "chunk_overlap_tokens": [
+          32,
+          64,
+          96,
+          128
+        ],
+        "retrieve_top_k": [
+          20,
+          50,
+          100
+        ],
+        "rerank_top_k": [
+          10,
+          20,
+          50
+        ],
+        "evidence_chunks": [
+          3,
+          5,
+          8,
+          12
+        ],
+        "answer_context_budget_tokens": [
+          1024,
+          1536,
+          3072,
+          4096
+        ],
+        "answer_output_tokens": [
+          128,
+          256,
+          512
+        ]
+      },
+      "scheduler_derivations": [
+        "rag_defaults",
+        "max_context_tokens_sync",
+        "max_output_tokens_sync",
+        "sync_to_async_cutover"
+      ]
+    },
+    {
+      "test_item_id": "rag_search_only_fallback",
+      "task_class": "rag_search_only",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "retrieve_top_k": [
+          20,
+          50,
+          100
+        ],
+        "rerank_top_k": [
+          0,
+          10,
+          20
+        ],
+        "evidence_chunks": [
+          3,
+          5,
+          8
+        ]
+      },
+      "scheduler_derivations": [
+        "fallback_on_timeout",
+        "fallback_on_queue_full"
+      ]
+    },
+    {
+      "test_item_id": "vlm_image_qa_boundary",
+      "task_class": "vlm_qa",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "image_count": [
+          1,
+          2,
+          4
+        ],
+        "image_resize_px": [
+          1024,
+          1536,
+          2048
+        ],
+        "vision_token_budget": [
+          "auto",
+          512,
+          1024,
+          1536,
+          2048
+        ],
+        "max_output_tokens": [
+          64,
+          128,
+          256
+        ],
+        "output_schema": [
+          "short_answer",
+          "short_json"
+        ]
+      },
+      "scheduler_derivations": [
+        "vlm_sync_max_images",
+        "vlm_sync_max_resize_px",
+        "vlm_sync_output_schema",
+        "vlm_async_boundary"
+      ]
+    },
+    {
+      "test_item_id": "vlm_document_extract_boundary",
+      "task_class": "vlm_doc_extract",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "document_pages": [
+          1,
+          2,
+          5,
+          10
+        ],
+        "image_resize_px": [
+          1024,
+          1536,
+          2048
+        ],
+        "output_schema": [
+          "short_json",
+          "full_json"
+        ],
+        "vision_token_budget": [
+          "auto",
+          512,
+          1024,
+          1536,
+          2048
+        ]
+      },
+      "scheduler_derivations": [
+        "vlm_sync_max_pages",
+        "vlm_sync_output_schema",
+        "vlm_async_boundary"
+      ]
+    },
+    {
+      "test_item_id": "ocr_pages",
+      "task_class": "ocr",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "document_pages": [
+          1,
+          2,
+          5,
+          10
+        ],
+        "image_resize_px": [
+          1024,
+          1536,
+          2048
+        ],
+        "output_schema": [
+          "plain_text",
+          "short_json",
+          "full_json"
+        ]
+      },
+      "scheduler_derivations": [
+        "ocr_sync_max_pages",
+        "ocr_async_boundary"
+      ]
+    },
+    {
+      "test_item_id": "asr_duration_concurrency",
+      "task_class": "asr",
+      "targets": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "audio_duration_s": [
+          10,
+          30,
+          60,
+          300
+        ],
+        "concurrency": [
+          1,
+          2,
+          4
+        ],
+        "language": [
+          "zh",
+          "en",
+          "mixed"
+        ]
+      },
+      "scheduler_derivations": [
+        "asr_sync_max_duration_s",
+        "asr_async_boundary"
+      ]
+    },
+    {
+      "test_item_id": "mixed_nas_load",
+      "task_class": "mixed_nas_load",
+      "targets": [
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "workload_mix": [
+          "daily_llm_plus_rag",
+          "ocr_vlm_upload_plus_daily_llm",
+          "asr_meeting_plus_daily_llm",
+          "project_vlm_plus_daily_llm",
+          "long_context_async_plus_foreground_retrieval"
+        ],
+        "nas_pressure": [
+          "idle",
+          "normal",
+          "scrub_or_fio",
+          "low_mem"
+        ]
+      },
+      "scheduler_derivations": [
+        "queue_policy",
+        "resource_lease_policy",
+        "hot_set_mutex",
+        "fallback_policy"
+      ]
+    },
+    {
+      "test_item_id": "soak_recommended_profiles",
+      "task_class": "soak",
+      "targets": [
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ],
+      "parameter_axes": {
+        "duration_h": [
+          8,
+          24
+        ],
+        "profile_source": [
+          "recommended_from_matrix"
+        ]
+      },
+      "scheduler_derivations": [
+        "worker_restart_policy",
+        "memory_trend",
+        "quarantine_policy",
+        "trim_recovery_policy"
+      ]
+    }
+  ],
+  "scheduler_fields_waiting_for_matrix": [
+    "max_context_tokens_sync",
+    "max_output_tokens_sync",
+    "eta_weights",
+    "hot_set_profile",
+    "rag_defaults",
+    "vlm_sync_boundary",
+    "ui_timeout_profile"
+  ],
+  "scheduler_output_contract": {
+    "model_profile_top_level_required": [
+      "task_profiles",
+      "hot_sets",
+      "model_artifact_id",
+      "model_profile",
+      "runtime",
+      "source_runs"
+    ],
+    "model_task_profile_required": [
+      "verdict",
+      "max_context_tokens_sync",
+      "max_output_tokens_sync",
+      "sync_deadline_ms",
+      "sync_queue_wait_budget_ms",
+      "sync_resource_hold_budget_ms",
+      "estimated_runtime_ms",
+      "eta_weights",
+      "quality_profile",
+      "failure_profile",
+      "fallback"
+    ],
+    "estimated_runtime_ms_required": [
+      "p50",
+      "p95",
+      "p99",
+      "confidence"
+    ],
+    "hot_set_profile_required": [
+      "hot_set_id",
+      "models",
+      "resident_policy",
+      "warm_ttl_s",
+      "resident_gb_budget",
+      "prompt_cache_mb",
+      "mutex_groups",
+      "preemptible"
+    ],
+    "rag_defaults_required": [
+      "chunk_tokens",
+      "chunk_overlap_tokens",
+      "retrieve_top_k",
+      "rerank_top_k",
+      "evidence_chunks",
+      "answer_context_budget_tokens",
+      "answer_output_tokens"
+    ],
+    "vlm_sync_boundary_required": [
+      "vlm_sync_max_images",
+      "vlm_sync_max_pages",
+      "vlm_sync_max_resize_px",
+      "vlm_sync_output_schema",
+      "vlm_async_boundary"
+    ],
+    "ui_timeout_profile_required": [
+      "ui_soft_timeout_ms",
+      "ui_hard_timeout_ms",
+      "api_hard_timeout_ms",
+      "proxy_timeout_ms",
+      "async_poll_initial_ms",
+      "async_poll_backoff_ms"
+    ]
+  }
+}

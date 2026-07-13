@@ -1,0 +1,944 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rv-bianbu-nas.local/schemas/parameter-matrix.schema.json",
+  "title": "VLM/LLM Parameter Matrix Report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_id",
+    "contract_version",
+    "generated_at",
+    "target",
+    "environment",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "contract_id": {
+      "type": "string",
+      "const": "vlm-llm-nas-evaluation-contract"
+    },
+    "contract_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "amd-win-x86",
+        "amd-linux-x86",
+        "intel-win-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "required": [
+        "os",
+        "arch",
+        "kernel_or_build",
+        "memory_gb",
+        "accelerators",
+        "storage",
+        "runtime_stack"
+      ],
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "arch": {
+          "type": "string"
+        },
+        "kernel_or_build": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "memory_gb": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "accelerators": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "provider",
+              "available"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string"
+              },
+              "driver_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "available": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "storage": {
+          "type": "object",
+          "required": [
+            "system_disk",
+            "data_disk",
+            "data_fs",
+            "direct_io_supported"
+          ],
+          "properties": {
+            "system_disk": {
+              "type": "string"
+            },
+            "data_disk": {
+              "type": "string"
+            },
+            "data_fs": {
+              "type": "string"
+            },
+            "direct_io_supported": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "runtime_stack": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "llm_chat_boundary"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "llm_chat"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "llm_summary_boundary"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "llm_summary"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "embedding_retrieval"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "embedding"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "reranker_candidates"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "reranker"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "rag_answer_defaults"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "rag_answer"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "rag_search_only_fallback"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "rag_search_only"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "vlm_image_qa_boundary"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "vlm_qa"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "vlm_document_extract_boundary"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "vlm_doc_extract"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "ocr_pages"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "ocr"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "asr_duration_concurrency"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "asr"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "mixed_nas_load"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "mixed_nas_load"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "test_item_id": {
+                "const": "soak_recommended_profiles"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "task_class": {
+                "const": "soak"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/matrix_row"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "matrix_row": {
+      "type": "object",
+      "required": [
+        "test_item_id",
+        "task_class",
+        "priority_class",
+        "deadline_ms",
+        "sync_requested",
+        "hot_set_id",
+        "memory_tier",
+        "storage_state",
+        "nas_pressure",
+        "fallback_allowed",
+        "model_artifact_id",
+        "model_profile",
+        "runtime",
+        "params",
+        "dataset_profile",
+        "latency_profile",
+        "memory_profile",
+        "quality_profile",
+        "startup_profile",
+        "queue_profile",
+        "resource_profile",
+        "error_profile",
+        "product_verdict",
+        "product_verdict_reason",
+        "confidence"
+      ],
+      "properties": {
+        "test_item_id": {
+          "type": "string",
+          "enum": [
+            "llm_chat_boundary",
+            "llm_summary_boundary",
+            "embedding_retrieval",
+            "reranker_candidates",
+            "rag_answer_defaults",
+            "rag_search_only_fallback",
+            "vlm_image_qa_boundary",
+            "vlm_document_extract_boundary",
+            "ocr_pages",
+            "asr_duration_concurrency",
+            "mixed_nas_load",
+            "soak_recommended_profiles"
+          ]
+        },
+        "task_class": {
+          "type": "string",
+          "enum": [
+            "llm_chat",
+            "llm_summary",
+            "embedding",
+            "reranker",
+            "rag_answer",
+            "rag_search_only",
+            "vlm_qa",
+            "vlm_doc_extract",
+            "ocr",
+            "asr",
+            "mixed_nas_load",
+            "soak"
+          ]
+        },
+        "priority_class": {
+          "type": "string",
+          "enum": [
+            "foreground",
+            "interactive",
+            "background",
+            "maintenance"
+          ]
+        },
+        "deadline_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sync_requested": {
+          "type": "boolean"
+        },
+        "hot_set_id": {
+          "type": "string"
+        },
+        "memory_tier": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "x86_host",
+            "k3_16g",
+            "k3_32g"
+          ]
+        },
+        "storage_state": {
+          "type": "string",
+          "enum": [
+            "page_cache_hot",
+            "page_cache_cold",
+            "direct_io",
+            "unknown",
+            "blocked"
+          ]
+        },
+        "nas_pressure": {
+          "type": "string",
+          "enum": [
+            "idle",
+            "normal",
+            "scrub_or_fio",
+            "low_mem",
+            "unknown"
+          ]
+        },
+        "fallback_allowed": {
+          "type": "boolean"
+        },
+        "model_artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_profile": {
+          "type": "object",
+          "required": [
+            "name",
+            "format",
+            "quantization",
+            "artifact_size_bytes",
+            "artifact_hash",
+            "load_mode"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "format": {
+              "type": "string"
+            },
+            "quantization": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "artifact_size_bytes": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "artifact_hash": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "load_mode": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "mmap",
+                "direct_io",
+                "preload",
+                "provider_default",
+                "unknown",
+                null
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "runtime": {
+          "type": "object",
+          "required": [
+            "name",
+            "version",
+            "resource_class"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "resource_class": {
+              "type": "string",
+              "enum": [
+                "x100_cpu",
+                "a100_ime2",
+                "gpu_vpu",
+                "cpu",
+                "npu",
+                "igpu",
+                "mixed",
+                "blocked"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "dataset_profile": {
+          "type": "object",
+          "required": [
+            "dataset_id",
+            "dataset_version",
+            "sample_count",
+            "seed"
+          ],
+          "properties": {
+            "dataset_id": {
+              "type": "string"
+            },
+            "dataset_version": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sample_count": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "seed": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "latency_profile": {
+          "type": "object",
+          "required": [
+            "ttft_ms",
+            "prefill_tps",
+            "decode_tps",
+            "tpot_ms",
+            "e2e_latency_ms"
+          ],
+          "properties": {
+            "ttft_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "prefill_tps": {
+              "$ref": "#/$defs/summary"
+            },
+            "decode_tps": {
+              "$ref": "#/$defs/summary"
+            },
+            "tpot_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "e2e_latency_ms": {
+              "$ref": "#/$defs/summary"
+            }
+          },
+          "additionalProperties": true
+        },
+        "memory_profile": {
+          "type": "object",
+          "required": [
+            "rss_peak_mb",
+            "mem_available_min_mb",
+            "cma_free_min_kb",
+            "tcm_state_before",
+            "tcm_state_after",
+            "oom",
+            "worker_restarted"
+          ],
+          "properties": {
+            "rss_peak_mb": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "mem_available_min_mb": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "cma_free_min_kb": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "tcm_state_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tcm_state_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "oom": {
+              "type": "boolean"
+            },
+            "worker_restarted": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "quality_profile": {
+          "type": "object",
+          "required": [
+            "score",
+            "metric_name",
+            "threshold",
+            "passed",
+            "reason",
+            "evidence_status"
+          ],
+          "properties": {
+            "score": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "metric_name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "threshold": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "passed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "evidence_status": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "startup_profile": {
+          "type": "object",
+          "required": [
+            "startup_state",
+            "startup_wait_ms",
+            "model_io_ms",
+            "storage_state"
+          ],
+          "properties": {
+            "startup_state": {
+              "type": "string",
+              "enum": [
+                "hot_resident",
+                "warm_process",
+                "cold_start",
+                "blocked"
+              ]
+            },
+            "startup_wait_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "model_io_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "storage_state": {
+              "type": "string",
+              "enum": [
+                "page_cache_hot",
+                "page_cache_cold",
+                "direct_io",
+                "unknown",
+                "blocked"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "queue_profile": {
+          "type": "object",
+          "required": [
+            "queue_wait_ms",
+            "queue_depth_p95",
+            "deadline_hit_rate",
+            "async_cutover_reason"
+          ],
+          "properties": {
+            "queue_wait_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "queue_depth_p95": {
+              "type": [
+                "number",
+                "null"
+              ]
+            },
+            "deadline_hit_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "async_cutover_reason": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "latency",
+                "memory",
+                "quality",
+                "queue",
+                "resource",
+                "startup",
+                "blocked",
+                null
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "resource_profile": {
+          "type": "object",
+          "required": [
+            "resource_hold_ms",
+            "resource_class",
+            "lease_conflict_rate",
+            "preempted"
+          ],
+          "properties": {
+            "resource_hold_ms": {
+              "$ref": "#/$defs/summary"
+            },
+            "resource_class": {
+              "type": "string",
+              "enum": [
+                "x100_cpu",
+                "a100_ime2",
+                "gpu_vpu",
+                "cpu",
+                "npu",
+                "igpu",
+                "mixed",
+                "blocked"
+              ]
+            },
+            "lease_conflict_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "preempted": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "error_profile": {
+          "type": "object",
+          "required": [
+            "error_class",
+            "retryable",
+            "blocked_reason"
+          ],
+          "properties": {
+            "error_class": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "none",
+                "timeout",
+                "oom",
+                "context_overflow",
+                "queue_full",
+                "worker_restart",
+                "provider_unavailable",
+                "runtime_error",
+                "shape_unsupported",
+                "quality_failed",
+                "not_measured",
+                null
+              ]
+            },
+            "retryable": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "blocked_reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": true
+        },
+        "product_verdict": {
+          "type": "string",
+          "enum": [
+            "sync_default",
+            "sync_bounded",
+            "async_default",
+            "async_only",
+            "offline_only",
+            "not_recommended",
+            "blocked"
+          ]
+        },
+        "product_verdict_reason": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "p50",
+        "p90",
+        "p95",
+        "p99",
+        "max"
+      ],
+      "properties": {
+        "p50": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "p90": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "p95": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "p99": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rv-bianbu-nas.local/schemas/model-profile.schema.json",
+  "title": "VLM/LLM NAS Model Profile",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_id",
+    "contract_version",
+    "generated_at",
+    "target",
+    "source_runs",
+    "model_artifact_id",
+    "model_profile",
+    "runtime",
+    "task_profiles",
+    "hot_sets"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "contract_id": {
+      "type": "string",
+      "const": "vlm-llm-nas-evaluation-contract"
+    },
+    "contract_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ]
+    },
+    "source_runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "model_artifact_id": {
+      "type": "string"
+    },
+    "model_profile": {
+      "type": "object",
+      "required": [
+        "name",
+        "format",
+        "quantization",
+        "artifact_size_bytes",
+        "artifact_hash",
+        "load_mode"
+      ],
+      "additionalProperties": true
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "resource_class"
+      ],
+      "additionalProperties": true
+    },
+    "task_profiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/task_profile"
+      }
+    },
+    "hot_sets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/hot_set"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "task_profile": {
+      "type": "object",
+      "required": [
+        "test_item_id",
+        "task_class",
+        "verdict",
+        "max_context_tokens_sync",
+        "max_output_tokens_sync",
+        "sync_deadline_ms",
+        "sync_queue_wait_budget_ms",
+        "sync_resource_hold_budget_ms",
+        "estimated_runtime_ms",
+        "eta_weights",
+        "quality_profile",
+        "failure_profile",
+        "fallback"
+      ],
+      "properties": {
+        "test_item_id": {
+          "type": "string"
+        },
+        "task_class": {
+          "type": "string"
+        },
+        "verdict": {
+          "$ref": "#/$defs/verdict"
+        },
+        "max_context_tokens_sync": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "max_output_tokens_sync": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sync_deadline_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sync_queue_wait_budget_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sync_resource_hold_budget_ms": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "estimated_runtime_ms": {
+          "type": "object",
+          "required": [
+            "p50",
+            "p95",
+            "p99",
+            "confidence"
+          ],
+          "additionalProperties": true
+        },
+        "eta_weights": {
+          "type": "object",
+          "required": [
+            "queue_weight",
+            "startup_weight",
+            "prefill_weight",
+            "decode_weight",
+            "resource_weight",
+            "io_weight",
+            "safety_margin_ms"
+          ],
+          "additionalProperties": true
+        },
+        "quality_profile": {
+          "type": "object"
+        },
+        "failure_profile": {
+          "type": "object"
+        },
+        "fallback": {
+          "type": "object",
+          "required": [
+            "on_timeout",
+            "on_queue_full",
+            "on_low_memory"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "hot_set": {
+      "type": "object",
+      "required": [
+        "hot_set_id",
+        "models",
+        "resident_policy",
+        "warm_ttl_s",
+        "resident_gb_budget",
+        "prompt_cache_mb",
+        "mutex_groups",
+        "preemptible"
+      ],
+      "properties": {
+        "hot_set_id": {
+          "type": "string"
+        },
+        "models": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resident_policy": {
+          "type": "string",
+          "enum": [
+            "always",
+            "opportunistic",
+            "ttl",
+            "manual"
+          ]
+        },
+        "warm_ttl_s": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "resident_gb_budget": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "prompt_cache_mb": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "mutex_groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preemptible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "sync_default",
+        "sync_bounded",
+        "async_default",
+        "async_only",
+        "offline_only",
+        "not_recommended",
+        "blocked"
+      ]
+    }
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rv-bianbu-nas.local/schemas/scheduler-contract.schema.json",
+  "title": "VLM/LLM NAS Scheduler Contract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_id",
+    "contract_version",
+    "generated_at",
+    "target",
+    "source_model_profiles",
+    "endpoints",
+    "ui_timeout_profile",
+    "rag_defaults",
+    "vlm_sync_boundary",
+    "hot_set_profile"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "contract_id": {
+      "type": "string",
+      "const": "vlm-llm-nas-evaluation-contract"
+    },
+    "contract_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ]
+    },
+    "source_model_profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "required": [
+        "/capacity",
+        "/benchmark/contract",
+        "/v1/chat/completions",
+        "/kb/tasks"
+      ],
+      "properties": {
+        "/capacity": {
+          "type": "object",
+          "required": [
+            "hot_sets",
+            "queue_depth",
+            "resource_leases",
+            "memory_tier",
+            "degraded_reason"
+          ],
+          "additionalProperties": true
+        },
+        "/benchmark/contract": {
+          "type": "object",
+          "required": [
+            "model_artifacts",
+            "task_profiles",
+            "sync_limits",
+            "eta_buckets",
+            "verdicts"
+          ],
+          "additionalProperties": true
+        },
+        "/v1/chat/completions": {
+          "type": "object",
+          "required": [
+            "sync_admission",
+            "async_cutover",
+            "timeout_reason",
+            "fallback_reason"
+          ],
+          "additionalProperties": true
+        },
+        "/kb/tasks": {
+          "type": "object",
+          "required": [
+            "rag_defaults",
+            "job_timeout_ms",
+            "poll_interval_ms",
+            "cancel_policy"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "ui_timeout_profile": {
+      "type": "object",
+      "required": [
+        "ui_soft_timeout_ms",
+        "ui_hard_timeout_ms",
+        "api_hard_timeout_ms",
+        "proxy_timeout_ms",
+        "async_poll_initial_ms",
+        "async_poll_backoff_ms"
+      ],
+      "additionalProperties": true
+    },
+    "rag_defaults": {
+      "type": "object",
+      "required": [
+        "chunk_tokens",
+        "chunk_overlap_tokens",
+        "retrieve_top_k",
+        "rerank_top_k",
+        "evidence_chunks",
+        "answer_context_budget_tokens",
+        "answer_output_tokens"
+      ],
+      "additionalProperties": true
+    },
+    "vlm_sync_boundary": {
+      "type": "object",
+      "required": [
+        "vlm_sync_max_images",
+        "vlm_sync_max_pages",
+        "vlm_sync_max_resize_px",
+        "vlm_sync_output_schema",
+        "vlm_async_boundary"
+      ],
+      "additionalProperties": true
+    },
+    "hot_set_profile": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "hot_set_id",
+          "models",
+          "resident_policy",
+          "warm_ttl_s",
+          "resident_gb_budget",
+          "prompt_cache_mb",
+          "mutex_groups",
+          "preemptible"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

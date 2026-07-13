@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rv-bianbu-nas.local/schemas/model-coverage.schema.json",
+  "title": "Model Coverage Report",
+  "type": "object",
+  "required": [
+    "$schema",
+    "schema_version",
+    "generated_at",
+    "run_id",
+    "targets",
+    "overall_status",
+    "coverage_status",
+    "quality_status",
+    "target_summaries",
+    "required_coverage",
+    "model_rows",
+    "gaps"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "docs/model-coverage.schema.json"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "models_yaml": {
+      "type": "string"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overall_status": {
+      "enum": [
+        "complete",
+        "complete_with_quality_caveats",
+        "partial"
+      ]
+    },
+    "coverage_status": {
+      "enum": [
+        "complete",
+        "partial"
+      ]
+    },
+    "quality_status": {
+      "enum": [
+        "clean",
+        "caveats"
+      ]
+    },
+    "target_summaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "run_id",
+          "contract_status",
+          "contract_dir",
+          "planned_test_items",
+          "completed_test_items",
+          "blocked_test_items",
+          "missing_required_profiles",
+          "row_count",
+          "verdict_counts",
+          "resource_counts"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "run_id": {
+            "type": ["string", "null"]
+          },
+          "contract_status": {
+            "type": ["string", "null"]
+          },
+          "contract_dir": {
+            "type": "string"
+          },
+          "planned_test_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "completed_test_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "blocked_test_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_required_profiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "row_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "verdict_counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "resource_counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "required_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "requirement_id",
+          "description",
+          "status",
+          "evidence_models",
+          "evidence_test_items",
+          "evidence_verdicts"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "requirement_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "enum": ["covered", "missing"]
+          },
+          "evidence_models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_test_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence_verdicts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "model_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "model",
+          "provider",
+          "role",
+          "kind",
+          "capabilities",
+          "coverage_status",
+          "evidence_row_count",
+          "resource_classes",
+          "test_items",
+          "product_verdicts"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverage_status": {
+            "enum": [
+              "measured",
+              "blocked_evidence",
+              "registered_not_in_contract_run"
+            ]
+          },
+          "evidence_row_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "resource_classes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "test_items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "product_verdicts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "object",
+      "required": [
+        "contract_gaps",
+        "required_coverage_gaps",
+        "cpu_only_rows",
+        "blocked_evidence_rows",
+        "quality_caveats",
+        "registered_not_in_contract_run"
+      ]
+    }
+  }
+}

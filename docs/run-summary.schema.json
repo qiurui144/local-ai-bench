@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rv-bianbu-nas.local/schemas/run-summary.schema.json",
+  "title": "VLM/LLM NAS Run Summary",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "contract_id",
+    "contract_version",
+    "generated_at",
+    "target",
+    "run_id",
+    "status",
+    "started_at",
+    "finished_at",
+    "environment",
+    "coverage_summary",
+    "aggregate_verdict_counts",
+    "artifact_paths",
+    "blockers"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "contract_id": {
+      "type": "string",
+      "const": "vlm-llm-nas-evaluation-contract"
+    },
+    "contract_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "amd-win-x86",
+        "intel-win-x86",
+        "amd-linux-x86",
+        "intel-linux",
+        "k3-riscv-16g",
+        "k3-riscv-32g"
+      ]
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "complete",
+        "partial",
+        "invalidated",
+        "blocked"
+      ]
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "environment": {
+      "type": "object"
+    },
+    "coverage_summary": {
+      "type": "object",
+      "required": [
+        "planned_test_items",
+        "completed_test_items",
+        "blocked_test_items",
+        "row_count",
+        "missing_required_profiles"
+      ],
+      "properties": {
+        "planned_test_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "completed_test_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blocked_test_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "row_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "missing_required_profiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "aggregate_verdict_counts": {
+      "type": "object",
+      "required": [
+        "sync_default",
+        "sync_bounded",
+        "async_default",
+        "async_only",
+        "offline_only",
+        "not_recommended",
+        "blocked"
+      ],
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "artifact_paths": {
+      "type": "object",
+      "required": [
+        "parameter_matrix",
+        "verdict_table",
+        "model_profile",
+        "scheduler_contract"
+      ],
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "test_item_id",
+          "reason",
+          "retryable"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
