@@ -39,4 +39,4 @@ Rows are grouped by `runtime.resource_class` from the contract matrix. `failed` 
 
 | Run ID | Artifacts |
 |---|---|
-| `amd-win-x86-20260712-contract-full` | [Parameter matrix](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |
+| `amd-win-x86-20260712-contract-full` | local artifact dir `output/reports/contract/amd-win-x86-20260712-contract-full`; Parameter matrix `parameter-matrix.json`, Run summary `run-summary.json`, Verdict table `verdict-table.tsv`, Model profile `model-profile.json`, Scheduler contract `scheduler-contract.json`, Contract report `nas-contract-report.md` |

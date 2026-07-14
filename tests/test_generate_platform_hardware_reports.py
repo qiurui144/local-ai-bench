@@ -58,10 +58,14 @@ def test_platform_hardware_reports_write_bilingual_pages_and_no_evidence_paths(t
     index = (tmp_path / "reports" / "platforms" / "amd-linux" / "index.en.md").read_text(encoding="utf-8")
     assert "unit-run" in index
     assert "Blocked Runtime" in index
+    assert "](../../../output/" not in index
+    assert "local artifact dir" in index
     cpu = (tmp_path / "reports" / "platforms" / "amd-linux" / "cpu.en.md").read_text(encoding="utf-8")
     assert "No current contract rows" in cpu
+    assert "](../../../output/" not in cpu
     zh = (tmp_path / "reports" / "platforms" / "amd-linux" / "npu.zh.md").read_text(encoding="utf-8")
     assert "该硬件条件有 1 条合同实测行" in zh
+    assert "本地证据目录" in zh
 
 
 def test_platform_hardware_reports_add_k3_contract_supplement_without_overwriting_index(tmp_path):
@@ -89,3 +93,4 @@ def test_platform_hardware_reports_add_k3_contract_supplement_without_overwritin
     text = (tmp_path / "reports" / "platforms" / "k3-riscv-32g" / "contract.en.md").read_text(encoding="utf-8")
     assert "X100 CPU" in text
     assert "k3-unit" in text
+    assert "](../../../output/" not in text

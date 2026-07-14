@@ -7,7 +7,6 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -158,10 +157,6 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _rel(from_dir: Path, target: Path) -> str:
-    return os.path.relpath(target, start=from_dir).replace(os.sep, "/")
-
-
 def _safe(value: Any) -> str:
     text = "" if value is None else str(value)
     return text.replace("|", "\\|").replace("\n", " ")
@@ -249,7 +244,7 @@ def _hardware_key(row: dict[str, Any]) -> str:
     return re.sub(r"[^a-z0-9-]+", "-", raw).strip("-") or "mixed"
 
 
-def _artifact_links(contract_dir: Path, from_dir: Path, lang: str) -> str:
+def _artifact_refs(contract_dir: Path, lang: str) -> str:
     labels = {
         "en": {
             "parameter-matrix.json": "Parameter matrix",
@@ -268,12 +263,20 @@ def _artifact_links(contract_dir: Path, from_dir: Path, lang: str) -> str:
             "nas-contract-report.md": "合同报告",
         },
     }[lang]
-    links = []
+    names = []
     for name, label in labels.items():
         path = contract_dir / name
         if path.exists():
-            links.append(f"[{label}]({_rel(from_dir, path)})")
-    return ", ".join(links) if links else "-"
+            names.append(f"{label} `{name}`")
+    if not names:
+        return "-"
+    try:
+        directory = str(contract_dir.resolve().relative_to(ROOT))
+    except ValueError:
+        directory = str(contract_dir)
+    if lang == "en":
+        return f"local artifact dir `{directory}`; " + ", ".join(names)
+    return f"本地证据目录 `{directory}`；" + "，".join(names)
 
 
 def discover_contract_dirs(root: Path = ROOT) -> list[Path]:
@@ -518,7 +521,7 @@ def _write_platform_index(platform: dict[str, Any], output_root: Path, lang: str
     lines += ["", decision_header, "", decision, "", evidence_header, "", evidence_cols]
     for contract in platform["contracts"]:
         contract_dir = Path(str(contract["dir"]))
-        lines.append(f"| `{contract['run_id']}` | {_artifact_links(contract_dir, out_dir, lang)} |")
+        lines.append(f"| `{contract['run_id']}` | {_artifact_refs(contract_dir, lang)} |")
     _write(out_dir / filename, "\n".join(lines) + "\n")
     return out_dir / filename
 
@@ -581,7 +584,7 @@ def _write_hardware_page(platform: dict[str, Any], path_summary: dict[str, Any],
     lines.append("|---|---|")
     for contract in platform["contracts"]:
         contract_dir = Path(str(contract["dir"]))
-        lines.append(f"| `{contract['run_id']}` | {_artifact_links(contract_dir, out_dir, lang)} |")
+        lines.append(f"| `{contract['run_id']}` | {_artifact_refs(contract_dir, lang)} |")
     _write(out_dir / filename, "\n".join(lines) + "\n")
     return out_dir / filename
 
@@ -665,7 +668,7 @@ def _write_contract_supplement(platform: dict[str, Any], output_root: Path, lang
     lines.append("|---|---|")
     for contract in platform["contracts"]:
         contract_dir = Path(str(contract["dir"]))
-        lines.append(f"| `{contract['run_id']}` | {_artifact_links(contract_dir, out_dir, lang)} |")
+        lines.append(f"| `{contract['run_id']}` | {_artifact_refs(contract_dir, lang)} |")
     _write(out_dir / filename, "\n".join(lines) + "\n")
     return out_dir / filename
 

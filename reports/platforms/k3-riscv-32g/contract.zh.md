@@ -20,4 +20,4 @@ K3 32G 合同报告作为现有 K3 平台报告的合同补充页。
 
 | Run ID | 产物 |
 |---|---|
-| `k3-32g-qwen30b-contract-20260708` | [参数矩阵](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/parameter-matrix.json), [运行摘要](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/run-summary.json), [verdict 表](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/verdict-table.tsv), [模型画像](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/model-profile.json), [scheduler 合同](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/scheduler-contract.json), [合同报告](../../../output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract/nas-contract-report.md) |
+| `k3-32g-qwen30b-contract-20260708` | 本地证据目录 `output/reports/k3-riscv-32g/contract-qwen30b-20260708_221818/contract`；参数矩阵 `parameter-matrix.json`，运行摘要 `run-summary.json`，verdict 表 `verdict-table.tsv`，模型画像 `model-profile.json`，scheduler 合同 `scheduler-contract.json`，合同报告 `nas-contract-report.md` |

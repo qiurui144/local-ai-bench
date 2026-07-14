@@ -1,6 +1,7 @@
 import re
 import subprocess
 from pathlib import Path
+from urllib.parse import unquote
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -14,6 +15,8 @@ REPORT_PATH_RE = re.compile(
     r"evidence/[a-z0-9]+(?:-[a-z0-9]+)*\.evidence\.(?:en|zh)\.md"
     r")$"
 )
+MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+EXTERNAL_LINK_PREFIXES = ("http://", "https://", "mailto:", "app://")
 
 
 def _tracked_files() -> list[str]:
@@ -63,6 +66,35 @@ def test_no_tracked_local_report_records():
             bad_paths.append(path)
 
     assert bad_paths == []
+
+
+def test_index_links_resolve_to_tracked_files():
+    tracked = set(_tracked_files())
+    bad_links = []
+    for path in tracked:
+        if not path.endswith(".md"):
+            continue
+        if Path(path).name not in {"index.md", "index.en.md", "index.zh.md"}:
+            continue
+        text = (REPO_ROOT / path).read_text(encoding="utf-8")
+        for line_no, line in enumerate(text.splitlines(), 1):
+            for match in MARKDOWN_LINK_RE.finditer(line):
+                raw = match.group(1).strip()
+                if not raw or raw.startswith(("#", *EXTERNAL_LINK_PREFIXES)):
+                    continue
+                target = raw.split("#", 1)[0].strip("<>")
+                if not target:
+                    continue
+                resolved = (REPO_ROOT / path).parent.joinpath(unquote(target)).resolve()
+                try:
+                    rel = str(resolved.relative_to(REPO_ROOT))
+                except ValueError:
+                    bad_links.append((path, line_no, raw))
+                    continue
+                if rel not in tracked:
+                    bad_links.append((path, line_no, raw))
+
+    assert bad_links == []
 
 
 def test_tracked_markdown_is_utf8_compatible():

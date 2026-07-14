@@ -25,4 +25,4 @@
 
 | Run ID | 产物 |
 |---|---|
-| `amd-win-x86-20260712-contract-full` | [参数矩阵](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |
+| `amd-win-x86-20260712-contract-full` | 本地证据目录 `output/reports/contract/amd-win-x86-20260712-contract-full`；参数矩阵 `parameter-matrix.json`，运行摘要 `run-summary.json`，verdict 表 `verdict-table.tsv`，模型画像 `model-profile.json`，scheduler 合同 `scheduler-contract.json`，合同报告 `nas-contract-report.md` |
