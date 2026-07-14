@@ -50,6 +50,7 @@ from common import ModelConfig, _is_chat_capable, load_benchmarks_config, load_m
 
 REPORTS = ROOT / "output" / "reports"
 RUNS = REPORTS / "linux-full-matrix"
+NON_QUALITY_DIMS = sorted(set(rb.DIMENSIONS) - set(rb.QUALITY_DIMS))
 
 TARGET_ENV = {
     "amd-linux-x86": {
@@ -810,6 +811,8 @@ def _detached_child_cmd(args: argparse.Namespace, tag: str) -> list[str]:
         cmd.append("--allow-local-scenarios-judge")
     if getattr(args, "preserve_model_skip", False):
         cmd.append("--preserve-model-skip")
+    if getattr(args, "quality_only", False):
+        cmd.append("--quality-only")
     return cmd
 
 
@@ -832,6 +835,7 @@ def _spawn_detached(args: argparse.Namespace, tag: str) -> int:
         "allow_cpu_llm_vlm": args.allow_cpu_llm_vlm,
         "allow_local_scenarios_judge": args.allow_local_scenarios_judge,
         "preserve_model_skip": getattr(args, "preserve_model_skip", False),
+        "quality_only": getattr(args, "quality_only", False),
         "cmd": cmd,
         "timestamp": dt.datetime.now().isoformat(),
     })
@@ -857,6 +861,7 @@ def _run_child_model(args: argparse.Namespace, tag: str) -> int:
         manifest,
         allow_local_scenarios_judge=args.allow_local_scenarios_judge,
         preserve_model_skip=getattr(args, "preserve_model_skip", False),
+        quality_only=getattr(args, "quality_only", False),
     )
     if manifest:
         row["child_manifest"] = manifest
@@ -873,6 +878,7 @@ def _run_one_model_isolated(
     *,
     allow_local_scenarios_judge: bool = False,
     preserve_model_skip: bool = False,
+    quality_only: bool = False,
 ) -> dict[str, Any]:
     stem = f"{tag}_{model.name}"
     row_path = RUNS / f"{stem}_row.json"
@@ -901,6 +907,8 @@ def _run_one_model_isolated(
         cmd.append("--allow-local-scenarios-judge")
     if preserve_model_skip:
         cmd.append("--preserve-model-skip")
+    if quality_only:
+        cmd.append("--quality-only")
     log(f"CHILD {model.name} start")
     with open(out_path, "a", encoding="utf-8", errors="replace") as out, open(
         err_path, "a", encoding="utf-8", errors="replace"
@@ -936,13 +944,24 @@ def _run_one_model(
     *,
     allow_local_scenarios_judge: bool = False,
     preserve_model_skip: bool = False,
+    quality_only: bool = False,
 ) -> dict:
     seed_runs: list[dict] = []
     durations: list[float] = []
     for idx in range(seeds):
         cfg = copy.deepcopy(model)
         cfg.benchmarks = copy.deepcopy(cfg.benchmarks or {})
-        if not preserve_model_skip:
+        if quality_only:
+            cfg.benchmarks["skip"] = NON_QUALITY_DIMS
+            cfg.benchmarks.setdefault("long_context", {})["required"] = True
+            cfg.benchmarks["long_context"].setdefault("max_input_tokens", 3072)
+            manifest.append({
+                "event": "quality_only_policy",
+                "model": cfg.name,
+                "skip": NON_QUALITY_DIMS,
+                "force_long_context": True,
+            })
+        elif not preserve_model_skip:
             cfg.benchmarks["skip"] = []
         _apply_single_model_benchmark_policy(
             cfg,
@@ -969,6 +988,7 @@ def _run_one_model(
         "seeds": seeds,
         "quick_skip_cleared": not preserve_model_skip,
         "model_skip_preserved": preserve_model_skip,
+        "quality_only": quality_only,
         "duration_s": round(sum(durations), 3),
     }
     if seeds > 1:
@@ -1022,6 +1042,11 @@ def main() -> int:
         "--preserve-model-skip",
         action="store_true",
         help="preserve each model's configured skip list; use for contract baseline runs that must not add extra dimensions",
+    )
+    parser.add_argument(
+        "--quality-only",
+        action="store_true",
+        help="run quality dimensions only; clears model quality skip entries and skips non-quality benchmark dimensions",
     )
     parser.add_argument("--child-model", default="", help=argparse.SUPPRESS)
     parser.add_argument("--child-output", default="", help=argparse.SUPPRESS)
@@ -1100,6 +1125,7 @@ def main() -> int:
             manifest,
             allow_local_scenarios_judge=args.allow_local_scenarios_judge,
             preserve_model_skip=getattr(args, "preserve_model_skip", False),
+            quality_only=getattr(args, "quality_only", False),
         )
         cleanup_model_runtime(model, args.target, manifest)
         results.append(row)

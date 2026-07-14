@@ -41,12 +41,13 @@ Each dimension has a PASS / WARN / FAIL verdict with configurable thresholds. Th
 
 | Platform | Status | Results |
 |---|---|---|
-| AMD Linux (Ryzen 8845H + 780M iGPU) | ✅ Calibrated | [amd-linux.en.md](reports/amd-linux.en.md) |
+| AMD Linux (Ryzen 8845H + 780M iGPU) | ✅ Contract reported with verdict caveats | [AMD Linux platform report](reports/platforms/amd-linux/index.en.md) |
 | AMD Windows (Ryzen 8845H + Radeon 780M + XDNA NPU) | ✅ Calibrated | [AMD Windows platform report](reports/platforms/amd-windows/index.en.md) |
 | Intel Windows (Core Ultra 7 155H + Arc iGPU + AI Boost NPU) | ✅ Calibrated | [Intel Windows platform report](reports/platforms/intel-windows/index.en.md) |
+| K3 RISC-V 16G (SpacemiT K3 X100) | ✅ Legacy calibrated; contract retest pending | [K3 RISC-V 16G platform report](reports/platforms/k3-riscv-16g/index.en.md) |
 | K3 RISC-V 32G (SpacemiT K3 X100) | ✅ Calibrated for current model_zoo scope | [K3 RISC-V 32G platform report](reports/platforms/k3-riscv-32g/index.en.md) |
 | RK3588 + RK1828 NPU | ✅ Calibrated primary paths; RKNN3 cache complete, pending per-model load | [RK platform report](reports/platforms/rk3588/index.en.md) |
-| Intel Linux (OpenVINO/vLLM; CPU baseline explicit) | 🔧 In progress | — |
+| Intel Linux (OpenVINO/vLLM; CPU baseline explicit) | ✅ Contract reported with verdict caveats | [Intel Linux platform report](reports/platforms/intel-linux/index.en.md) |
 | vLLM server (Linux + NVIDIA GPU) | ✅ Supported | — |
 
 Any **OpenAI-compatible endpoint** works — vLLM, Ollama, llama.cpp server, OpenAI, DashScope, DeepSeek.

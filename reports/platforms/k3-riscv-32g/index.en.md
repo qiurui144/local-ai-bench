@@ -1,6 +1,6 @@
 # K3 RISC-V 32G
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-14
 **Chinese version:** [index.zh.md](index.zh.md)
 **Legacy source:** [../../k3-riscv-32g.en.md](../../k3-riscv-32g.en.md)
 
@@ -15,6 +15,7 @@ This platform report covers SpacemiT K3 X100 32GB on Bianbu Linux. It separates 
 | [llama.cpp / GGUF](llama.en.md) | SpacemiT private llama.cpp, source-built llama.cpp, mtmd | LLM, GGUF+mmproj VLM, embedding, reranker | PASS with model-specific limits |
 | [ORT / SMT](ort.en.md) | SpacemiT ORT EP, SMT media backend | Official ONNX vision, VLM tar, ASR tar, PP-OCRv5 | PASS after TCM-state control |
 | [Workflow Risk](workflow-risk.en.md) | Product workflow layer | RAG, document OCR/VLM, ASR, long-context aviation manuals, stress controls | Requires admission/queue controls |
+| [Contract Supplement](contract.en.md) | NAS contract matrix | Qwen3-30B-A3B sync, bounded sync, and async boundary rows | Complete for current Qwen3-30B contract slice |
 
 ## Selection Notes
 
@@ -47,5 +48,6 @@ This platform report covers SpacemiT K3 X100 32GB on Bianbu Linux. It separates 
 | llama.cpp / GGUF path | [llama.en.md](llama.en.md) |
 | ORT / SMT path | [ort.en.md](ort.en.md) |
 | Workflow risk | [workflow-risk.en.md](workflow-risk.en.md) |
+| NAS contract supplement | [contract.en.md](contract.en.md) |
 | Raw evidence map | [../../evidence/k3-riscv-32g.evidence.en.md](../../evidence/k3-riscv-32g.evidence.en.md) |
 | Legacy full report | [../../k3-riscv-32g.en.md](../../k3-riscv-32g.en.md) |

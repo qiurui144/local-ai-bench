@@ -1,22 +1,25 @@
-# AMD Windows CPU 路径
+# AMD Windows CPU
 
-**最后更新：** 2026-07-08
-**英文版本：** [cpu.en.md](cpu.en.md)
-**旧报告来源：** [../../amd-windows-cpu.en.md](../../amd-windows-cpu.en.md)
+**最后更新：** 2026-07-14
+**英文版本:** [cpu.en.md](cpu.en.md)
+**合同来源运行:** `amd-win-x86-20260712-contract-full`
 
 ## 范围
 
-AMD CPU 路径是 ONNX Runtime CPU 的 OCR 基线，也是 ONNX reranker 的生产路径。该平台的 LLM 和 embedding 测量使用 Radeon 780M iGPU 路径。
+合同 runtime resource class 为 `cpu` 的行。
 
 ## 工作负载结果
 
-| 工作负载 | 模型/路径 | 指标 | 状态 | 结论 |
-|---|---|---:|---|---|
-| OCR 基线 | `rapidocr-cpu` | p50 1592.5ms，CER 7.04% | 通过 | 仅作为参考基线 |
-| OCR 基线 | `paddleocr-cpu` | p50 1829.5ms，CER 7.04% | 通过 | 较慢基线 |
-| Reranker | `bge-reranker-base-amd-win` | p50 78ms，nDCG/MRR 1.0 | 通过 | 默认 reranker |
-| Reranker | `bge-reranker-v2-m3-amd-win` | p50 289ms，nDCG/MRR 1.0 | 通过 | 只有 rerank 质量值得牺牲延迟时使用 |
+| 工作负载 | 模型/路径 | 参数 | p95 延迟 | 质量分 | Verdict | 原因 |
+|---|---|---|---:|---:|---|---|
+| - | - | - | - | - | - | _当前没有该硬件条件下的合同实测行。_ |
 
 ## 结论
 
-AMD 上 reranking 使用 CPU。OCR 优先用 DirectML iGPU，除非需要热隔离或批处理调度才考虑 NPU/CPU 路径。CPU-only LLM 不推荐；LLM 数据见 iGPU 报告。
+该硬件条件当前没有合同实测证据，不能写成已覆盖。
+
+## 证据
+
+| Run ID | 产物 |
+|---|---|
+| `amd-win-x86-20260712-contract-full` | [参数矩阵](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |

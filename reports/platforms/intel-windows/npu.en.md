@@ -1,25 +1,25 @@
-# Intel Windows NPU Path
+# Intel Windows NPU
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-14
 **Chinese version:** [npu.zh.md](npu.zh.md)
-**Source:** split from [../../intel-windows.en.md](../../intel-windows.en.md) and [../../intel-windows-igpu.en.md](../../intel-windows-igpu.en.md)
+**Contract source runs:** `intel-win-x86-20260713-contract-full`
 
 ## Scope
 
-The Intel AI Boost NPU path uses OpenVINO NPU/VPUX. It is validated for static-shape OCR models and the Whisper encoder. Dynamic-shape embedding, reranker, and SenseVoice ASR models fail on the current export/runtime shape constraints.
+Rows whose contract runtime resource class is `npu`.
 
 ## Workload Results
 
-| Workload | Model/path | Key metric | Status | Decision |
-|---|---|---:|---|---|
-| OCR detection | PP-OCRv4 det static `[1,3,640,640]` | 33ms | PASS | NPU pipeline component |
-| OCR recognition | PP-OCRv4 rec static `[1,3,48,320]` | 11ms | PASS | Requires H=48 static reshape |
-| OCR classifier | PP-OCRv4 cls static `[1,3,48,192]` | 3ms | PASS | NPU pipeline component |
-| ASR encoder | Whisper-base INT8 encoder static `[1,80,3000]` | 115ms | PASS | Encoder only; decoder remains CPU |
-| Embedding | BGE INT8 OpenVINO | dynamic shape failure | FAIL | Use iGPU or CPU |
-| Reranker | BGE reranker INT8 OpenVINO | dynamic shape failure | FAIL | Use iGPU or CPU |
-| SenseVoice ASR | SenseVoice ONNX | dynamic self-attention mask issue | FAIL | Use DirectML path |
+| Workload | Model/path | Params | p95 latency | Quality score | Verdict | Reason |
+|---|---|---|---:|---:|---|---|
+| `asr` | `whisper-base-npu-intel-win` | startup_state=warm_process | 11390.0ms | 0.0000 | `not_recommended` | FAIL |
 
 ## Decision
 
-Keep Intel NPU as a separate report path because its pass/fail profile is shape-specific. Use it for static OCR components and selected encoders, not for general LLM, embedding, or reranker serving.
+This hardware condition has 1 contract rows and 0 product-usable rows. Verdict mix: not_recommended=1.
+
+## Evidence
+
+| Run ID | Artifacts |
+|---|---|
+| `intel-win-x86-20260713-contract-full` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260713-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260713-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260713-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260713-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260713-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260713-contract-full/nas-contract-report.md) |

@@ -1,37 +1,43 @@
 # Intel Windows
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-14
 **Chinese version:** [index.zh.md](index.zh.md)
-**Legacy source:** [../../intel-windows.en.md](../../intel-windows.en.md)
 
 ## Scope
 
-Intel Windows is split into CPU, Intel Arc iGPU, and Intel AI Boost NPU paths. CPU Ollama is the current calibrated LLM route. OpenVINO iGPU is validated for OCR/embedding/reranker and experimental LLM. NPU is validated for static-shape OCR and Whisper encoder, but not for dynamic embedding/reranker.
+Intel Windows contract reporting is split by CPU, Intel Arc iGPU, AI Boost NPU, mixed OpenVINO/runtime rows, and blocked-runtime rows.
 
-## Execution Path Summary
+Rows are grouped by `runtime.resource_class` from the contract matrix. `failed` or `not_recommended` rows are measured evidence, not missing reports. Rows with no concrete runtime are kept under Blocked Runtime.
 
-| Path | Runtime | Best-fit workloads | Status |
-|---|---|---|---|
-| [CPU](cpu.en.md) | Ollama CPU, ONNX Runtime CPU | LLM, embedding, reranker | PASS with translation caveats for LLM |
-| [iGPU](igpu.en.md) | OpenVINO / optimum-intel | OCR, embedding, reranker, experimental LLM | PASS for non-LLM; LLM serving pending |
-| [NPU](npu.en.md) | OpenVINO NPU / VPUX | Static OCR, Whisper encoder | PASS for static models; dynamic models fail |
+## Contract Baseline
 
-## Selection Notes
+| Item | Value |
+|---|---|
+| target | intel-win-x86 |
+| source_runs | `intel-win-x86-20260713-contract-full` |
+| status | partial |
+| row_count | 62 |
+| sync_default | 5 |
+| sync_bounded | 5 |
+| not_recommended | 8 |
+| blocked | 44 |
 
-| Role | Current choice | Decision |
-|---|---|---|
-| LLM route | CPU Ollama | `qwen2.5-3b` for interactive use, `qwen2.5-7b` for stronger GA with higher latency. |
-| OCR route | OpenVINO iGPU, or NPU static OCR when pipeline supports it | DirectML OCR is not usable on this platform. |
-| Embedding/reranker route | CPU or OpenVINO iGPU | iGPU warm path is faster where a serving wrapper exists. |
-| NPU route | Static OCR and Whisper encoder | Keep separate because dynamic-shape failures are path-specific. |
+## Hardware Path Summary
+
+| Path | Rows | Usable rows | Workloads | Verdict mix | Report |
+|---|---:|---:|---|---|---|
+| [CPU](cpu.en.md) | 0 | 0 | - | - | [cpu.en.md](cpu.en.md) |
+| [iGPU](igpu.en.md) | 56 | 5 | asr, embedding, llm_chat, llm_summary, ocr, rag_answer, rag_search_only, reranker, vlm_doc_extract, vlm_qa | sync_default=3, sync_bounded=2, not_recommended=7, blocked=44 | [igpu.en.md](igpu.en.md) |
+| [NPU](npu.en.md) | 1 | 0 | asr | not_recommended=1 | [npu.en.md](npu.en.md) |
+| [Mixed Runtime](mixed.en.md) | 5 | 5 | asr, ocr, reranker | sync_default=2, sync_bounded=3 | [mixed.en.md](mixed.en.md) |
+| [Blocked Runtime](blocked-runtime.en.md) | 0 | 0 | - | - | [blocked-runtime.en.md](blocked-runtime.en.md) |
+
+## Decision
+
+10 contract rows are product-usable under the current verdict policy. 8 rows are measured but not recommended, and 44 rows remain blocked. Use the hardware subreports for the concrete path decision instead of mixing CPU, iGPU, NPU, and mixed-runtime evidence.
 
 ## Evidence
 
-| Detail | Report |
+| Run ID | Artifacts |
 |---|---|
-| CPU path | [cpu.en.md](cpu.en.md) |
-| iGPU path | [igpu.en.md](igpu.en.md) |
-| NPU path | [npu.en.md](npu.en.md) |
-| Legacy full report | [../../intel-windows.en.md](../../intel-windows.en.md) |
-| Legacy CPU detail | [../../intel-windows-cpu.en.md](../../intel-windows-cpu.en.md) |
-| Legacy iGPU/NPU detail | [../../intel-windows-igpu.en.md](../../intel-windows-igpu.en.md) |
+| `intel-win-x86-20260713-contract-full` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260713-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260713-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260713-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260713-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260713-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260713-contract-full/nas-contract-report.md) |

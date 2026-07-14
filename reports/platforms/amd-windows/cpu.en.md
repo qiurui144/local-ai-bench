@@ -1,22 +1,25 @@
-# AMD Windows CPU Path
+# AMD Windows CPU
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-14
 **Chinese version:** [cpu.zh.md](cpu.zh.md)
-**Legacy source:** [../../amd-windows-cpu.en.md](../../amd-windows-cpu.en.md)
+**Contract source runs:** `amd-win-x86-20260712-contract-full`
 
 ## Scope
 
-The AMD CPU path is an ONNX Runtime CPU baseline for OCR and the production path for ONNX rerankers. LLM and embedding measurements on this platform use the Radeon 780M iGPU path instead.
+Rows whose contract runtime resource class is `cpu`.
 
 ## Workload Results
 
-| Workload | Model/path | Metric | Status | Decision |
-|---|---|---:|---|---|
-| OCR baseline | `rapidocr-cpu` | p50 1592.5ms, CER 7.04% | PASS | Reference baseline only |
-| OCR baseline | `paddleocr-cpu` | p50 1829.5ms, CER 7.04% | PASS | Slower baseline |
-| Reranker | `bge-reranker-base-amd-win` | p50 78ms, nDCG/MRR 1.0 | PASS | Default reranker |
-| Reranker | `bge-reranker-v2-m3-amd-win` | p50 289ms, nDCG/MRR 1.0 | PASS | Use only when rerank quality justifies latency |
+| Workload | Model/path | Params | p95 latency | Quality score | Verdict | Reason |
+|---|---|---|---:|---:|---|---|
+| - | - | - | - | - | - | _No current contract rows for this hardware condition._ |
 
 ## Decision
 
-Use CPU for AMD reranking. Use DirectML iGPU for OCR unless thermal isolation or batch scheduling requires the NPU/CPU path. CPU-only LLM is not recommended; use the iGPU report for LLM data.
+This hardware condition has no current contract evidence. It must not be reported as covered.
+
+## Evidence
+
+| Run ID | Artifacts |
+|---|---|
+| `amd-win-x86-20260712-contract-full` | [Parameter matrix](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |

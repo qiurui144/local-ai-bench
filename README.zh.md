@@ -41,12 +41,13 @@ python run_benchmark.py --compare qwen2.5-7b qwen3-4b
 
 | 平台 | 状态 | 结果报告 |
 |---|---|---|
-| AMD Linux（Ryzen 8845H + 780M iGPU） | ✅ 已校准 | [amd-linux.en.md](reports/amd-linux.en.md) |
+| AMD Linux（Ryzen 8845H + 780M iGPU） | ✅ 合同报告已生成，存在 verdict caveat | [AMD Linux 平台报告](reports/platforms/amd-linux/index.zh.md) |
 | AMD Windows（Ryzen 8845H + Radeon 780M + XDNA NPU） | ✅ 已校准 | [AMD Windows 平台报告](reports/platforms/amd-windows/index.zh.md) |
 | Intel Windows（Core Ultra 7 155H + Arc iGPU + AI Boost NPU） | ✅ 已校准 | [Intel Windows 平台报告](reports/platforms/intel-windows/index.zh.md) |
+| K3 RISC-V 16G（SpacemiT K3 X100） | ✅ 旧校准完成；合同复测待执行 | [K3 RISC-V 16G 平台报告](reports/platforms/k3-riscv-16g/index.zh.md) |
 | K3 RISC-V 32G（SpacemiT K3 X100） | ✅ 当前 model_zoo 范围已校准 | [K3 RISC-V 32G 平台报告](reports/platforms/k3-riscv-32g/index.zh.md) |
 | RK3588 + RK1828 NPU | ✅ 主路径已校准；RKNN3 缓存完成，单模型加载待验证 | [RK 平台报告](reports/platforms/rk3588/index.zh.md) |
-| Intel Linux（OpenVINO/vLLM；CPU baseline 显式标记） | 🔧 进行中 | — |
+| Intel Linux（OpenVINO/vLLM；CPU baseline 显式标记） | ✅ 合同报告已生成，存在 verdict caveat | [Intel Linux 平台报告](reports/platforms/intel-linux/index.zh.md) |
 | vLLM 服务器（Linux + NVIDIA GPU） | ✅ 支持 | — |
 
 任何 **OpenAI 兼容端点** 均可使用——vLLM、Ollama、llama.cpp server、OpenAI、DashScope、DeepSeek。

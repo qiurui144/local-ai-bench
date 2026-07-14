@@ -1,53 +1,42 @@
 # AMD Windows
 
-**最后更新：** 2026-07-09
-**英文版本：** [index.en.md](index.en.md)
+**最后更新：** 2026-07-14
+**英文版本:** [index.en.md](index.en.md)
 
 ## 范围
 
-本页记录 AMD Windows 的合同基线测试结果。此次只按同一软件栈对齐 NAS 合同测项，不做 llama.cpp、Ollama、CPU-only 等跨软件栈横向比较。
+AMD Windows 合同报告按 CPU、Radeon 780M iGPU、XDNA NPU、混合运行时和阻塞运行时行拆分。
 
-目标设备为 Windows 11 / Ryzen 7 8845H / Radeon 780M / 27.75GB RAM。测试覆盖 LLM、RAG、embedding、reranker、VLM、OCR、ASR 共 10 个合同测项。
+行按合同矩阵里的 `runtime.resource_class` 分组。`failed` 或 `not_recommended` 是已有实测证据，不是报告缺失。没有进入明确运行时的行保留在阻塞运行时页。
 
 ## 合同基线
 
 | 项目 | 值 |
 |---|---|
-| target | `amd-win-x86` |
-| run_id | `amd-20260709-baseline-contract-s1-final` |
-| status | `complete` |
-| row_count | 10 |
-| blocked_test_items | 0 |
-| sync_default | 4 |
+| target | amd-win-x86 |
+| source_runs | `amd-win-x86-20260712-contract-full` |
+| status | complete |
+| row_count | 14 |
+| sync_default | 6 |
 | sync_bounded | 1 |
-| not_recommended | 5 |
+| not_recommended | 7 |
 
-## 执行路径摘要
+## 硬件路径摘要
 
-| 工作负载 | 基线模型/路径 | Runtime | Verdict |
-|---|---|---|---|
-| LLM / RAG answer | `qwen2.5-7b-amd-win` | Ollama AMD/Vulkan service path | `not_recommended` |
-| VLM | `llava-7b-amd-win` | Ollama AMD/VLM service path | `not_recommended` |
-| Embedding / RAG search-only | `bge-base-en-v1.5-igpu-amd-win` | ONNX Runtime DirectML service path | `sync_default` / `sync_bounded` |
-| Reranker | `bge-reranker-base-igpu-amd-win` | ONNX Runtime DirectML service path | `sync_default` |
-| OCR | `rapidocr-amd-directml` | DirectML OCR path | `sync_default` |
-| ASR | `sensevoice-small-amd-win` | AMD Windows ASR path | `sync_default` |
+| 路径 | 行数 | 可用行 | 工作负载 | Verdict 分布 | 报告 |
+|---|---:|---:|---|---|---|
+| [CPU](cpu.zh.md) | 0 | 0 | - | - | [cpu.zh.md](cpu.zh.md) |
+| [iGPU](igpu.zh.md) | 9 | 4 | embedding, llm_chat, llm_summary, ocr, rag_answer, rag_search_only, reranker, vlm_doc_extract, vlm_qa | sync_default=3, sync_bounded=1, not_recommended=5 | [igpu.zh.md](igpu.zh.md) |
+| [NPU](npu.zh.md) | 4 | 2 | asr, ocr | sync_default=2, not_recommended=2 | [npu.zh.md](npu.zh.md) |
+| [混合运行时](mixed.zh.md) | 1 | 1 | asr | sync_default=1 | [mixed.zh.md](mixed.zh.md) |
+| [阻塞运行时](blocked-runtime.zh.md) | 0 | 0 | - | - | [blocked-runtime.zh.md](blocked-runtime.zh.md) |
 
 ## 结论
 
-AMD Windows 当前可作为 NAS 产品基线的同步默认路径是 OCR、ASR、embedding 和 reranker。RAG search-only 可作为 bounded sync fallback。
-
-`qwen2.5-7b-amd-win` 的 LLM/RAG answer 行与 `llava-7b-amd-win` 的 VLM 行已有性能和质量输出，但合同 verdict 为 `not_recommended`，原因是质量验证未达当前产品化门槛，不能作为默认同步能力发布。
+当前 verdict 口径下有 7 行可作为产品可用证据。7 行已有实测但不推荐，0 行仍为 blocked。具体选型必须看对应硬件子报告，不要混用 CPU、iGPU、NPU 和混合运行时证据。
 
 ## 证据
 
-| 产物 | 路径 |
+| Run ID | 产物 |
 |---|---|
-| 合同总报告 | [nas-contract-report.md](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/nas-contract-report.md) |
-| 参数矩阵 | [parameter-matrix.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/parameter-matrix.json) |
-| 运行摘要 | [run-summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/run-summary.json) |
-| verdict 表 | [verdict-table.tsv](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/verdict-table.tsv) |
-| 模型画像 | [model-profile.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/model-profile.json) |
-| scheduler 合同 | [scheduler-contract.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-final-contract/scheduler-contract.json) |
-| 主测 summary | [amd-20260709-baseline-contract-s1-capped_summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-capped_summary.json) |
-| VLM 补测 summary | [amd-20260709-baseline-contract-s1-capped-vlm-scenarios_summary.json](../../../output/reports/windows-full-matrix/amd-20260709-baseline-contract-s1-capped-vlm-scenarios_summary.json) |
+| `amd-win-x86-20260712-contract-full` | [参数矩阵](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |

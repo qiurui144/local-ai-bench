@@ -76,6 +76,37 @@ def test_run_one_model_clears_model_skip_and_writes_reports(monkeypatch, tmp_pat
     assert list(tmp_path.glob("amd-chat_unit_*.md"))
 
 
+def test_run_one_model_quality_only_skips_non_quality_and_forces_long_context(monkeypatch, tmp_path):
+    mod = _load_module()
+    monkeypatch.setattr(mod, "REPORTS", tmp_path)
+    captured = []
+
+    def fake_run_all(model_cfg, golden, skip, bench_cfg):
+        captured.append(model_cfg.benchmarks)
+        return {
+            "model": model_cfg.name,
+            "timestamp": "now",
+            "benchmarks": {"conditioned": {"verdict": "PASS"}},
+        }
+
+    monkeypatch.setattr(mod.rb, "run_all_for_model", fake_run_all)
+    monkeypatch.setattr(mod.rb, "render_markdown", lambda result: "# report\n")
+
+    model = ModelConfig(
+        name="amd-chat",
+        target="amd-linux-x86",
+        benchmarks={"skip": ["conditioned", "scenarios", "conversation_drift"]},
+    )
+    manifest = []
+
+    row = mod._run_one_model(model, {}, {}, 1, "unit", manifest, quality_only=True)
+
+    assert row["benchmarks"]["conditioned"] == "PASS"
+    assert captured[0]["skip"] == mod.NON_QUALITY_DIMS
+    assert captured[0]["long_context"]["required"] is True
+    assert manifest[0]["event"] == "quality_only_policy"
+
+
 def test_run_one_model_can_allow_local_scenarios_judge(monkeypatch, tmp_path):
     mod = _load_module()
     monkeypatch.setattr(mod, "REPORTS", tmp_path)

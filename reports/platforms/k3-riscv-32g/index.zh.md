@@ -1,6 +1,6 @@
 # K3 RISC-V 32G
 
-**最后更新：** 2026-07-08
+**最后更新：** 2026-07-14
 **英文版本：** [index.en.md](index.en.md)
 **旧报告来源：** [../../k3-riscv-32g.en.md](../../k3-riscv-32g.en.md)
 
@@ -15,6 +15,7 @@
 | [llama.cpp / GGUF](llama.zh.md) | SpacemiT private llama.cpp、源码构建 llama.cpp、mtmd | LLM、GGUF+mmproj VLM、embedding、reranker | 通过但有模型级限制 |
 | [ORT / SMT](ort.zh.md) | SpacemiT ORT EP、SMT media backend | 官方 ONNX vision、VLM tar、ASR tar、PP-OCRv5 | 控制 TCM 状态后通过 |
 | [工作流风险](workflow-risk.zh.md) | 产品工作流层 | RAG、文档 OCR/VLM、ASR、飞行手册长文本、压力控制 | 需要准入/队列控制 |
+| [合同补充](contract.zh.md) | NAS contract matrix | Qwen3-30B-A3B 同步、bounded sync 和异步边界行 | 当前 Qwen3-30B 合同切片 complete |
 
 ## 选型说明
 
@@ -47,5 +48,6 @@
 | llama.cpp / GGUF 路径 | [llama.zh.md](llama.zh.md) |
 | ORT / SMT 路径 | [ort.zh.md](ort.zh.md) |
 | 工作流风险 | [workflow-risk.zh.md](workflow-risk.zh.md) |
+| NAS 合同补充 | [contract.zh.md](contract.zh.md) |
 | 原始证据映射 | [../../evidence/k3-riscv-32g.evidence.zh.md](../../evidence/k3-riscv-32g.evidence.zh.md) |
 | 旧完整报告 | [../../k3-riscv-32g.en.md](../../k3-riscv-32g.en.md) |

@@ -1,22 +1,28 @@
-# AMD Windows NPU 路径
+# AMD Windows NPU
 
-**最后更新：** 2026-07-08
-**英文版本：** [npu.en.md](npu.en.md)
-**旧报告来源：** [../../amd-windows-npu.en.md](../../amd-windows-npu.en.md)
+**最后更新：** 2026-07-14
+**英文版本:** [npu.en.md](npu.en.md)
+**合同来源运行:** `amd-win-x86-20260712-contract-full`
 
 ## 范围
 
-AMD XDNA NPU 路径覆盖 VitisAI OCR 和 Lemonade/FastFlowLM LLM 候选路线。OCR 已测。该 Ryzen 8845H/XDNA 代际上的 NPU LLM 仍待验证。
+合同 runtime resource class 为 `npu` 的行。
 
 ## 工作负载结果
 
-| 工作负载 | 模型/路径 | 关键指标 | 状态 | 结论 |
-|---|---|---:|---|---|
-| OCR | `rapidocr-amd-npu` via VitisAI | p50 2031ms，CER 7.04% | 通过 | 批处理或隔离路径，不是最快 |
-| ASR | `sensevoice-small-amd-win` via DirectML | RTF 0.073，CER 7.69% | 通过 | 当前证据中 AMD 最佳 ASR 路径 |
-| LLM pure NPU | Lemonade / FastFlowLM 候选 | 未校准 | 待验证 | 暂不能用于模型选型 |
-| LLM hybrid iGPU+NPU | Lemonade hybrid 候选 | 未校准 | 待验证 | 需要 Ryzen AI 软件和端到端 harness 实测 |
+| 工作负载 | 模型/路径 | 参数 | p95 延迟 | 质量分 | Verdict | 原因 |
+|---|---|---|---:|---:|---|---|
+| `asr` | `whisper-base-amd-npu` | startup_state=warm_process | 9968.0ms | 0.4615 | `not_recommended` | FAIL |
+| `asr` | `whisper-tiny-amd-npu` | startup_state=warm_process | 7734.0ms | 0.4615 | `not_recommended` | FAIL |
+| `ocr` | `paddleocr-v4-amd-npu` | startup_state=warm_process | 2295.4ms | 0.9296 | `sync_default` | quality_and_latency_within_tool_budget |
+| `ocr` | `rapidocr-amd-npu` | startup_state=warm_process | 2304.2ms | 0.9296 | `sync_default` | quality_and_latency_within_tool_budget |
 
 ## 结论
 
-AMD NPU 是独立硬件路径，因此在报告架构中保留。当前模型选型中，LLM/OCR 用 iGPU，reranker 用 CPU。NPU LLM 作为后续验证工作流，不作为当前推荐。
+该硬件条件有 4 条合同实测行，其中 2 条为产品可用行。Verdict 分布：sync_default=2, not_recommended=2。
+
+## 证据
+
+| Run ID | 产物 |
+|---|---|
+| `amd-win-x86-20260712-contract-full` | [参数矩阵](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |

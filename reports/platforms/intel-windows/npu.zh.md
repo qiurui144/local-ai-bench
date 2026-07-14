@@ -1,25 +1,25 @@
-# Intel Windows NPU 路径
+# Intel Windows NPU
 
-**最后更新：** 2026-07-08
-**英文版本：** [npu.en.md](npu.en.md)
-**来源：** 从 [../../intel-windows.en.md](../../intel-windows.en.md) 和 [../../intel-windows-igpu.en.md](../../intel-windows-igpu.en.md) 拆分
+**最后更新：** 2026-07-14
+**英文版本:** [npu.en.md](npu.en.md)
+**合同来源运行:** `intel-win-x86-20260713-contract-full`
 
 ## 范围
 
-Intel AI Boost NPU 路径使用 OpenVINO NPU/VPUX。它已验证静态 shape OCR 模型和 Whisper encoder。动态 shape 的 embedding、reranker、SenseVoice ASR 在当前导出/runtime shape 约束下失败。
+合同 runtime resource class 为 `npu` 的行。
 
 ## 工作负载结果
 
-| 工作负载 | 模型/路径 | 关键指标 | 状态 | 结论 |
-|---|---|---:|---|---|
-| OCR 检测 | PP-OCRv4 det static `[1,3,640,640]` | 33ms | 通过 | NPU pipeline 组件 |
-| OCR 识别 | PP-OCRv4 rec static `[1,3,48,320]` | 11ms | 通过 | 需要 H=48 静态 reshape |
-| OCR 分类 | PP-OCRv4 cls static `[1,3,48,192]` | 3ms | 通过 | NPU pipeline 组件 |
-| ASR encoder | Whisper-base INT8 encoder static `[1,80,3000]` | 115ms | 通过 | 仅 encoder；decoder 仍在 CPU |
-| Embedding | BGE INT8 OpenVINO | 动态 shape 失败 | 失败 | 使用 iGPU 或 CPU |
-| Reranker | BGE reranker INT8 OpenVINO | 动态 shape 失败 | 失败 | 使用 iGPU 或 CPU |
-| SenseVoice ASR | SenseVoice ONNX | 动态 self-attention mask 问题 | 失败 | 使用 DirectML 路径 |
+| 工作负载 | 模型/路径 | 参数 | p95 延迟 | 质量分 | Verdict | 原因 |
+|---|---|---|---:|---:|---|---|
+| `asr` | `whisper-base-npu-intel-win` | startup_state=warm_process | 11390.0ms | 0.0000 | `not_recommended` | FAIL |
 
 ## 结论
 
-Intel NPU 必须作为单独报告路径保留，因为其通过/失败特征和 shape 强相关。它适合静态 OCR 组件和部分 encoder，不适合通用 LLM、embedding 或 reranker serving。
+该硬件条件有 1 条合同实测行，其中 0 条为产品可用行。Verdict 分布：not_recommended=1。
+
+## 证据
+
+| Run ID | 产物 |
+|---|---|
+| `intel-win-x86-20260713-contract-full` | [参数矩阵](../../../output/reports/contract/intel-win-x86-20260713-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/intel-win-x86-20260713-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/intel-win-x86-20260713-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/intel-win-x86-20260713-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/intel-win-x86-20260713-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/intel-win-x86-20260713-contract-full/nas-contract-report.md) |

@@ -1,22 +1,28 @@
-# AMD Windows NPU Path
+# AMD Windows NPU
 
-**Last updated:** 2026-07-08
+**Last updated:** 2026-07-14
 **Chinese version:** [npu.zh.md](npu.zh.md)
-**Legacy source:** [../../amd-windows-npu.en.md](../../amd-windows-npu.en.md)
+**Contract source runs:** `amd-win-x86-20260712-contract-full`
 
 ## Scope
 
-The AMD XDNA NPU path covers VitisAI OCR and candidate Lemonade/FastFlowLM LLM routes. OCR is measured. NPU LLM remains pending on this Ryzen 8845H/XDNA generation.
+Rows whose contract runtime resource class is `npu`.
 
 ## Workload Results
 
-| Workload | Model/path | Key metric | Status | Decision |
-|---|---|---:|---|---|
-| OCR | `rapidocr-amd-npu` via VitisAI | p50 2031ms, CER 7.04% | PASS | Batch or isolation path, not fastest |
-| ASR | `sensevoice-small-amd-win` via DirectML | RTF 0.073, CER 7.69% | PASS | Best AMD ASR route in current evidence |
-| LLM pure NPU | Lemonade / FastFlowLM candidates | not calibrated | PENDING-VERIFY | Do not use for model selection yet |
-| LLM hybrid iGPU+NPU | Lemonade hybrid candidates | not calibrated | PENDING-VERIFY | Needs Ryzen AI software and end-to-end harness run |
+| Workload | Model/path | Params | p95 latency | Quality score | Verdict | Reason |
+|---|---|---|---:|---:|---|---|
+| `asr` | `whisper-base-amd-npu` | startup_state=warm_process | 9968.0ms | 0.4615 | `not_recommended` | FAIL |
+| `asr` | `whisper-tiny-amd-npu` | startup_state=warm_process | 7734.0ms | 0.4615 | `not_recommended` | FAIL |
+| `ocr` | `paddleocr-v4-amd-npu` | startup_state=warm_process | 2295.4ms | 0.9296 | `sync_default` | quality_and_latency_within_tool_budget |
+| `ocr` | `rapidocr-amd-npu` | startup_state=warm_process | 2304.2ms | 0.9296 | `sync_default` | quality_and_latency_within_tool_budget |
 
 ## Decision
 
-Keep AMD NPU in the report architecture because it is a distinct hardware path. For current model selection, use iGPU for LLM/OCR and CPU for reranker. Treat NPU LLM as a future validation workstream, not a current recommendation.
+This hardware condition has 4 contract rows and 2 product-usable rows. Verdict mix: sync_default=2, not_recommended=2.
+
+## Evidence
+
+| Run ID | Artifacts |
+|---|---|
+| `amd-win-x86-20260712-contract-full` | [Parameter matrix](../../../output/reports/contract/amd-win-x86-20260712-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/amd-win-x86-20260712-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/amd-win-x86-20260712-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/amd-win-x86-20260712-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/amd-win-x86-20260712-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/amd-win-x86-20260712-contract-full/nas-contract-report.md) |
