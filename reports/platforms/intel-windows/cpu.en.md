@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-14
 **Chinese version:** [cpu.zh.md](cpu.zh.md)
-**Contract source runs:** `intel-win-x86-20260713-contract-full`
+**Contract source runs:** `intel-win-x86-20260713-contract-full`, `intel-win-x86-20260714-applicable-gapfill`
 
 ## Scope
 
@@ -12,14 +12,22 @@ Rows whose contract runtime resource class is `cpu`.
 
 | Workload | Model/path | Params | p95 latency | Quality score | Verdict | Reason |
 |---|---|---|---:|---:|---|---|
-| - | - | - | - | - | - | _No current contract rows for this hardware condition._ |
+| `llm_chat` | `llama3.2-1b-intel-win` | startup_state=warm_process | 3696.8ms | - | `blocked` | not_measured |
+| `llm_chat` | `qwen2.5-1.5b-intel-win` | startup_state=warm_process | 4884.7ms | - | `not_recommended` | translation_quality_and_terminology_failed |
+| `llm_summary` | `llama3.2-1b-intel-win` | startup_state=warm_process | 3696.8ms | - | `blocked` | not_measured |
+| `llm_summary` | `qwen2.5-1.5b-intel-win` | startup_state=warm_process | 4884.7ms | - | `not_recommended` | translation_quality_and_terminology_failed |
+| `rag_answer` | `llama3.2-1b-intel-win` | startup_state=warm_process | 3696.8ms | - | `blocked` | not_measured |
+| `rag_answer` | `qwen2.5-1.5b-intel-win` | startup_state=warm_process | 4884.7ms | - | `not_recommended` | translation_quality_and_terminology_failed |
+| `vlm_doc_extract` | `llava-7b-intel-win` | startup_state=warm_process | 32484.8ms | - | `blocked` | not_measured |
+| `vlm_qa` | `llava-7b-intel-win` | startup_state=warm_process | 32484.8ms | 1.0000 | `not_recommended` | vlm_entity_recall_failed |
 
 ## Decision
 
-This hardware condition has no current contract evidence. It must not be reported as covered.
+This hardware condition has 8 contract rows and 0 product-usable rows. Verdict mix: not_recommended=4, blocked=4.
 
 ## Evidence
 
 | Run ID | Artifacts |
 |---|---|
 | `intel-win-x86-20260713-contract-full` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260713-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260713-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260713-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260713-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260713-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260713-contract-full/nas-contract-report.md) |
+| `intel-win-x86-20260714-applicable-gapfill` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/nas-contract-report.md) |

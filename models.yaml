@@ -577,7 +577,7 @@ models:
         samples: 3
         thresholds:
           tg_tps_min: 35
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, translation, asr, ocr, embedding, rerank]
     notes: "HF source: unsloth/Llama-3.2-1B-Instruct-GGUF；AMD Windows 1B text-only 小模型覆盖，PENDING-VERIFY。"
 
   # qwen2.5:14b 需先 pull（~9GB）；16 GiB 可用应可容纳
@@ -856,7 +856,7 @@ models:
           tps_min: 3
       prefill_decode:
         samples: 2
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, translation, asr, ocr, embedding, rerank]
     notes: "AMD Windows 参数提升覆盖：qwen2.5:14b via Ollama Vulkan；TPS 8.6，TTFT p50/p95 7718/14395 ms，PP/TG 94.25/9.14 tok/s，max-ctx 16k (2026-06-21 E2E)；GA/translation 显式 skip（纯性能边界验证）"
 
   # ═══ AMD Windows — XDNA NPU LLM（via Lemonade Server）═══
@@ -1974,7 +1974,7 @@ models:
         thresholds:
           pp_tps_min: 65           # 实测 PP=130 t/s × 0.5
           tg_tps_min: 14           # 实测 TG=35 t/s × 0.4
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, translation, asr, ocr, embedding, rerank]
     notes: "Intel CPU Ollama — llama3.2:1b Q4 ~0.7GB; TPS 25.26; TTFT p50/p95 875/3308 ms; PP/TG 130/35 t/s; max-ctx 32k (2026-06-21 E2E); GA/translation SKIPPED（1B 模型不参与质量验收）"
 
   - name: qwen2.5-3b-intel-win
@@ -2047,7 +2047,7 @@ models:
         max_pairs: 10
         thresholds:
           bleu_min: 8.0
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, asr, ocr, embedding, rerank]
     notes: "HF source: Qwen/Qwen2.5-0.5B-Instruct-GGUF；Intel Windows Ollama CPU 小模型 smoke/perf 覆盖，PENDING-VERIFY。"
 
   - name: qwen2.5-1.5b-intel-win
@@ -2078,7 +2078,7 @@ models:
         max_pairs: 10
         thresholds:
           bleu_min: 10.0
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, asr, ocr, embedding, rerank]
     notes: "HF source: Qwen/Qwen2.5-1.5B-Instruct-GGUF；Intel Windows Ollama CPU 小模型覆盖；OpenVINO iGPU 另有 qwen2.5-1.5b-igpu-intel-win，PENDING-VERIFY。"
 
   - name: phi-3.5-mini-intel-win
@@ -2484,7 +2484,7 @@ models:
           tps_min: 2
       prefill_decode:
         samples: 2
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, asr, ocr, embedding, rerank]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, translation, asr, ocr, embedding, rerank]
     notes: "Intel Windows VLM 覆盖：llava:7b via Ollama；用于完整类型覆盖，速度阈值按 CPU/iGPU 保守设置"
 
   - name: bge-reranker-base-intel-win
@@ -2811,7 +2811,7 @@ models:
         samples: 3
         thresholds:
           tg_tps_min: 6
-      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, translation, embedding, rerank, asr, ocr]
+      skip: [stability, concurrency, conditioned, scenarios, conversation_drift, general_ability, long_context, translation, embedding, rerank, asr, ocr]
     notes: "AMD Linux VLM baseline via Ollama llava:7b on Radeon 780M GPU offload."
 
   - name: llama3.2-3b-amd-linux

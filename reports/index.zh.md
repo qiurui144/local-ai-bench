@@ -11,6 +11,7 @@
 | 需求 | 报告 |
 |---|---|
 | 跨平台选择模型 | [模型选型](selection/model-selection.zh.md) |
+| 核查 AMD Linux / Intel Windows 质量维度覆盖 | [质量维度覆盖](quality-dimensions/amd-linux-intel-win-20260714-applicable-gapfill.zh.md) |
 | 查看 AMD Linux CPU/iGPU/NPU 合同路径 | [AMD Linux](platforms/amd-linux/index.zh.md) |
 | 查看 Intel Linux CPU/iGPU/NPU/OpenVINO 合同路径 | [Intel Linux](platforms/intel-linux/index.zh.md) |
 | 查看 K3 16G 旧硬件路径和合同缺口 | [K3 RISC-V 16G](platforms/k3-riscv-16g/index.zh.md) |

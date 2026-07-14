@@ -1,0 +1,1788 @@
+{
+  "$schema": "docs/quality-dimension.schema.json",
+  "schema_version": 1,
+  "generated_at": "2026-07-14T11:33:39.916681+08:00",
+  "run_id": "amd-linux-intel-win-20260714-applicable-gapfill",
+  "models_yaml": "models.yaml",
+  "targets": [
+    "amd-linux-x86",
+    "intel-win-x86"
+  ],
+  "quality_dimensions": [
+    "accuracy",
+    "translation",
+    "embedding",
+    "rerank",
+    "asr",
+    "ocr",
+    "general_ability",
+    "conditioned",
+    "long_context",
+    "scenarios",
+    "conversation_drift"
+  ],
+  "require_chat_long_context": true,
+  "overall_status": "complete_with_quality_failures",
+  "quality_coverage_status": "complete",
+  "family_coverage_status": "complete",
+  "summary": {
+    "model_count": 52,
+    "feasible_model_count": 30,
+    "quality_complete_feasible_models": 30,
+    "status_counts": {
+      "failed": 19,
+      "measured": 8,
+      "missing": 61,
+      "passed": 14,
+      "skipped": 4,
+      "warning": 4
+    },
+    "family_status_counts": {
+      "covered": 12
+    }
+  },
+  "family_coverage": [
+    {
+      "target": "amd-linux-x86",
+      "family": "llm",
+      "applicable_models": 11,
+      "feasible_models": 5,
+      "primary_quality_dimension": "translation",
+      "measured_models": [
+        "phi-3.5-mini-amd-linux",
+        "qwen2.5-1.5b-amd-linux",
+        "qwen2.5-3b-amd-linux",
+        "qwen2.5-7b-amd-linux"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "amd-linux-x86",
+      "family": "vlm",
+      "applicable_models": 2,
+      "feasible_models": 2,
+      "primary_quality_dimension": "accuracy",
+      "measured_models": [
+        "llava-7b-amd-linux",
+        "minicpm-v-8b-amd-linux"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "amd-linux-x86",
+      "family": "embedding",
+      "applicable_models": 2,
+      "feasible_models": 2,
+      "primary_quality_dimension": "embedding",
+      "measured_models": [
+        "bge-m3-amd-linux",
+        "qwen3-embedding-0.6b-amd-linux"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "amd-linux-x86",
+      "family": "reranker",
+      "applicable_models": 2,
+      "feasible_models": 2,
+      "primary_quality_dimension": "rerank",
+      "measured_models": [
+        "qwen2.5-3b-reranker-amd-linux",
+        "qwen2.5-7b-reranker-amd-linux"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "amd-linux-x86",
+      "family": "ocr",
+      "applicable_models": 4,
+      "feasible_models": 1,
+      "primary_quality_dimension": "ocr",
+      "measured_models": [
+        "rapidocr-amd-linux"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "amd-linux-x86",
+      "family": "asr",
+      "applicable_models": 3,
+      "feasible_models": 3,
+      "primary_quality_dimension": "asr",
+      "measured_models": [
+        "sensevoice-small-amd-linux",
+        "sensevoice-small-int8-amd-linux",
+        "whisper-tiny-amd-linux-npu"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "llm",
+      "applicable_models": 15,
+      "feasible_models": 3,
+      "primary_quality_dimension": "translation",
+      "measured_models": [
+        "qwen2.5-1.5b-igpu-intel-win",
+        "qwen2.5-1.5b-intel-win"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "vlm",
+      "applicable_models": 1,
+      "feasible_models": 1,
+      "primary_quality_dimension": "accuracy",
+      "measured_models": [
+        "llava-7b-intel-win"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "embedding",
+      "applicable_models": 3,
+      "feasible_models": 3,
+      "primary_quality_dimension": "embedding",
+      "measured_models": [
+        "bge-base-en-v1.5-igpu-intel-win",
+        "bge-m3-intel-win",
+        "qwen3-embedding-0.6b-intel-win"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "reranker",
+      "applicable_models": 3,
+      "feasible_models": 3,
+      "primary_quality_dimension": "rerank",
+      "measured_models": [
+        "bge-reranker-base-igpu-intel-win",
+        "bge-reranker-base-intel-win",
+        "bge-reranker-v2-m3-intel-win"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "ocr",
+      "applicable_models": 3,
+      "feasible_models": 2,
+      "primary_quality_dimension": "ocr",
+      "measured_models": [
+        "paddleocr-openvino-intel-win",
+        "rapidocr-intel-openvino"
+      ],
+      "status": "covered"
+    },
+    {
+      "target": "intel-win-x86",
+      "family": "asr",
+      "applicable_models": 3,
+      "feasible_models": 3,
+      "primary_quality_dimension": "asr",
+      "measured_models": [
+        "sensevoice-small-intel-win",
+        "whisper-base-npu-intel-win",
+        "whisper-tiny-openvino-intel-win"
+      ],
+      "status": "covered"
+    }
+  ],
+  "model_quality_rows": [
+    {
+      "target": "intel-win-x86",
+      "model": "bge-base-en-v1.5-igpu-intel-win",
+      "family": "embedding",
+      "provider": "openai",
+      "role": "embedding_intel_win_igpu",
+      "capabilities": [
+        "embedding"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "embedding"
+      ],
+      "quality_dimension_status": {
+        "embedding": "failed"
+      },
+      "quality_dimension_sources": {
+        "embedding": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "bge-m3-amd-linux",
+      "family": "embedding",
+      "provider": "ollama",
+      "role": "embedding_amd_linux_bge",
+      "capabilities": [
+        "embedding"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "embedding"
+      ],
+      "quality_dimension_status": {
+        "embedding": "passed"
+      },
+      "quality_dimension_sources": {
+        "embedding": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "bge-m3-intel-win",
+      "family": "embedding",
+      "provider": "ollama",
+      "role": "embedding_intel_win_bge",
+      "capabilities": [
+        "embedding"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "embedding"
+      ],
+      "quality_dimension_status": {
+        "embedding": "passed"
+      },
+      "quality_dimension_sources": {
+        "embedding": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "bge-reranker-base-igpu-intel-win",
+      "family": "reranker",
+      "provider": "openai",
+      "role": "reranker_intel_win_igpu",
+      "capabilities": [
+        "rerank",
+        "rerank_native"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "rerank"
+      ],
+      "quality_dimension_status": {
+        "rerank": "failed"
+      },
+      "quality_dimension_sources": {
+        "rerank": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "bge-reranker-base-intel-win",
+      "family": "reranker",
+      "provider": "local_reranker",
+      "role": "reranker_intel_win_cross_encoder",
+      "capabilities": [
+        "rerank",
+        "rerank_native"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "rerank"
+      ],
+      "quality_dimension_status": {
+        "rerank": "passed"
+      },
+      "quality_dimension_sources": {
+        "rerank": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "bge-reranker-v2-m3-intel-win",
+      "family": "reranker",
+      "provider": "local_reranker",
+      "role": "reranker_intel_win_cross_encoder_stronger",
+      "capabilities": [
+        "rerank",
+        "rerank_native"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "rerank"
+      ],
+      "quality_dimension_status": {
+        "rerank": "passed"
+      },
+      "quality_dimension_sources": {
+        "rerank": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "llama3.2-1b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_hf_llama_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "long_context": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260714-applicable-gapfill_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "llama3.2-1b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_nano",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/windows-full-matrix/intel-win-x86-20260714-applicable-gapfill_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "llama3.2-3b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_llama_lightweight",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "llava-7b-amd-linux",
+      "family": "vlm",
+      "provider": "ollama",
+      "role": "vlm_amd_linux_baseline",
+      "capabilities": [
+        "chat"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260714-applicable-gapfill_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "llava-7b-intel-win",
+      "family": "vlm",
+      "provider": "ollama",
+      "role": "vlm_intel_win_baseline",
+      "capabilities": [
+        "chat"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/windows-full-matrix/intel-win-x86-20260714-applicable-gapfill_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "minicpm-v-8b-amd-linux",
+      "family": "vlm",
+      "provider": "ollama",
+      "role": "vlm_amd_linux_supplemental",
+      "capabilities": [
+        "chat"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "failed",
+        "long_context": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260714-applicable-gapfill_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "paddleocr-amd-linux",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_amd_linux_paddle_cpu_probe",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "platform_blocked",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "skipped"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "paddleocr-openvino-intel-win",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_intel_win_openvino_paddle",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "passed"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "phi-3.5-mini-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_hf_phi_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed",
+        "long_context": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "translation": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "phi-3.5-mini-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_hf_phi_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-0.5b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_hf_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-0.5b-amd-linux-onnx",
+      "family": "llm",
+      "provider": "local_onnx",
+      "role": "llm_amd_linux_amd_onnx_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-0.5b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_hf_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-1.5b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_hf_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed",
+        "long_context": "warning"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260714-quality-qwen15-longctx-rerun_summary.json",
+        "translation": "output/reports/linux-full-matrix/amd-linux-20260714-quality-qwen15-longctx-rerun_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260714-quality-qwen15-longctx-rerun_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-1.5b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed",
+        "long_context": "warning"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/windows-full-matrix/intel-win-x86-20260713-quality-full-dims_summary.local.json",
+        "translation": "output/reports/windows-full-matrix/intel-win-x86-20260713-quality-full-dims_summary.local.json",
+        "long_context": "output/reports/windows-full-matrix/intel-win-x86-20260713-quality-full-dims_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-1.5b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_hf_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/windows-full-matrix/intel-win-x86-20260714-applicable-gapfill_summary.json",
+        "translation": "output/reports/windows-full-matrix/intel-win-x86-20260714-applicable-gapfill_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-3b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_lightweight",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed",
+        "general_ability": "failed",
+        "long_context": "failed"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "translation": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "general_ability": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-3b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_baseline",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-3b-reranker-amd-linux",
+      "family": "reranker",
+      "provider": "ollama",
+      "role": "reranker_amd_linux_generative_proxy",
+      "capabilities": [
+        "rerank"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "rerank"
+      ],
+      "quality_dimension_status": {
+        "rerank": "passed"
+      },
+      "quality_dimension_sources": {
+        "rerank": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-7b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_primary",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "measured",
+        "translation": "failed",
+        "general_ability": "passed",
+        "long_context": "warning"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "translation": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "general_ability": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json",
+        "long_context": "output/reports/linux-full-matrix/amd-linux-20260713-quality-full-dims_summary.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-7b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu_7b",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-7b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_intel_win_primary",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen2.5-7b-reranker-amd-linux",
+      "family": "reranker",
+      "provider": "ollama",
+      "role": "reranker_amd_linux_generative_proxy_7b",
+      "capabilities": [
+        "rerank"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "rerank"
+      ],
+      "quality_dimension_status": {
+        "rerank": "passed"
+      },
+      "quality_dimension_sources": {
+        "rerank": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen2.5-coder-0.5b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu_ov_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen3-0.6b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_qwen3_micro",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-0.6b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu_qwen3_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-0.6b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_nano",
+      "capabilities": [
+        "chat"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen3-1.7b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_qwen3_small",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-1.7b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu_qwen3_mid",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-1.7b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_nano_plus",
+      "capabilities": [
+        "chat"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen3-4b-amd-linux",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_amd_linux_qwen3_mid",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-4b-igpu-intel-win",
+      "family": "llm",
+      "provider": "openai",
+      "role": "llm_intel_win_igpu_qwen3_large",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "runtime_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-4b-intel-win",
+      "family": "llm",
+      "provider": "ollama",
+      "role": "llm_lightweight",
+      "capabilities": [
+        "chat",
+        "translation"
+      ],
+      "eligibility_status": "cpu_only_blocked",
+      "required_quality_dimensions": [
+        "accuracy",
+        "translation",
+        "general_ability",
+        "long_context"
+      ],
+      "quality_dimension_status": {
+        "accuracy": "missing",
+        "translation": "missing",
+        "general_ability": "missing",
+        "long_context": "missing"
+      },
+      "quality_dimension_sources": {
+        "accuracy": "",
+        "translation": "",
+        "general_ability": "",
+        "long_context": ""
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "qwen3-embedding-0.6b-amd-linux",
+      "family": "embedding",
+      "provider": "ollama",
+      "role": "embedding_amd_linux_qwen3",
+      "capabilities": [
+        "embedding"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "embedding"
+      ],
+      "quality_dimension_status": {
+        "embedding": "passed"
+      },
+      "quality_dimension_sources": {
+        "embedding": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "qwen3-embedding-0.6b-intel-win",
+      "family": "embedding",
+      "provider": "ollama",
+      "role": "embedding_intel_win",
+      "capabilities": [
+        "embedding"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "embedding"
+      ],
+      "quality_dimension_status": {
+        "embedding": "passed"
+      },
+      "quality_dimension_sources": {
+        "embedding": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "rapidocr-amd-linux",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_amd_linux_cpu",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "failed"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "rapidocr-amd-linux-directml",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_amd_linux_directml_probe",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "platform_blocked",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "skipped"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "rapidocr-amd-linux-npu",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_amd_linux_xdna_probe",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "platform_blocked",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "skipped"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "rapidocr-intel-directml",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_gpu_directml",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "platform_blocked",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "skipped"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": false
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "rapidocr-intel-openvino",
+      "family": "ocr",
+      "provider": "local_onnx",
+      "role": "ocr_openvino_probe",
+      "capabilities": [
+        "ocr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "ocr"
+      ],
+      "quality_dimension_status": {
+        "ocr": "warning"
+      },
+      "quality_dimension_sources": {
+        "ocr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "sensevoice-small-amd-linux",
+      "family": "asr",
+      "provider": "local_onnx",
+      "role": "asr_amd_linux_cpu",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "passed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "sensevoice-small-int8-amd-linux",
+      "family": "asr",
+      "provider": "local_onnx",
+      "role": "asr_amd_linux_cpu_int8_alias",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "passed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "sensevoice-small-intel-win",
+      "family": "asr",
+      "provider": "local_onnx",
+      "role": "asr_intel_win",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "passed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "whisper-base-npu-intel-win",
+      "family": "asr",
+      "provider": "local_onnx",
+      "role": "asr_intel_win_npu",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "failed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "amd-linux-x86",
+      "model": "whisper-tiny-amd-linux-npu",
+      "family": "asr",
+      "provider": "local_onnx",
+      "role": "asr_amd_linux_amd_onnx_npu_probe",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "passed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/linux-full-matrix/amd-linux-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    },
+    {
+      "target": "intel-win-x86",
+      "model": "whisper-tiny-openvino-intel-win",
+      "family": "asr",
+      "provider": "openai",
+      "role": "asr_intel_win_openvino_tiny",
+      "capabilities": [
+        "asr"
+      ],
+      "eligibility_status": "feasible",
+      "required_quality_dimensions": [
+        "asr"
+      ],
+      "quality_dimension_status": {
+        "asr": "failed"
+      },
+      "quality_dimension_sources": {
+        "asr": "output/reports/windows-full-matrix/intel-win-x86-20260713-contract-full_summary.local.json"
+      },
+      "quality_dimension_reasons": {},
+      "quality_complete": true
+    }
+  ],
+  "gaps": {
+    "feasible_model_dimension_gaps": [],
+    "family_coverage_gaps": [],
+    "runtime_or_cpu_blocked_models": [
+      {
+        "target": "amd-linux-x86",
+        "model": "llama3.2-3b-amd-linux",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "paddleocr-amd-linux",
+        "family": "ocr",
+        "eligibility_status": "platform_blocked",
+        "required_quality_dimensions": [
+          "ocr"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "phi-3.5-mini-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "qwen2.5-0.5b-amd-linux",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "qwen2.5-0.5b-amd-linux-onnx",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen2.5-0.5b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen2.5-3b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen2.5-7b-igpu-intel-win",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen2.5-7b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen2.5-coder-0.5b-igpu-intel-win",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "qwen3-0.6b-amd-linux",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-0.6b-igpu-intel-win",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-0.6b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "qwen3-1.7b-amd-linux",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-1.7b-igpu-intel-win",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-1.7b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "qwen3-4b-amd-linux",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-4b-igpu-intel-win",
+        "family": "llm",
+        "eligibility_status": "runtime_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "qwen3-4b-intel-win",
+        "family": "llm",
+        "eligibility_status": "cpu_only_blocked",
+        "required_quality_dimensions": [
+          "accuracy",
+          "translation",
+          "general_ability",
+          "long_context"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "rapidocr-amd-linux-directml",
+        "family": "ocr",
+        "eligibility_status": "platform_blocked",
+        "required_quality_dimensions": [
+          "ocr"
+        ]
+      },
+      {
+        "target": "amd-linux-x86",
+        "model": "rapidocr-amd-linux-npu",
+        "family": "ocr",
+        "eligibility_status": "platform_blocked",
+        "required_quality_dimensions": [
+          "ocr"
+        ]
+      },
+      {
+        "target": "intel-win-x86",
+        "model": "rapidocr-intel-directml",
+        "family": "ocr",
+        "eligibility_status": "platform_blocked",
+        "required_quality_dimensions": [
+          "ocr"
+        ]
+      }
+    ]
+  }
+}

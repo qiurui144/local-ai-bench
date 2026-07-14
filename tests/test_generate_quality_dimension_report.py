@@ -78,6 +78,52 @@ models:
     assert report["quality_coverage_status"] == "partial"
 
 
+def test_quality_dimension_report_respects_model_quality_skip(tmp_path):
+    mod = _load_module()
+    models_yaml = tmp_path / "models.yaml"
+    models_yaml.write_text(
+        """
+models:
+  - name: vlm-a
+    target: unit-target
+    provider: ollama
+    task_type: vlm
+    benchmarks:
+      skip:
+        - general_ability
+        - conditioned
+        - scenarios
+        - conversation_drift
+""",
+        encoding="utf-8",
+    )
+    raw = _write_json(
+        tmp_path / "vlm.json",
+        {
+            "model": "vlm-a",
+            "timestamp": "2026-07-14T10:00:00",
+            "benchmarks": {
+                "accuracy": {"verdict": "FAIL"},
+                "long_context": {"verdict": "PASS"},
+            },
+        },
+    )
+
+    report = mod.build_report(
+        models_yaml=models_yaml,
+        targets=["unit-target"],
+        raw_reports=[raw],
+        summary_files=[],
+        run_id="unit",
+        require_chat_long_context=True,
+    )
+
+    row = report["model_quality_rows"][0]
+    assert row["required_quality_dimensions"] == ["accuracy", "long_context"]
+    assert row["quality_complete"] is True
+    assert row["quality_dimension_status"]["accuracy"] == "failed"
+
+
 def test_quality_dimension_report_does_not_count_cpu_only_block_as_feasible_gap(tmp_path):
     mod = _load_module()
     models_yaml = tmp_path / "models.yaml"

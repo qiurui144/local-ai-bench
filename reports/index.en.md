@@ -11,6 +11,7 @@ This directory now uses paired English and Chinese report files. New platform re
 | Need | Report |
 |---|---|
 | Choose models across platforms | [Model Selection](selection/model-selection.en.md) |
+| Audit AMD Linux / Intel Windows quality-dimension coverage | [Quality Dimension Coverage](quality-dimensions/amd-linux-intel-win-20260714-applicable-gapfill.en.md) |
 | Review AMD Linux CPU/iGPU/NPU contract paths | [AMD Linux](platforms/amd-linux/index.en.md) |
 | Review Intel Linux CPU/iGPU/NPU/OpenVINO contract paths | [Intel Linux](platforms/intel-linux/index.en.md) |
 | Review K3 16G legacy hardware paths and contract gap | [K3 RISC-V 16G](platforms/k3-riscv-16g/index.en.md) |

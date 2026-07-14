@@ -86,10 +86,14 @@ def _model_kind(model: ModelConfig) -> str:
 
 def _required_dims(model: ModelConfig, require_chat_long_context: bool) -> list[str]:
     caps = set(getattr(model, "capabilities", ()) or ())
+    benchmarks = getattr(model, "benchmarks", None) or {}
+    skipped = set(benchmarks.get("skip") or [])
     dims: list[str] = []
     kind = _model_kind(model)
     if kind in {"llm", "vlm"}:
         for dim in CHAT_QUALITY_DIMS:
+            if dim in skipped:
+                continue
             if dim == "translation" and "translation" not in caps:
                 continue
             if dim == "long_context" and not require_chat_long_context:
@@ -392,7 +396,7 @@ def _write_tsv(path: Path, report: dict[str, Any]) -> None:
     ]
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=cols, delimiter="\t")
+        writer = csv.DictWriter(f, fieldnames=cols, delimiter="\t", lineterminator="\n")
         writer.writeheader()
         for row in report["model_quality_rows"]:
             item = {

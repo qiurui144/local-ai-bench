@@ -2,7 +2,7 @@
 
 **最后更新：** 2026-07-14
 **英文版本:** [mixed.en.md](mixed.en.md)
-**合同来源运行:** `amd-linux-20260713-contract-full`
+**合同来源运行:** `amd-linux-20260713-contract-full`, `amd-linux-x86-20260714-applicable-gapfill`
 
 ## 范围
 
@@ -23,3 +23,4 @@
 | Run ID | 产物 |
 |---|---|
 | `amd-linux-20260713-contract-full` | [参数矩阵](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/run-summary.json), [verdict 表](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-linux-x86-20260713-contract-full/nas-contract-report.md) |
+| `amd-linux-x86-20260714-applicable-gapfill` | [参数矩阵](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/parameter-matrix.json), [运行摘要](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/run-summary.json), [verdict 表](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/verdict-table.tsv), [模型画像](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/model-profile.json), [scheduler 合同](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/scheduler-contract.json), [合同报告](../../../output/reports/contract/amd-linux-x86-20260714-applicable-gapfill/nas-contract-report.md) |

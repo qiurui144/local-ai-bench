@@ -19,7 +19,7 @@ import platform
 import re
 import socket
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -178,15 +178,19 @@ def _task_items_for_model(model: ModelConfig) -> list[tuple[str, str]]:
     return items or [("llm_chat_boundary", "llm_chat")]
 
 
-def _resource_class(model: ModelConfig, row: dict[str, Any]) -> str:
+def _resource_class(model: ModelConfig, row: dict[str, Any], target: str | None = None) -> str:
     role = (getattr(model, "role", "") or "").lower()
     provider = (getattr(model, "provider", "") or "").lower()
     if "npu" in role or "xdna" in role or "vitis" in role:
         return "npu"
-    if "igpu" in role or "directml" in role or "gpu" in role or provider in {"ollama", "openai"}:
+    if "igpu" in role or "directml" in role or "gpu" in role or provider == "openai":
         return "igpu"
     if "cpu" in role:
         return "cpu"
+    if provider == "ollama":
+        if row.get("error") == "cpu_only_llm_vlm_blocked" or target == "intel-win-x86":
+            return "cpu"
+        return "igpu"
     if row.get("error"):
         return "blocked"
     return "mixed"
@@ -542,7 +546,7 @@ def _row_from_result(
     latency = _latency_profile(report, task_class)
     quality = _quality_profile(report, task_class)
     verdict, verdict_reason, confidence = _product_verdict(report, row_error, task_class, quality, latency)
-    resource_class = _resource_class(model, result_row)
+    resource_class = _resource_class(model, result_row, target)
     return {
         "test_item_id": test_item_id,
         "task_class": task_class,
@@ -626,9 +630,18 @@ def _dedupe_matrix_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _load_report_for_row(result_row: dict[str, Any]) -> dict[str, Any]:
-    report_path = _as_path(result_row.get("report"))
-    if report_path and report_path.exists():
-        return _read_json(report_path)
+    raw_report = result_row.get("report")
+    report_path = _as_path(raw_report)
+    candidates: list[Path] = []
+    if report_path:
+        candidates.append(report_path)
+    if raw_report:
+        basename = PureWindowsPath(str(raw_report)).name or Path(str(raw_report)).name
+        if basename:
+            candidates.append(ROOT / "output" / "reports" / basename)
+    for candidate in candidates:
+        if candidate.exists():
+            return _read_json(candidate)
     return {
         "model": result_row.get("model"),
         "error": result_row.get("error") or "report_not_found",

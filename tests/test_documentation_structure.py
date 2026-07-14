@@ -10,6 +10,7 @@ REPORT_PATH_RE = re.compile(
     r"[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:en|zh))?\.md|"
     r"(?:selection|archive)/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:en|zh)\.md|"
     r"platforms/[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*\.(?:en|zh)\.md|"
+    r"quality-dimensions/[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:en|zh)\.md|\.json|\.tsv)|"
     r"evidence/[a-z0-9]+(?:-[a-z0-9]+)*\.evidence\.(?:en|zh)\.md"
     r")$"
 )
@@ -20,13 +21,11 @@ def _tracked_files() -> list[str]:
     return output.splitlines()
 
 
-def _markdown_stem(part: str) -> str:
-    if not part.endswith(".md"):
-        return part
-    stem = part[:-3]
-    for suffix in (".en", ".zh"):
+def _portable_stem(part: str) -> str:
+    stem = Path(part).stem
+    for suffix in (".en", ".zh", ".schema"):
         if stem.endswith(suffix):
-            return stem[: -len(suffix)]
+            stem = stem[: -len(suffix)]
     return stem
 
 
@@ -37,7 +36,7 @@ def test_docs_use_lowercase_kebab_case_names():
             continue
         parts = Path(path).parts[1:]
         for part in parts:
-            stem = _markdown_stem(part)
+            stem = _portable_stem(part)
             if not LOWER_KEBAB_RE.fullmatch(stem):
                 bad_paths.append(path)
                 break

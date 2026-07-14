@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-07-14
 **Chinese version:** [mixed.zh.md](mixed.zh.md)
-**Contract source runs:** `intel-win-x86-20260713-contract-full`
+**Contract source runs:** `intel-win-x86-20260713-contract-full`, `intel-win-x86-20260714-applicable-gapfill`
 
 ## Scope
 
@@ -27,3 +27,4 @@ This hardware condition has 5 contract rows and 5 product-usable rows. Verdict m
 | Run ID | Artifacts |
 |---|---|
 | `intel-win-x86-20260713-contract-full` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260713-contract-full/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260713-contract-full/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260713-contract-full/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260713-contract-full/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260713-contract-full/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260713-contract-full/nas-contract-report.md) |
+| `intel-win-x86-20260714-applicable-gapfill` | [Parameter matrix](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/parameter-matrix.json), [Run summary](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/run-summary.json), [Verdict table](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/verdict-table.tsv), [Model profile](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/model-profile.json), [Scheduler contract](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/scheduler-contract.json), [Contract report](../../../output/reports/contract/intel-win-x86-20260714-applicable-gapfill/nas-contract-report.md) |
